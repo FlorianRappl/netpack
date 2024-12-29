@@ -1,0 +1,55 @@
+{
+  "entries": ["A"],
+  "nodes": [
+    {
+      "name": "A",
+      "children": ["B", "C"],
+      "references": []
+    },
+    {
+      "name": "O",
+      "children": ["C", "E", "F"],
+      "references": []
+    },
+    {
+      "name": "B",
+      "children": ["H"],
+      "references": ["T"]
+    },
+    {
+      "name": "C",
+      "children": ["D"],
+      "references": []
+    },
+    {
+      "name": "D",
+      "children": [],
+      "references": []
+    },
+    {
+      "name": "E",
+      "children": ["G", "H"],
+      "references": []
+    },
+    {
+      "name": "F",
+      "children": [],
+      "references": []
+    },
+    {
+      "name": "G",
+      "children": ["B"],
+      "references": []
+    },
+    {
+      "name": "H",
+      "children": [],
+      "references": []
+    },
+    {
+      "name": "T",
+      "children": ["G"],
+      "references": []
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "name": "bundler-comparison-template",
+  "version": "1.0.0",
+  "description": "<BUNDLER-NAME>",
+  "homepage": "<BUNDLER-HOMEPAGE>",
+  "scripts": {
+    "start": "echo \"Error: start not specified\" && exit 1"
+  },
+  "keywords": [
+    "bundler",
+    "comparison",
+    "article"
+  ],
+  "browserslist": [
+    ">0.2%",
+    "not dead",
+    "not op_mini all"
+  ],
+  "author": "Florian Rappl",
+  "license": "MIT",
+  "dependencies": {
+    "@types/node": "12.12.14",
+    "@types/react": "16.9.15",
+    "@types/react-dom": "16.9.4",
+    "@emotion/react": "11.13.0",
+    "@emotion/styled": "11.13.0",
+    "react": "16.12.0",
+    "react-dom": "16.12.0",
+    "sass": "1.23.7",
+    "typescript": "3.7.3"
+  },
+  "devDependencies": {}
+}
