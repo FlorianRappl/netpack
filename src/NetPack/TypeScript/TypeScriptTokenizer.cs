@@ -21,14 +21,14 @@ public ref struct TypeScriptTokenizer
     }
 
     private readonly char Current => _position < _input.Length ? _input[_position] : '\0';
-    private readonly char NextChar() => _position + 1 < _input.Length ? _input[_position + 1] : '\0';
-    private readonly bool EndOfInput => _position >= _input.Length;
 
-    public readonly bool IsActive => !EndOfInput;
+    private readonly char NextChar() => _position + 1 < _input.Length ? _input[_position + 1] : '\0';
+
+    public readonly bool IsActive => _position < _input.Length;
 
     public Token NextToken()
     {
-        while (!EndOfInput)
+        while (IsActive)
         {
             if (char.IsWhiteSpace(Current))
             {
@@ -71,21 +71,25 @@ public ref struct TypeScriptTokenizer
 
     private Token ReadWhitespace()
     {
-        int start = _position;
-        while (!EndOfInput && char.IsWhiteSpace(Current))
+        var start = _position;
+
+        while (IsActive && char.IsWhiteSpace(Current))
         {
             _position++;
         }
+
         return new Token(TokenType.Whitespace, _input[start.._position]);
     }
 
     private Token ReadIdentifierOrKeyword()
     {
-        int start = _position;
-        while (!EndOfInput && (char.IsLetterOrDigit(Current) || Current == '_' || Current == '$'))
+        var start = _position;
+
+        while (IsActive && (char.IsLetterOrDigit(Current) || Current == '_' || Current == '$'))
         {
             _position++;
         }
+
         var value = _input[start.._position];
         var type = Keywords.Contains(value.ToString()) ? TokenType.Keyword : TokenType.Identifier;
         return new Token(type, value);
@@ -93,34 +97,37 @@ public ref struct TypeScriptTokenizer
 
     private Token ReadNumber()
     {
-        int start = _position;
-        while (!EndOfInput && char.IsDigit(Current))
+        var start = _position;
+        
+        while (IsActive && char.IsDigit(Current))
         {
             _position++;
         }
+
         return new Token(TokenType.Number, _input[start.._position]);
     }
 
     private Token ReadOperator()
     {
-        int start = _position;
+        var start = _position;
         _position++; // Single-character operators for simplicity
         return new Token(TokenType.Operator, _input.Slice(start, 1));
     }
 
     private Token ReadSymbol()
     {
-        int start = _position;
+        var start = _position;
         _position++;
         return new Token(TokenType.Symbol, _input.Slice(start, 1));
     }
 
     private Token ReadComment()
     {
-        int start = _position;
+        var start = _position;
+
         if (NextChar() == '/')
         {
-            while (!EndOfInput && Current != '\n')
+            while (IsActive && Current != '\n')
             {
                 _position++;
             }
@@ -128,24 +135,26 @@ public ref struct TypeScriptTokenizer
         else
         {
             _position += 2; // Skip '/*'
-            while (!EndOfInput && !(Current == '*' && NextChar() == '/'))
+
+            while (IsActive && !(Current == '*' && NextChar() == '/'))
             {
                 _position++;
             }
             _position += 2; // Skip '*/'
         }
+
         return new Token(TokenType.Comment, _input[start.._position]);
     }
 
     private Token ReadStringOrTemplate()
     {
-        char quote = Current;
-        bool isTemplateString = quote == '`';
-        int start = _position;
+        var quote = Current;
+        var isTemplateString = quote == '`';
+        var start = _position;
         _position++; // Skip starting quote
-        bool escape = false;
+        var escape = false;
 
-        while (!EndOfInput && (Current != quote || escape || isTemplateString))
+        while (IsActive && (Current != quote || escape || isTemplateString))
         {
             if (escape)
             {
@@ -158,7 +167,7 @@ public ref struct TypeScriptTokenizer
             else if (isTemplateString && Current == '$' && NextChar() == '{')
             {
                 _position += 2; // Skip '${'
-                while (!EndOfInput && !(Current == '}' && !escape))
+                while (IsActive && !(Current == '}' && !escape))
                 {
                     _position++;
                     if (Current == '\\')

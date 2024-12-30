@@ -1,7 +1,7 @@
+namespace NetPack.Commands;
+
 using CommandLine;
 using NetPack.Graph;
-
-namespace NetPack.Commands;
 
 [Verb("inspect", HelpText = "Inspects the provided graph structure.")]
 public class InspectCommand : ICommand

@@ -1,8 +1,10 @@
+namespace NetPack.Commands;
+
 using CommandLine;
+using NetPack.Html;
+using NetPack.Json;
 using NetPack.Sass;
 using NetPack.TypeScript;
-
-namespace NetPack.Commands;
 
 [Verb("tokenize", HelpText = "Analyzes the provided file.")]
 public class TokenizeCommand : ICommand
@@ -43,11 +45,23 @@ public class TokenizeCommand : ICommand
         }
         else if (jsonExtensions.Contains(ext))
         {
-            Console.WriteLine("Not yet supported");
+            var tokenizer = new JsonTokenizer(code);
+
+            while (tokenizer.IsActive)
+            {
+                var token = tokenizer.NextToken();
+                Console.WriteLine(token.ToString());
+            }
         }
         else if (htmlExtensions.Contains(ext))
         {
-            Console.WriteLine("Not yet supported");
+            var tokenizer = new HtmlTokenizer(code);
+
+            while (tokenizer.IsActive)
+            {
+                var token = tokenizer.NextToken();
+                Console.WriteLine(token.ToString());
+            }
         }
         else
         {

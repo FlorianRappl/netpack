@@ -13,11 +13,11 @@ public ref struct SassTokenizer
         _position = 0;
     }
 
-    public readonly bool IsActive => !IsEnd();
+    public readonly bool IsActive => _position < _content.Length;
 
     public Token NextToken()
     {
-        while (!IsEnd())
+        while (IsActive)
         {
             char current = Peek();
 
@@ -84,12 +84,13 @@ public ref struct SassTokenizer
 
         return new Token(TokenType.Unknown, []);  // Return an empty token when end of input
     }
+
     private Token ReadComment()
     {
-        int start = _position;
+        var start = _position;
         _position += 2; // Skip initial `//`
 
-        while (!IsEnd() && Peek() != '\n')
+        while (IsActive && Peek() != '\n')
         {
             _position++;
         }
@@ -99,10 +100,10 @@ public ref struct SassTokenizer
 
     private Token ReadMultiLineComment()
     {
-        int start = _position;
+        var start = _position;
         _position += 2; // Skip initial `/*`
 
-        while (!IsEnd() && !(Peek() == '*' && Peek(1) == '/'))
+        while (IsActive && !(Peek() == '*' && Peek(1) == '/'))
         {
             _position++;
         }
@@ -113,10 +114,10 @@ public ref struct SassTokenizer
 
     private Token ReadVariable()
     {
-        int start = _position;
+        var start = _position;
         _position++;
 
-        while (!IsEnd() && (char.IsLetterOrDigit(Peek()) || Peek() == '-' || Peek() == '_'))
+        while (IsActive && (char.IsLetterOrDigit(Peek()) || Peek() == '-' || Peek() == '_'))
         {
             _position++;
         }
@@ -126,10 +127,10 @@ public ref struct SassTokenizer
 
     private Token ReadAtRule()
     {
-        int start = _position;
+        var start = _position;
         _position++;
 
-        while (!IsEnd() && char.IsLetterOrDigit(Peek()))
+        while (IsActive && char.IsLetterOrDigit(Peek()))
         {
             _position++;
         }
@@ -139,14 +140,15 @@ public ref struct SassTokenizer
 
     private Token ReadWord()
     {
-        int start = _position;
+        var start = _position;
 
-        while (!IsEnd() && !char.IsWhiteSpace(Peek()) && Peek() != ':' && Peek() != ';' && Peek() != '{' && Peek() != '}')
+        while (IsActive && !char.IsWhiteSpace(Peek()) && Peek() != ':' && Peek() != ';' && Peek() != '{' && Peek() != '}')
         {
             _position++;
         }
 
         var slice = _content[start.._position].Trim();
+        
         if (slice.Length > 0 && slice[^1] == ':')
         {
             return new Token(TokenType.Property, slice[..^1]);  // Remove trailing colon
@@ -164,6 +166,4 @@ public ref struct SassTokenizer
 
         return _content[_position + offset];
     }
-
-    private readonly bool IsEnd() => _position >= _content.Length;
 }

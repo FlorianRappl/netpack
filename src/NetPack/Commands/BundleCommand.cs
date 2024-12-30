@@ -1,13 +1,19 @@
+namespace NetPack.Commands;
+
 using CommandLine;
 using NetPack.Graph;
-
-namespace NetPack.Commands;
 
 [Verb("bundle", HelpText = "Bundles the code starting at the given entry point.")]
 public class BundleCommand : ICommand
 {
-    [Value(0)]
+    [Value(0, HelpText = "The entry point file where the bundler should start.")]
     public string? FilePath { get; set; }
+
+    [Option("outdir", HelpText = "The directory where the generated files should be placed.")]
+    public string? OutDir { get; set; }
+
+    [Option("minify", Default = false, HelpText = "Indicates if the generated files should be optimized for file size.")]
+    public bool Minify { get; set; }
 
     public async Task Run()
     {
