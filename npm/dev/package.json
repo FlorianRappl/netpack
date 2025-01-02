@@ -1,0 +1,11 @@
+{
+  "name": "netpack-dev",
+  "scripts": {
+    "build": "esbuild install.ts main.ts --bundle --platform=node --outdir=../netpack/dist --external:netpack"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "esbuild": "0.24.2",
+    "typescript": "^5"
+  }
+}

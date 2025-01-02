@@ -1,0 +1,24 @@
+{
+  "name": "netpack",
+  "version": "0.0.1",
+  "description": "The blazing fast bundler and optimizer that just works for most web projects.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/FlorianRappl/netpack.git"
+  },
+  "scripts": {
+    "postinstall": "node dist/install.js"
+  },
+  "main": "dist/main.js",
+  "types": "dist/main.d.ts",
+  "engines": {
+    "node": ">=20"
+  },
+  "bin": {
+    "netpack": "cli/netpack.js"
+  },
+  "optionalDependencies": {
+    "@netpack/linux-x64": "0.24.0"
+  },
+  "license": "MIT"
+}

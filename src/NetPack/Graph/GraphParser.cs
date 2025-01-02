@@ -56,6 +56,21 @@ public class GraphParser(string content)
         return (entries, values);
     }
 
+    public static string Serialize(IEnumerable<Node> entries, IEnumerable<Node> nodes)
+    {
+        var definition = new NodesDefinition
+        {
+            Entries = entries.Select(m => m.FileName).ToList(),
+            Nodes = nodes.Select(m => new UnresolvedNode
+            {
+                Name = m.FileName,
+                ReferenceNames = m.References.Select(r => r.FileName).ToList(),
+                ChildNames = m.Children.Select(r => r.FileName).ToList(),
+            }).ToList(),
+        };
+        return JsonSerializer.Serialize(definition, SourceGenerationContext.Default.NodesDefinition);
+    }
+
     public sealed class NodesDefinition
     {
         [JsonPropertyName("entries")]
