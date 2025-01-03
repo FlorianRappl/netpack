@@ -5,37 +5,33 @@ using AngleSharp.Dom;
 using AngleSharp.Html;
 using NetPack.Graph;
 
-class HtmlChunk(IDocument document, (Graph.Node? Node, IElement Element)[] replacements) : IChunk
+class HtmlChunk(IDocument document, IDictionary<IElement, Graph.Node> replacements) : IChunk
 {
     private readonly IDocument _document = document;
-    private readonly (Graph.Node? Node, IElement Element)[] _replacements = replacements;
+    private readonly IDictionary<IElement, Graph.Node> _replacements = replacements;
 
     public string Stringify(BundlerContext context, bool optimize)
     {
         foreach (var replacement in _replacements)
         {
-            var element = replacement.Element;
-            var node = replacement.Node;
+            var element = replacement.Key;
+            var node = replacement.Value;
+            var bundle = context.Bundles.FirstOrDefault(m => m.Root == node);
+            var asset = context.Assets.FirstOrDefault(m => m.Root == node);
+            var reference = bundle?.GetFileName() ?? asset?.GetFileName() ?? Path.GetFileName(node.FileName);
 
-            if (node is not null)
+            switch (element.LocalName)
             {
-                var bundle = context.Bundles.FirstOrDefault(m => m.Root == node);
-                var asset = context.Assets.FirstOrDefault(m => m.Root == node);
-                var reference = bundle?.GetFileName() ?? asset?.GetFileName() ?? Path.GetFileName(node.FileName);
-
-                switch (element.LocalName)
-                {
-                    case "link":
-                    case "a":
-                        element.SetAttribute("href", reference);
-                        break;
-                    case "script":
-                    case "img":
-                    case "video":
-                    case "audio":
-                        element.SetAttribute("src", reference);
-                        break;
-                }
+                case "link":
+                case "a":
+                    element.SetAttribute("href", reference);
+                    break;
+                case "script":
+                case "img":
+                case "video":
+                case "audio":
+                    element.SetAttribute("src", reference);
+                    break;
             }
         }
 

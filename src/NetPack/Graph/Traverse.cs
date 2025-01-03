@@ -213,7 +213,7 @@ public class Traverse
     private async Task ProcessStyleSheet(Node current)
     {
         using var content = File.OpenRead(current.FileName);
-        var tasks = new List<Task>();
+        var tasks = new List<Task<Node?>>();
         var options = new CssParserOptions
         {
             IsIncludingUnknownRules = true,
@@ -221,6 +221,7 @@ public class Traverse
             IsToleratingInvalidSelectors = true,
         };
         var parser = new CssParser(options, _browser);
+        var properties = new List<AngleSharp.Css.Dom.ICssProperty>();
         var sheet = await parser.ParseStyleSheetAsync(content);
 
         foreach (var rule in sheet.Rules)
@@ -233,13 +234,17 @@ public class Traverse
 
                     if (path is not null)
                     {
+                        properties.Add(decl);
                         tasks.Add(InnerProcess(current, path, false));
                     }
                 }
             }
         }
 
-        await Task.WhenAll(tasks);
+        var nodes = await Task.WhenAll(tasks);
+        var replacements = properties.Select((r, i) => (nodes[i]!, r)).ToDictionary(m => m.r, m => m.Item1);
+        var chunk = new CssChunk(sheet, replacements);
+        _context.Chunks.TryAdd(current, chunk);
     }
 
     private async Task ProcessJavaScript(Node current)
@@ -311,7 +316,7 @@ public class Traverse
         }
 
         var nodes = await Task.WhenAll(tasks);
-        var replacements = elements.Select((r, i) => (nodes[i], r)).ToArray();
+        var replacements = elements.Select((r, i) => (nodes[i]!, r)).ToDictionary(m => m.r, m => m.Item1);
         var chunk = new JsChunk(ast, replacements);
         _context.Chunks.TryAdd(current, chunk);
     }
@@ -346,7 +351,7 @@ public class Traverse
         }
 
         var nodes = await Task.WhenAll(tasks);
-        var replacements = elements.Select((r, i) => (nodes[i], r)).ToArray();
+        var replacements = elements.Select((r, i) => (nodes[i]!, r)).ToDictionary(m => m.r, m => m.Item1);
         var chunk = new HtmlChunk(document, replacements);
         _context.Chunks.TryAdd(current, chunk);
     }

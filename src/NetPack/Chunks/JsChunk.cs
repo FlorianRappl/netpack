@@ -6,10 +6,10 @@ using Acornima.Jsx;
 using Acornima.Jsx.Ast;
 using NetPack.Graph;
 
-class JsChunk(Module ast, (Graph.Node? Node, Acornima.Ast.Node Element)[] replacements) : IChunk
+class JsChunk(Module ast, IDictionary<Acornima.Ast.Node, Graph.Node> replacements) : IChunk
 {
     private readonly Module _ast = ast;
-    private readonly (Graph.Node? Node, Acornima.Ast.Node Element)[] _replacements = replacements;
+    private readonly IDictionary<Acornima.Ast.Node, Graph.Node> _replacements = replacements;
 
     public string Stringify(BundlerContext context, bool optimize)
     {
@@ -19,15 +19,11 @@ class JsChunk(Module ast, (Graph.Node? Node, Acornima.Ast.Node Element)[] replac
 
         foreach (var replacement in _replacements)
         {
-            var element = replacement.Element;
-            var node = replacement.Node;
-
-            if (node is not null)
-            {
-                var bundle = context.Bundles.FirstOrDefault(m => m.Root == node);
-                var asset = context.Assets.FirstOrDefault(m => m.Root == node);
-                var reference = bundle?.GetFileName() ?? asset?.GetFileName() ?? Path.GetFileName(node.FileName);
-            }
+            var element = replacement.Key;
+            var node = replacement.Value;
+            var bundle = context.Bundles.FirstOrDefault(m => m.Root == node);
+            var asset = context.Assets.FirstOrDefault(m => m.Root == node);
+            var reference = bundle?.GetFileName() ?? asset?.GetFileName() ?? Path.GetFileName(node.FileName);
         }
 
         return ast.ToJsx();
