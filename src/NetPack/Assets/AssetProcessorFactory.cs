@@ -3,7 +3,6 @@ namespace NetPack.Assets;
 static class AssetProcessorFactory
 {
     private static readonly ImageAssetProcessor imageAssetProcessor = new();
-    private static readonly HtmlAssetProcessor htmlAssetProcessor = new();
     private static readonly DefaultAssetProcessor defaultAssetProcessor = new();
 
     private static readonly Dictionary<string, IAssetProcessor> _processors = new()
@@ -15,7 +14,6 @@ static class AssetProcessorFactory
         { ".gif", imageAssetProcessor },
         { ".bmp", imageAssetProcessor },
         { ".exif", imageAssetProcessor },
-        { ".html", htmlAssetProcessor },
     };
 
     public static IAssetProcessor GetProcessor(string type)

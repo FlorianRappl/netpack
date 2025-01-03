@@ -1,23 +1,25 @@
 namespace NetPack.Graph;
 
-public class Connected
+public class Connected(Func<int, string> getCommonName)
 {
-    private readonly Dictionary<string, HashSet<Node>> allGraphs = [];
+    private readonly Dictionary<Node, HashSet<Node>> allGraphs = [];
     private readonly Dictionary<Node, HashSet<Node>> allNodes = [];
     private readonly HashSet<Node> processedNodes = [];
+    private readonly Func<int, string> GetCommonName = getCommonName;
 
-    private Connected()
+    public IDictionary<Node, HashSet<Node>> AllGraphs => allGraphs;
+
+    public IDictionary<Node, HashSet<Node>> Apply(IEnumerable<Node> nodes)
     {
+        Identify(nodes);
+        Optimize();
+        return allGraphs;
     }
 
-    public IDictionary<string, HashSet<Node>> AllGraphs => allGraphs;
-
-    public static IDictionary<string, HashSet<Node>> FindIndependentGraphs(IEnumerable<Node> nodes)
+    public static IDictionary<Node, HashSet<Node>> FindIndependentGraphs(IEnumerable<Node> nodes)
     {
-        var connected = new Connected();
-        connected.Identify(nodes);
-        connected.Optimize();
-        return connected.AllGraphs;
+        var connected = new Connected(i => $"common#{i}");
+        return connected.Apply(nodes);
     }
 
     private void Identify(IEnumerable<Node> nodes)
@@ -29,7 +31,7 @@ public class Connected
                 var currentGraph = new HashSet<Node>();
                 Traverse(node, currentGraph);
                 Assign(node, currentGraph);
-                allGraphs[node.FileName] = currentGraph;
+                allGraphs[node] = currentGraph;
             }
         }
     }
@@ -64,12 +66,13 @@ public class Connected
 
                 if (!shared.TryGetValue(key, out var sharedNode))
                 {
-                    sharedNode = new Node($"_c{shared.Count + 1}");
+                    var name = GetCommonName(shared.Count + 1);
+                    sharedNode = new Node(name);
                     shared.Add(key, sharedNode);
 
                     foreach (var parent in parents)
                     {
-                        allGraphs[parent.FileName].Add(sharedNode);
+                        allGraphs[parent].Add(sharedNode);
                     }
                 }
 
@@ -77,14 +80,14 @@ public class Connected
 
                 foreach (var parent in parents)
                 {
-                    allGraphs[parent.FileName].Remove(node);
+                    allGraphs[parent].Remove(node);
                 }
             }
         }
 
         foreach (var common in shared.Values)
         {
-            allGraphs[common.FileName] = [.. common.Children];
+            allGraphs[common] = [.. common.Children];
         }
     }
 

@@ -7,8 +7,7 @@ using Acornima.Jsx;
 using AngleSharp;
 using AngleSharp.Css.Dom;
 using AngleSharp.Css.Parser;
-using AngleSharp.Css.Values;
-
+using NetPack.Chunks;
 using static NetPack.Helpers;
 
 public class Traverse
@@ -24,25 +23,45 @@ public class Traverse
 
     public BundlerContext Context => _context;
 
-    public Node? Root { get; private set; }
-
     public static async Task<Traverse> From(string path)
     {
         var traverse = new Traverse();
         await traverse.Start(path);
+        Populate(traverse.Context);
         return traverse;
+    }
+
+    private static void Populate(BundlerContext context)
+    {
+        var bundles = context.Bundles;
+        var nodes = bundles.Select(m => m.Root);
+        var connected = new Connected(i => $"common.{i:0000}.js");
+        var graphs = connected.Apply(nodes);
+
+        foreach (var graph in graphs)
+        {
+            var bundle = bundles.FirstOrDefault(m => m.Root == graph.Key);
+
+            if (bundle is null)
+            {
+                bundle = new Bundle(graph.Key);
+                bundles.Add(bundle);
+            }
+
+            bundle.Items.AddRange(graph.Value);
+        }
     }
 
     private async Task Start(string path)
     {
         var entry = await Resolve(Environment.CurrentDirectory, path);
-        Root = await AddToBundle(entry);
-        _context.Bundles.Add(new Bundle(Root));
+        var root = await AddToBundle(entry);
+        _context.Bundles.Add(new Bundle(root));
     }
 
     private async Task<string> Resolve(string dir, string name)
     {
-        if (!name.StartsWith(".") && !Path.IsPathFullyQualified(name))
+        if (!name.StartsWith('.') && !Path.IsPathFullyQualified(name))
         {
             var result = await ResolveFromNodeModules(dir, name);
 
@@ -82,7 +101,7 @@ public class Traverse
         return fn;
     }
 
-    async Task<string?> ResolveFromNodeModules(string? currentDir, string packageName)
+    private async Task<string?> ResolveFromNodeModules(string? currentDir, string packageName)
     {
         while (currentDir is not null)
         {
@@ -131,7 +150,7 @@ public class Traverse
         return null;
     }
 
-    async Task<string> GetMainEntryFromPackageJson(string packageJsonPath)
+    private async Task<string> GetMainEntryFromPackageJson(string packageJsonPath)
     {
         var dependency = _context.Dependencies.FirstOrDefault(m => m.Location == packageJsonPath);
 
@@ -152,7 +171,7 @@ public class Traverse
         return dependency.Entry;
     }
 
-    private async Task InnerProcess(Node parent, string name, bool isReference = false)
+    private async Task<Node?> InnerProcess(Node parent, string name, bool isReference = false)
     {
         try
         {
@@ -167,12 +186,14 @@ public class Traverse
             else
             {
                 parent.Children.Add(module);
-                _context.Bundles.FirstOrDefault(m => m.Items.Contains(parent))?.Items.Add(module);
             }
+
+            return module;
         }
         catch (Exception err)
         {
             Console.WriteLine("Error from {1}! {0}", err, parent.FileName);
+            return null;
         }
     }
 
@@ -228,9 +249,11 @@ public class Traverse
         {
             Tolerant = true,
             AllowAwaitOutsideFunction = true,
+            JsxAllowNamespaces = true,
         });
-        var tasks = new List<Task>();
+        var tasks = new List<Task<Node?>>();
         var ast = parser.ParseModule(content.Replace(": ChangeEvent<HTMLInputElement>", ""), current.FileName);
+        var elements = new List<Acornima.Ast.Node>();
 
         foreach (var node in ast.DescendantNodes())
         {
@@ -239,12 +262,14 @@ public class Traverse
                 case NodeType.ImportDeclaration:
                     {
                         var file = ((ImportDeclaration)node).Source.Value;
+                        elements.Add(node);
                         tasks.Add(InnerProcess(current, file, false));
                         break;
                     }
                 case NodeType.ExportAllDeclaration:
                     {
                         var file = ((ExportAllDeclaration)node).Source.Value;
+                        elements.Add(node);
                         tasks.Add(InnerProcess(current, file, false));
                         break;
                     }
@@ -254,6 +279,7 @@ public class Traverse
 
                         if (str is not null)
                         {
+                            elements.Add(node);
                             tasks.Add(InnerProcess(current, str.Value, false));
                         }
 
@@ -263,6 +289,7 @@ public class Traverse
                     {
                         if (((ImportExpression)node).Source is StringLiteral str)
                         {
+                            elements.Add(node);
                             tasks.Add(InnerProcess(current, str.Value, true));
                         }
 
@@ -274,6 +301,7 @@ public class Traverse
 
                         if (call.Callee is Identifier ident && call.Arguments.Count == 1 && call.Arguments[0] is StringLiteral str && ident.Name == "require")
                         {
+                            elements.Add(node);
                             tasks.Add(InnerProcess(current, str.Value, false));
                         }
 
@@ -282,14 +310,18 @@ public class Traverse
             }
         }
 
-        await Task.WhenAll(tasks);
+        var nodes = await Task.WhenAll(tasks);
+        var replacements = elements.Select((r, i) => (nodes[i], r)).ToArray();
+        var chunk = new JsChunk(ast, replacements);
+        _context.Chunks.TryAdd(current, chunk);
     }
 
-    async Task ProcessHtml(Node current)
+    private async Task ProcessHtml(Node current)
     {
         using var content = File.OpenRead(current.FileName);
-        var tasks = new List<Task>();
+        var tasks = new List<Task<Node?>>();
         var document = await _browser.OpenAsync(res => res.Content(content));
+        var elements = new List<AngleSharp.Dom.IElement>();
 
         foreach (var element in document.QuerySelectorAll("img,script,audio,video"))
         {
@@ -297,6 +329,7 @@ public class Traverse
 
             if (src is not null)
             {
+                elements.Add(element);
                 tasks.Add(InnerProcess(current, src, true));
             }
         }
@@ -307,11 +340,15 @@ public class Traverse
 
             if (href is not null)
             {
+                elements.Add(element);
                 tasks.Add(InnerProcess(current, href, true));
             }
         }
 
-        await Task.WhenAll(tasks);
+        var nodes = await Task.WhenAll(tasks);
+        var replacements = elements.Select((r, i) => (nodes[i], r)).ToArray();
+        var chunk = new HtmlChunk(document, replacements);
+        _context.Chunks.TryAdd(current, chunk);
     }
 
     private async Task<Node> AddToBundle(string fileName)

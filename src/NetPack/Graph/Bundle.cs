@@ -4,12 +4,15 @@ public sealed class Bundle(Node root)
 {
     public Node Root => root;
 
+    public string Name => root.FileName;
+
     public string Type => root.Type;
 
-    public List<Node> Items = [root];
+    public List<Node> Items = [];
 
     public string GetFileName()
     {
-        return Path.GetFileName(Root.FileName);
+        var name = Path.GetFileNameWithoutExtension(Root.FileName);
+        return $"{name}{Type}";
     }
 }

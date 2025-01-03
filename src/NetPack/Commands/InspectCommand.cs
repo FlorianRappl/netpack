@@ -21,7 +21,9 @@ public class InspectCommand : ICommand
 
         foreach (var graph in connected)
         {
-            Console.WriteLine("Found connected graph ({0}): {1}", graph.Key, string.Join(", ", graph.Value.Select(m => m.FileName)));
+            var name = graph.Key.FileName;
+            var keys = string.Join(", ", graph.Value.Select(m => m.FileName));
+            Console.WriteLine("Found connected graph ({0}): {1}", name, keys);
         }
 
         return Task.CompletedTask;

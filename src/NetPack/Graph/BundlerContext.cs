@@ -1,7 +1,9 @@
 namespace NetPack.Graph;
 
 using System.Collections.Concurrent;
+using System.Text;
 using NetPack.Assets;
+using NetPack.Chunks;
 
 public sealed class BundlerContext
 {
@@ -10,6 +12,8 @@ public sealed class BundlerContext
     public ConcurrentBag<Bundle> Bundles = [];
 
     public ConcurrentBag<Dependency> Dependencies = [];
+
+    public ConcurrentDictionary<Node, IChunk> Chunks = [];
 
     public ConcurrentDictionary<string, Node> Modules = [];
 
@@ -26,19 +30,21 @@ public sealed class BundlerContext
             await src.CopyToAsync(dst, ct);
         });
 
-        var nodes = Bundles.Select(m => m.Root);
-        var graphs = Connected.FindIndependentGraphs(nodes);
-
-        await Parallel.ForEachAsync(graphs, async (graph, ct) =>
+        await Parallel.ForEachAsync(Bundles, async (bundle, ct) =>
         {
-            var name = Path.GetFileNameWithoutExtension(graph.Key);
-            var ext = Helpers.GetType(Path.GetExtension(graph.Key));
+            var root = bundle.Root;
+            var name = Path.GetFileNameWithoutExtension(root.FileName);
+            var ext = Helpers.GetType(Path.GetExtension(root.FileName));
             var fileName = Path.Combine(target, $"{name}{ext}");
             using var dst = File.OpenWrite(fileName);
             
-            foreach (var node in graph.Value)
+            if (Chunks.TryGetValue(bundle.Root, out var chunk))
             {
-                using var src = File.OpenRead(node.FileName);
+                var content = chunk.Stringify(this, optimize);
+                using var src = new MemoryStream();
+                var raw = Encoding.UTF8.GetBytes(content);
+                await src.WriteAsync(raw, ct);
+                src.Position = 0;
                 await src.CopyToAsync(dst, ct);
             }
         });
