@@ -1,8 +1,12 @@
 namespace NetPack.Graph;
 
-public sealed class Bundle(Node root)
+public abstract class Bundle(Node root, BundleFlags flags)
 {
     public Node Root => root;
+
+    public bool IsPrimary => flags.HasFlag(BundleFlags.Primary);
+
+    public bool IsShared => flags.HasFlag(BundleFlags.Shared);
 
     public string Name => root.FileName;
 
@@ -15,4 +19,6 @@ public sealed class Bundle(Node root)
         var name = Path.GetFileNameWithoutExtension(Root.FileName);
         return $"{name}{Type}";
     }
+
+    public abstract Task<Stream> CreateStream(bool optimize);
 }

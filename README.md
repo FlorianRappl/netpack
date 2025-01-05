@@ -15,3 +15,12 @@ Integration ideas / explorations:
 - [x] Handle HTML
 - [x] Handle JSON
 - [ ] Handle codegen
+
+## Basics
+
+- [ ] Sourcemaps
+- [x] Minification
+- [ ] DevServer
+- [ ] Bundle Analysis
+- [ ] Image / asset variants
+- [ ] Copy public / static assets

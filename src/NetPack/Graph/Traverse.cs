@@ -2,12 +2,11 @@ namespace NetPack.Graph;
 
 using System.Text.Json;
 using Acornima;
-using Acornima.Ast;
 using Acornima.Jsx;
 using AngleSharp;
 using AngleSharp.Css.Dom;
 using AngleSharp.Css.Parser;
-using NetPack.Chunks;
+using NetPack.Fragments;
 using static NetPack.Helpers;
 
 public class Traverse
@@ -27,15 +26,21 @@ public class Traverse
     {
         var traverse = new Traverse();
         await traverse.Start(path);
-        Populate(traverse.Context);
         return traverse;
     }
 
-    private static void Populate(BundlerContext context)
+    private async Task Start(string path)
     {
-        var bundles = context.Bundles;
+        var entry = await Resolve(Environment.CurrentDirectory, path);
+        await AddNewBundle(entry);
+        Populate();
+    }
+
+    private void Populate()
+    {
+        var bundles = _context.Bundles;
         var nodes = bundles.Select(m => m.Root);
-        var connected = new Connected(i => $"common.{i:0000}.js");
+        var connected = new Connected((i, nodes) => $"common.{i:0000}{nodes.First().Type}");
         var graphs = connected.Apply(nodes);
 
         foreach (var graph in graphs)
@@ -44,7 +49,7 @@ public class Traverse
 
             if (bundle is null)
             {
-                bundle = new Bundle(graph.Key);
+                bundle = CreateBundle(graph.Key, BundleFlags.Shared);
                 bundles.Add(bundle);
             }
 
@@ -52,11 +57,15 @@ public class Traverse
         }
     }
 
-    private async Task Start(string path)
+    private Bundle CreateBundle(Node root, BundleFlags flags)
     {
-        var entry = await Resolve(Environment.CurrentDirectory, path);
-        var root = await AddToBundle(entry);
-        _context.Bundles.Add(new Bundle(root));
+        return root.Type switch
+        {
+            ".html" => new HtmlBundle(_context, root, flags),
+            ".js" => new JsBundle(_context, root, flags),
+            ".css" => new CssBundle(_context, root, flags),
+            _ => throw new NotSupportedException($"No bundle for type '{root.Type}' found."),
+        };
     }
 
     private async Task<string> Resolve(string dir, string name)
@@ -171,17 +180,16 @@ public class Traverse
         return dependency.Entry;
     }
 
-    private async Task<Node?> InnerProcess(Node parent, string name, bool isReference = false)
+    private async Task<Node?> InnerProcess(Bundle? bundle, Node parent, string name)
     {
         try
         {
             var file = await Resolve(parent.ParentDir, name);
-            var module = await AddToBundle(file);
+            var module = await AddToBundle(bundle, file);
 
-            if (isReference)
+            if (bundle is null)
             {
                 parent.References.Add(module);
-                _context.Bundles.Add(new Bundle(module));
             }
             else
             {
@@ -197,20 +205,20 @@ public class Traverse
         }
     }
 
-    private async Task ProcessAsset(Node current)
+    private async Task ProcessAsset(Node current, Bundle bundle)
     {
         using var stream = File.OpenRead(current.FileName);
         var hash = await Hash.ComputeHash(stream);
         _context.Assets.Add(new Asset(current, current.Type, hash));
     }
 
-    private Task ProcessJson(Node current)
+    private Task ProcessJson(Node current, Bundle bundle)
     {
         // nothing on purpose
         return Task.CompletedTask;
     }
 
-    private async Task ProcessStyleSheet(Node current)
+    private async Task ProcessStyleSheet(Node current, Bundle bundle)
     {
         using var content = File.OpenRead(current.FileName);
         var tasks = new List<Task<Node?>>();
@@ -221,7 +229,7 @@ public class Traverse
             IsToleratingInvalidSelectors = true,
         };
         var parser = new CssParser(options, _browser);
-        var properties = new List<AngleSharp.Css.Dom.ICssProperty>();
+        var properties = new List<ICssProperty>();
         var sheet = await parser.ParseStyleSheetAsync(content);
 
         foreach (var rule in sheet.Rules)
@@ -235,7 +243,7 @@ public class Traverse
                     if (path is not null)
                     {
                         properties.Add(decl);
-                        tasks.Add(InnerProcess(current, path, false));
+                        tasks.Add(InnerProcess(bundle, current, path));
                     }
                 }
             }
@@ -243,11 +251,10 @@ public class Traverse
 
         var nodes = await Task.WhenAll(tasks);
         var replacements = properties.Select((r, i) => (nodes[i]!, r)).ToDictionary(m => m.r, m => m.Item1);
-        var chunk = new CssChunk(sheet, replacements);
-        _context.Chunks.TryAdd(current, chunk);
+        CssBundle.Fragments.Add(new CssFragment(current, sheet, replacements));
     }
 
-    private async Task ProcessJavaScript(Node current)
+    private async Task ProcessJavaScript(Node current, Bundle bundle)
     {
         var content = await File.ReadAllTextAsync(current.FileName);
         var parser = new JsxParser(new JsxParserOptions
@@ -256,72 +263,16 @@ public class Traverse
             AllowAwaitOutsideFunction = true,
             JsxAllowNamespaces = true,
         });
-        var tasks = new List<Task<Node?>>();
-        var ast = parser.ParseModule(content.Replace(": ChangeEvent<HTMLInputElement>", ""), current.FileName);
-        var elements = new List<Acornima.Ast.Node>();
-
-        foreach (var node in ast.DescendantNodes())
-        {
-            switch (node.Type)
-            {
-                case NodeType.ImportDeclaration:
-                    {
-                        var file = ((ImportDeclaration)node).Source.Value;
-                        elements.Add(node);
-                        tasks.Add(InnerProcess(current, file, false));
-                        break;
-                    }
-                case NodeType.ExportAllDeclaration:
-                    {
-                        var file = ((ExportAllDeclaration)node).Source.Value;
-                        elements.Add(node);
-                        tasks.Add(InnerProcess(current, file, false));
-                        break;
-                    }
-                case NodeType.ExportNamedDeclaration:
-                    {
-                        var str = ((ExportNamedDeclaration)node).Source;
-
-                        if (str is not null)
-                        {
-                            elements.Add(node);
-                            tasks.Add(InnerProcess(current, str.Value, false));
-                        }
-
-                        break;
-                    }
-                case NodeType.ImportExpression:
-                    {
-                        if (((ImportExpression)node).Source is StringLiteral str)
-                        {
-                            elements.Add(node);
-                            tasks.Add(InnerProcess(current, str.Value, true));
-                        }
-
-                        break;
-                    }
-                case NodeType.CallExpression:
-                    {
-                        var call = (CallExpression)node;
-
-                        if (call.Callee is Identifier ident && call.Arguments.Count == 1 && call.Arguments[0] is StringLiteral str && ident.Name == "require")
-                        {
-                            elements.Add(node);
-                            tasks.Add(InnerProcess(current, str.Value, false));
-                        }
-
-                        break;
-                    }
-            }
-        }
-
-        var nodes = await Task.WhenAll(tasks);
-        var replacements = elements.Select((r, i) => (nodes[i]!, r)).ToDictionary(m => m.r, m => m.Item1);
-        var chunk = new JsChunk(ast, replacements);
-        _context.Chunks.TryAdd(current, chunk);
+        var newContent = content
+            .Replace("process.env.NODE_ENV", "'production'")
+            .Replace(": ChangeEvent<HTMLInputElement>", ""); // this should be removed; just for now.
+        var ast = parser.ParseModule(newContent, current.FileName);
+        var visitor = new JsVisitor(bundle, current, InnerProcess);
+        var fragment = await visitor.FindChildren(ast);
+        JsBundle.Fragments.Add(fragment);
     }
 
-    private async Task ProcessHtml(Node current)
+    private async Task ProcessHtml(Node current, Bundle bundle)
     {
         using var content = File.OpenRead(current.FileName);
         var tasks = new List<Task<Node?>>();
@@ -335,7 +286,7 @@ public class Traverse
             if (src is not null)
             {
                 elements.Add(element);
-                tasks.Add(InnerProcess(current, src, true));
+                tasks.Add(InnerProcess(null, current, src));
             }
         }
 
@@ -346,34 +297,40 @@ public class Traverse
             if (href is not null)
             {
                 elements.Add(element);
-                tasks.Add(InnerProcess(current, href, true));
+                tasks.Add(InnerProcess(null, current, href));
             }
         }
 
         var nodes = await Task.WhenAll(tasks);
         var replacements = elements.Select((r, i) => (nodes[i]!, r)).ToDictionary(m => m.r, m => m.Item1);
-        var chunk = new HtmlChunk(document, replacements);
-        _context.Chunks.TryAdd(current, chunk);
+        HtmlBundle.Fragments.Add(new HtmlFragment(current, document, replacements));
     }
 
-    private async Task<Node> AddToBundle(string fileName)
+    private Task<Node> AddNewBundle(string fileName) => AddToBundle(null, fileName);
+
+    private async Task<Node> AddToBundle(Bundle? bundle, string fileName)
     {
-        if (_context.Modules.TryGetValue(fileName, out var value))
+        if (!_context.Modules.TryGetValue(fileName, out var node))
         {
-            return value;
+            node = new Node(fileName);
+            _context.Modules.TryAdd(fileName, node);
+
+            if (bundle is null)
+            {
+                var flags = _context.Bundles.Count == 0 ? BundleFlags.Primary : BundleFlags.None;
+                bundle = CreateBundle(node, flags);
+                _context.Bundles.Add(bundle);
+            }
+
+            await (node.Type switch
+            {
+                ".js" => ProcessJavaScript(node, bundle),
+                ".html" => ProcessHtml(node, bundle),
+                ".css" => ProcessStyleSheet(node, bundle),
+                ".json" => ProcessJson(node, bundle),
+                _ => ProcessAsset(node, bundle),
+            });
         }
-
-        var node = new Node(fileName);
-        _context.Modules.TryAdd(fileName, node);
-
-        await (node.Type switch
-        {
-            ".js" => ProcessJavaScript(node),
-            ".html" => ProcessHtml(node),
-            ".css" => ProcessStyleSheet(node),
-            ".json" => ProcessJson(node),
-            _ => ProcessAsset(node),
-        });
 
         return node;
     }

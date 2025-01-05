@@ -1,11 +1,11 @@
 namespace NetPack.Graph;
 
-public class Connected(Func<int, string> getCommonName)
+public class Connected(Func<int, IEnumerable<Node>, string> getCommonName)
 {
     private readonly Dictionary<Node, HashSet<Node>> allGraphs = [];
     private readonly Dictionary<Node, HashSet<Node>> allNodes = [];
     private readonly HashSet<Node> processedNodes = [];
-    private readonly Func<int, string> GetCommonName = getCommonName;
+    private readonly Func<int, IEnumerable<Node>, string> GetCommonName = getCommonName;
 
     public IDictionary<Node, HashSet<Node>> AllGraphs => allGraphs;
 
@@ -18,7 +18,7 @@ public class Connected(Func<int, string> getCommonName)
 
     public static IDictionary<Node, HashSet<Node>> FindIndependentGraphs(IEnumerable<Node> nodes)
     {
-        var connected = new Connected(i => $"common#{i}");
+        var connected = new Connected((i, _) => $"common#{i}");
         return connected.Apply(nodes);
     }
 
@@ -66,7 +66,7 @@ public class Connected(Func<int, string> getCommonName)
 
                 if (!shared.TryGetValue(key, out var sharedNode))
                 {
-                    var name = GetCommonName(shared.Count + 1);
+                    var name = GetCommonName(shared.Count + 1, parents);
                     sharedNode = new Node(name);
                     shared.Add(key, sharedNode);
 
