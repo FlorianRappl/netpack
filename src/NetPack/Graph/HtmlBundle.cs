@@ -46,6 +46,9 @@ public sealed class HtmlBundle(BundlerContext context, Node root, BundleFlags fl
                         element.SetAttribute("href", $"./{reference}");
                         break;
                     case "script":
+                        element.SetAttribute("type", "module");
+                        element.SetAttribute("src", $"./{reference}");
+                        break;
                     case "img":
                     case "video":
                     case "audio":

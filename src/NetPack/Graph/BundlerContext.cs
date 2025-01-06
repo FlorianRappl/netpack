@@ -15,7 +15,7 @@ public sealed class BundlerContext
     public async Task WriteOut(string target, bool optimize)
     {
         Directory.CreateDirectory(target);
-
+try {
         await Parallel.ForEachAsync(Assets, async (asset, ct) =>
         {
             var fileName = Path.Combine(target, asset.GetFileName());
@@ -31,5 +31,9 @@ public sealed class BundlerContext
             using var src = await bundle.CreateStream(optimize);
             await src.CopyToAsync(dst, ct);
         });
+} catch (Exception ex)
+{
+    Console.WriteLine("Failed! {0}", ex);
+}
     }
 }
