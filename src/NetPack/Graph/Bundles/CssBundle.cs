@@ -14,15 +14,15 @@ public sealed class CssBundle(BundlerContext context, Node root, BundleFlags fla
 
     private readonly BundlerContext _context = context;
 
-    public override Task<Stream> CreateStream(bool optimize)
+    public override Task<Stream> CreateStream(OutputOptions options)
     {
         var src = new MemoryStream();
-        Stringify(src, optimize);
+        Stringify(src, options);
         src.Position = 0;
         return Task.FromResult<Stream>(src);
     }
     
-    private void Stringify(MemoryStream ms, bool optimize)
+    private void Stringify(MemoryStream ms, OutputOptions options)
     {
         var root = _fragments.FirstOrDefault(m => m.Root == Root);
 
@@ -41,7 +41,7 @@ public sealed class CssBundle(BundlerContext context, Node root, BundleFlags fla
                 property.Value = Regex.Replace(property.Value, @"url\(.*\)", $"url('./{reference}')");
             }
 
-            var formatter = optimize ? new MinifyStyleFormatter() : CssStyleFormatter.Instance;
+            var formatter = options.IsOptimizing ? new MinifyStyleFormatter() : CssStyleFormatter.Instance;
             using var writer = new StreamWriter(ms, Encoding.UTF8, -1, true);
             stylesheet.ToCss(writer, formatter);
         }

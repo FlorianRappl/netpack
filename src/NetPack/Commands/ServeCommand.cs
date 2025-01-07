@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using NetPack.Graph;
 using NetPack.Graph.Writers;
@@ -51,19 +52,33 @@ public class ServeCommand : ICommand
         };
 
         var compilation = await Compile();
+        var tcs = new TaskCompletionSource();
         var address = $"http://localhost:{Port}";
+        var options = new OutputOptions
+        {
+            IsOptimizing = Minify,
+            IsReloading = true,
+        };
 
         async void Restart(object sender, FileSystemEventArgs e)
         {
-            if (compilation.HasFile(e.FullPath))
+            var currentTcs = tcs;
+
+            if (compilation.HasFile(e.FullPath) && !currentTcs.Task.IsCompleted)
             {
                 var newCompilation = await Compile();
-                await newCompilation.WriteOut(Minify);
-                compilation = newCompilation;
+                await newCompilation.WriteOut(options);
+
+                if (!currentTcs.Task.IsCompleted)
+                {
+                    tcs = new TaskCompletionSource();
+                    currentTcs.SetResult();
+                    compilation = newCompilation;
+                }
             }
         }
 
-        var writeOutTask = compilation.WriteOut(Minify);
+        var writeOutTask = compilation.WriteOut(options);
 
         watcher.Changed += Restart;
         watcher.Deleted += Restart;
@@ -80,6 +95,7 @@ public class ServeCommand : ICommand
         });
         
         builder.WebHost.UseUrls(address);
+        builder.Services.AddSingleton<IHostLifetime, NoopConsoleLifetime>();
         
         var app = builder.Build();
 
@@ -95,6 +111,21 @@ public class ServeCommand : ICommand
             }
             
             return Results.Bytes(content, "text/html");
+        });
+
+        app.MapGet("/netpack", async (HttpContext ctx, CancellationToken ct) =>
+        {
+            var cancel = new TaskCompletionSource();
+            ct.Register(() => cancel.SetResult());
+            ctx.Response.Headers.Append("Content-Type", "text/event-stream");
+            
+            while (!ct.IsCancellationRequested)
+            {
+                await Task.WhenAny(tcs.Task, cancel.Task);
+                await ctx.Response.WriteAsync("event: change\n", ct);
+                await ctx.Response.WriteAsync("data: {}\n\n", ct);
+                await ctx.Response.Body.FlushAsync(ct);
+            }
         });
 
         app.MapGet("/{*file}", async (string file) =>
@@ -136,5 +167,32 @@ public class ServeCommand : ICommand
         }
 
         return "application/octet-stream";
+    }
+
+    sealed class NoopConsoleLifetime(ILogger<NoopConsoleLifetime> logger) : IHostLifetime, IDisposable
+    {
+        private readonly ILogger<NoopConsoleLifetime> _logger = logger;
+
+        public Task StopAsync(CancellationToken cancellationToken)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task WaitForStartAsync(CancellationToken cancellationToken)
+        {
+            Console.CancelKeyPress += OnCancelKeyPressed;
+            return Task.CompletedTask;
+        }
+
+        private void OnCancelKeyPressed(object? sender, ConsoleCancelEventArgs e)
+        {
+            e.Cancel = true;
+            Task.Run(() => Environment.Exit(0));
+        }
+
+        public void Dispose()
+        {
+            Console.CancelKeyPress -= OnCancelKeyPressed;
+        }
     }
 }

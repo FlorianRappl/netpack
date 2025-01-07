@@ -20,5 +20,5 @@ public abstract class Bundle(Node root, BundleFlags flags)
         return $"{name}{Type}";
     }
 
-    public abstract Task<Stream> CreateStream(bool optimize);
+    public abstract Task<Stream> CreateStream(OutputOptions options);
 }

@@ -14,15 +14,15 @@ public sealed class HtmlBundle(BundlerContext context, Graph.Node root, BundleFl
 
     private readonly BundlerContext _context = context;
 
-    public override Task<Stream> CreateStream(bool optimize)
+    public override Task<Stream> CreateStream(OutputOptions options)
     {
         var src = new MemoryStream();
-        Stringify(src, optimize);
+        Stringify(src, options);
         src.Position = 0;
         return Task.FromResult<Stream>(src);
     }
 
-    private void Stringify(MemoryStream ms, bool optimize)
+    private void Stringify(MemoryStream ms, OutputOptions options)
     {
         var root = _fragments.FirstOrDefault(m => m.Root == Root);
 
@@ -57,7 +57,7 @@ public sealed class HtmlBundle(BundlerContext context, Graph.Node root, BundleFl
                 }
             }
 
-            if (optimize)
+            if (options.IsOptimizing)
             {
                 foreach (var node in document.Head!.ChildNodes.OfType<IText>().ToArray())
                 {
@@ -75,7 +75,14 @@ public sealed class HtmlBundle(BundlerContext context, Graph.Node root, BundleFl
                 }
             }
 
-            var formatter = optimize ? MinifyMarkupFormatter.Instance : HtmlMarkupFormatter.Instance;
+            if (options.IsReloading)
+            {
+                var child = document.CreateElement("script");
+                child.TextContent = "new EventSource('/netpack').addEventListener('change', () => location.reload())";
+                document.Body?.AppendChild(child);
+            }
+
+            var formatter = options.IsOptimizing ? MinifyMarkupFormatter.Instance : HtmlMarkupFormatter.Instance;
             using var writer = new StreamWriter(ms, Encoding.UTF8, -1, true);
             document.ToHtml(writer, formatter);
         }

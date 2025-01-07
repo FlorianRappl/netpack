@@ -15,9 +15,9 @@ public sealed class JsBundle(BundlerContext context, Graph.Node root, BundleFlag
 
     public BundlerContext Context => context;
 
-    public override async Task<Stream> CreateStream(bool optimize)
+    public override async Task<Stream> CreateStream(OutputOptions options)
     {
-        var content = Stringify(optimize);
+        var content = Stringify(options);
         var raw = Encoding.UTF8.GetBytes(content);
         var src = new MemoryStream();
         await src.WriteAsync(raw);
@@ -25,9 +25,9 @@ public sealed class JsBundle(BundlerContext context, Graph.Node root, BundleFlag
         return src;
     }
 
-    public string Stringify(bool optimize)
+    public string Stringify(OutputOptions options)
     {
-        var transpiler = new JsxToJavaScriptTranspiler(this, optimize);
+        var transpiler = new JsxToJavaScriptTranspiler(this, options.IsOptimizing);
         var ast = transpiler.Transpile();
         return ast.ToJsx();
     }

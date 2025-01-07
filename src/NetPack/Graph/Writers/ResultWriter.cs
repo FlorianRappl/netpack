@@ -7,7 +7,7 @@ abstract class ResultWriter(BundlerContext context)
     public event EventHandler? Started;
     public event EventHandler? Finished;
 
-    public async Task WriteOut(bool optimize)
+    public async Task WriteOut(OutputOptions options)
     {
         Started?.Invoke(this, EventArgs.Empty);
 
@@ -15,7 +15,7 @@ abstract class ResultWriter(BundlerContext context)
         {
             var fn = asset.GetFileName();
             using var dst = OpenWrite(fn);
-            using var src = await asset.CreateStream(optimize);
+            using var src = await asset.CreateStream(options);
             await src.CopyToAsync(dst, ct);
             CloseWrite(fn, dst);
         });
@@ -24,7 +24,7 @@ abstract class ResultWriter(BundlerContext context)
         {
             var fn = bundle.GetFileName();
             using var dst = OpenWrite(fn);
-            using var src = await bundle.CreateStream(optimize);
+            using var src = await bundle.CreateStream(options);
             await src.CopyToAsync(dst, ct);
             CloseWrite(fn, dst);
         });

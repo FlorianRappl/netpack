@@ -5,11 +5,11 @@ using SkiaSharp;
 
 class ImageAssetProcessor : IAssetProcessor
 {
-    public Task<Stream> ProcessAsync(Asset asset, bool optimize)
+    public Task<Stream> ProcessAsync(Asset asset, OutputOptions options)
     {
         Stream fs = File.OpenRead(asset.Root.FileName);
 
-        if (optimize)
+        if (options.IsOptimizing)
         {
             using var skData = SKData.Create(fs);
             using var codec = SKCodec.Create(skData);

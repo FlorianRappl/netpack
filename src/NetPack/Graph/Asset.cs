@@ -22,10 +22,10 @@ public sealed class Asset(Node root, string type, string hash = "")
         return Path.GetFileName(Root.FileName);
     }
 
-    public async Task<Stream> CreateStream(bool optimize)
+    public async Task<Stream> CreateStream(OutputOptions options)
     {
         var processor = AssetProcessorFactory.GetProcessor(Type);
-        var src = await processor.ProcessAsync(this, optimize);
+        var src = await processor.ProcessAsync(this, options);
         return src;
     }
 }

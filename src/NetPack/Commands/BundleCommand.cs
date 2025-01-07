@@ -38,6 +38,11 @@ public class BundleCommand : ICommand
         var outdir = Path.Combine(Environment.CurrentDirectory, OutDir);
         var graph = await Traverse.From(file, Externals);
         var result = new DiskResultWriter(graph.Context, outdir);
+        var options = new OutputOptions
+        {
+            IsOptimizing = Minify,
+            IsReloading = false,
+        };
 
         if (Clean && Directory.Exists(outdir))
         {
@@ -45,6 +50,6 @@ public class BundleCommand : ICommand
         }
 
         Directory.CreateDirectory(outdir);
-        await result.WriteOut(Minify);
+        await result.WriteOut(options);
     }
 }
