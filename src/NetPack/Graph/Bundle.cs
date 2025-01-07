@@ -12,7 +12,7 @@ public abstract class Bundle(Node root, BundleFlags flags)
 
     public string Type => root.Type;
 
-    public List<Node> Items = [];
+    public Node[] Items = [];
 
     public string GetFileName()
     {

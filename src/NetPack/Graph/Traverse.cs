@@ -53,7 +53,7 @@ public class Traverse
                 bundles.Add(bundle);
             }
 
-            bundle.Items.AddRange(graph.Value);
+            bundle.Items = [..graph.Value];
         }
     }
 

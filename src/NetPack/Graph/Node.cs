@@ -1,5 +1,7 @@
 namespace NetPack.Graph;
 
+using System.Collections.Concurrent;
+
 public class Node(string fileName)
 {
     public string FileName => fileName;
@@ -10,7 +12,7 @@ public class Node(string fileName)
 
     public string Type => Helpers.GetType(Extension);
 
-    public List<Node> Children = [];
+    public ConcurrentBag<Node> Children = [];
 
-    public List<Node> References = [];
+    public ConcurrentBag<Node> References = [];
 }

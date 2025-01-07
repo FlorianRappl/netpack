@@ -24,3 +24,10 @@ Integration ideas / explorations:
 - [ ] Bundle Analysis
 - [ ] Image / asset variants
 - [ ] Copy public / static assets
+- [ ] Externals
+
+## Advanced
+
+- [ ] Importmap support
+- [ ] Module Federation support
+- [ ] Native Federation support
