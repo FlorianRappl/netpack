@@ -50,7 +50,7 @@ public sealed class JsBundle(BundlerContext context, Node root, BundleFlags flag
             var body = new List<Statement>();
             var statements = new List<Statement>();
             var refNames = new List<string>();
-            var exportNodes = _bundle.Items;//_bundle.IsShared ? _bundle.Items : [_bundle.Root];
+            var exportNodes = _bundle.Items;
             var referenced = _bundle.Context.Bundles.Where(m => m.IsShared && m != _bundle && _bundle.Items.Contains(m.Root));
 
             foreach (var reference in referenced)
@@ -235,28 +235,22 @@ public sealed class JsBundle(BundlerContext context, Node root, BundleFlags flag
                     return new VariableDeclaration(VariableDeclarationKind.Const, NodeList.From([declarator]));
                 }
 
-                var allNames = new List<string>();
                 var properties = new List<ObjectProperty>();
                 var decls = new List<VariableDeclarator>();
                 Expression init = MakeRequireCall(GetName(reference));
 
-                foreach (var m in node.Specifiers)
+                foreach (var spec in node.Specifiers)
                 {
-                    if (m is ImportNamespaceSpecifier)
+                    if (spec is ImportNamespaceSpecifier)
                     {
-                        allNames.Add(m.Local.Name);
+                        var id = new Identifier(spec.Local.Name);
+                        decls.Add(new VariableDeclarator(id, init));
+                        init = id;
                     }
                     else
                     {
-                        properties.Add(new ObjectProperty(PropertyKind.Property, GetImportName(m), m.Local, false, true, false));
+                        properties.Add(new ObjectProperty(PropertyKind.Property, GetImportName(spec), spec.Local, false, false, false));
                     }
-                }
-
-                foreach (var name in allNames)
-                {
-                    var id = new Identifier(name);
-                    decls.Add(new VariableDeclarator(id, init));
-                    init = id;
                 }
 
                 if (properties.Count > 0)
@@ -305,16 +299,15 @@ public sealed class JsBundle(BundlerContext context, Node root, BundleFlags flag
 
         protected override object? VisitExportNamedDeclaration(ExportNamedDeclaration node)
         {
-            var specifier = node.Specifiers[0];
-
             if (_current?.Replacements.TryGetValue(node, out var reference) ?? false)
             {
-                var computed = specifier.Local is StringLiteral;
-                var payload = new MemberExpression(MakeRequireCall(GetName(reference)), specifier.Local, computed, false);
-                return SetExport(specifier.Exported, payload);
+                var require = MakeRequireCall(GetName(reference));
+                var specs = node.Specifiers.Select(m => SetExport(m.Exported, new MemberExpression(require, m.Local, m.Local is StringLiteral, false)));
+                var sequence = NodeList.From(specs);
+                return new NonSpecialExpressionStatement(new SequenceExpression(sequence));
             }
 
-            return SetExport(specifier.Exported, specifier.Local);
+            return new NonSpecialExpressionStatement(new SequenceExpression(NodeList.From(node.Specifiers.Select(m => SetExport(m.Exported, m.Local)))));
         }
 
         protected override object? VisitExportDefaultDeclaration(ExportDefaultDeclaration node)
@@ -323,14 +316,20 @@ public sealed class JsBundle(BundlerContext context, Node root, BundleFlags flag
             return SetExport(new Identifier("default"), payload);
         }
 
+        private static Expression SetExport(Expression name, Expression expr)
+        {
+            var computed = name is StringLiteral;
+            var left = new MemberExpression(new Identifier("exports"), name, computed, false);
+            return new AssignmentExpression(Acornima.Operator.Assignment, left, expr);
+        }
+
         private static StatementOrExpression SetExport(Expression name, StatementOrExpression payload)
         {
             var computed = name is StringLiteral;
 
             if (payload is Expression expr)
             {
-                var left = new MemberExpression(new Identifier("exports"), name, computed, false);
-                var assignment = new AssignmentExpression(Acornima.Operator.Assignment, left, expr);
+                var assignment = SetExport(name, expr);
                 return new NonSpecialExpressionStatement(assignment);
             }
             else if (payload is FunctionDeclaration func)
