@@ -52,6 +52,8 @@ public class ServeCommand : ICommand
         };
 
         var compilation = await Compile();
+        var latest = Task.CompletedTask;
+        var current = Task.CompletedTask;
         var tcs = new TaskCompletionSource();
         var address = $"http://localhost:{Port}";
         var options = new OutputOptions
@@ -60,20 +62,37 @@ public class ServeCommand : ICommand
             IsReloading = true,
         };
 
-        async void Restart(object sender, FileSystemEventArgs e)
+        void Restart(object sender, FileSystemEventArgs e)
         {
-            var currentTcs = tcs;
-
-            if (compilation.HasFile(e.FullPath) && !currentTcs.Task.IsCompleted)
+            if (latest.Status == TaskStatus.WaitingForActivation || latest.Status == TaskStatus.WaitingToRun)
             {
-                var newCompilation = await Compile();
-                await newCompilation.WriteOut(options);
+                return;
+            }
 
-                if (!currentTcs.Task.IsCompleted)
+            if (compilation.HasFile(e.FullPath))
+            {
+                async Task Recompile()
                 {
-                    tcs = new TaskCompletionSource();
-                    currentTcs.SetResult();
-                    compilation = newCompilation;
+                    var currentTcs = tcs;
+                    var newCompilation = await Compile();
+                    await newCompilation.WriteOut(options);
+
+                    if (!currentTcs.Task.IsCompleted)
+                    {
+                        tcs = new TaskCompletionSource();
+                        currentTcs.SetResult();
+                        compilation = newCompilation;
+                    }
+                }
+
+                if (current.IsCompleted)
+                {
+                    current = Recompile();
+                }
+                else
+                {
+                    latest = current;
+                    current = current.ContinueWith(_ => Recompile());
                 }
             }
         }
