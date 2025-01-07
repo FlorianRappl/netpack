@@ -1,4 +1,4 @@
-namespace NetPack.Graph;
+namespace NetPack.Graph.Bundles;
 
 using System.Collections.Concurrent;
 using System.Text;
@@ -7,7 +7,7 @@ using Acornima.Jsx;
 using Acornima.Jsx.Ast;
 using NetPack.Fragments;
 
-public sealed class JsBundle(BundlerContext context, Node root, BundleFlags flags) : Bundle(root, flags)
+public sealed class JsBundle(BundlerContext context, Graph.Node root, BundleFlags flags) : Bundle(root, flags)
 {
     private static readonly ConcurrentBag<JsFragment> _fragments = [];
 
@@ -115,7 +115,7 @@ public sealed class JsBundle(BundlerContext context, Node root, BundleFlags flag
                     var offset = 0;
 
                     body.Add(new VariableDeclaration(VariableDeclarationKind.Const, NodeList.From(new VariableDeclarator(new ObjectExpression(
-                        NodeList.From<Acornima.Ast.Node>(exportNames.Select(m => m == "default" ?
+                        NodeList.From<Node>(exportNames.Select(m => m == "default" ?
                           new ObjectProperty(PropertyKind.Property, new Identifier(m), _default, false, false, false) :
                           new ObjectProperty(PropertyKind.Property, new Identifier(m), new Identifier(m), false, true, false)))
                     ), call))));
@@ -137,11 +137,11 @@ public sealed class JsBundle(BundlerContext context, Node root, BundleFlags flag
             return new Module(NodeList.From(imports.Concat(body).Concat(exports)));
         }
 
-        private static string GetName(Node node) => node.FileName.GetHashCode().ToString("x");
+        private static string GetName(Graph.Node node) => node.FileName.GetHashCode().ToString("x");
 
         private static VariableDeclaration MakeModuleCache(IEnumerable<string> refNames)
         {
-            var initial = NodeList.From<Acornima.Ast.Node>(refNames.Select(name => new SpreadElement(new Identifier(name))));
+            var initial = NodeList.From<Node>(refNames.Select(name => new SpreadElement(new Identifier(name))));
             var decl = new VariableDeclarator(_modules, new ObjectExpression(initial));
             return new VariableDeclaration(VariableDeclarationKind.Const, NodeList.From([decl]));
         }
@@ -157,7 +157,7 @@ public sealed class JsBundle(BundlerContext context, Node root, BundleFlags flag
             var body = new FunctionBody(NodeList.From<Statement>([
                 new ReturnStatement(new CallExpression(new MemberExpression(_modules, name, true, false), [], false)),
             ]), false);
-            var parameters = NodeList.From<Acornima.Ast.Node>([name]);
+            var parameters = NodeList.From<Node>([name]);
             return new FunctionDeclaration(_require, parameters, body, false, false);
         }
 
@@ -188,7 +188,7 @@ public sealed class JsBundle(BundlerContext context, Node root, BundleFlags flag
                     new ArrowFunctionExpression([], innerBody, false, false))
                 ),
             ]), false);
-            var parameters = NodeList.From<Acornima.Ast.Node>([name, new Identifier("run")]);
+            var parameters = NodeList.From<Node>([name, new Identifier("run")]);
             return new FunctionDeclaration(new Identifier("addModule"), parameters, body, false, false);
         }
 
@@ -255,7 +255,7 @@ public sealed class JsBundle(BundlerContext context, Node root, BundleFlags flag
 
                 if (properties.Count > 0)
                 {
-                    var variables = new ObjectExpression(NodeList.From<Acornima.Ast.Node>(properties));
+                    var variables = new ObjectExpression(NodeList.From<Node>(properties));
                     decls.Add(new VariableDeclarator(variables, init));
                 }
 
@@ -358,11 +358,11 @@ public sealed class JsBundle(BundlerContext context, Node root, BundleFlags flag
 
             if (node.OpeningElement.Attributes.Count > 0)
             {
-                var properties = new List<Acornima.Ast.Node>(capacity: node.OpeningElement.Attributes.Count);
+                var properties = new List<Node>(capacity: node.OpeningElement.Attributes.Count);
 
                 foreach (var attribute in node.OpeningElement.Attributes)
                 {
-                    properties.Add((Acornima.Ast.Node)Visit(attribute)!);
+                    properties.Add((Node)Visit(attribute)!);
                 }
 
                 attributesArg = new ObjectExpression(NodeList.From(properties));
@@ -471,7 +471,7 @@ public sealed class JsBundle(BundlerContext context, Node root, BundleFlags flag
             var exports = new Identifier("exports");
             var initial = new VariableDeclaration(VariableDeclarationKind.Const, NodeList.From([
                 new VariableDeclarator(exports, new ObjectExpression([])),
-                new VariableDeclarator(module, new ObjectExpression(NodeList.From<Acornima.Ast.Node>([
+                new VariableDeclarator(module, new ObjectExpression(NodeList.From<Node>([
                     new ObjectProperty(PropertyKind.Property, exports, exports, false, true, false)
                 ]))),
             ]));

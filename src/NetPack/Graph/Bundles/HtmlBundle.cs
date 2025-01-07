@@ -1,4 +1,4 @@
-namespace NetPack.Graph;
+namespace NetPack.Graph.Bundles;
 
 using System.Collections.Concurrent;
 using System.Text;
@@ -6,7 +6,7 @@ using AngleSharp.Dom;
 using AngleSharp.Html;
 using NetPack.Fragments;
 
-public sealed class HtmlBundle(BundlerContext context, Node root, BundleFlags flags) : Bundle(root, flags)
+public sealed class HtmlBundle(BundlerContext context, Graph.Node root, BundleFlags flags) : Bundle(root, flags)
 {
     private static readonly ConcurrentBag<HtmlFragment> _fragments = [];
 

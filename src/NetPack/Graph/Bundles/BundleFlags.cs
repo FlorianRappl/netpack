@@ -1,4 +1,4 @@
-namespace NetPack.Graph;
+namespace NetPack.Graph.Bundles;
 
 [Flags]
 public enum BundleFlags

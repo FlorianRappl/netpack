@@ -5,10 +5,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="X-UA-Compatible" content="ie=edge">
 <title>Bundler Comparison</title>
+<script type="importmap">
+    {
+        "imports": {
+            "react": "https://esm.sh/react@18.2.0",
+            "react-dom": "https://esm.sh/react-dom@18.2.0"
+        }
+    }
+</script>
 <link rel="stylesheet" href="style.scss">
 </head>
 <body>
-<h1>Test Page (Small)</h1>
+<h1>Test Page (Importmap)</h1>
 <div id="app"></div>
 <script src="app.tsx"></script>
 </body>

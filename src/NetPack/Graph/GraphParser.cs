@@ -92,12 +92,3 @@ public class GraphParser(string content)
         public List<string> ReferenceNames { get; set; } = [];
     }
 }
-
-[JsonSerializable(typeof(GraphParser.NodesDefinition))]
-[JsonSerializable(typeof(List<GraphParser.UnresolvedNode>))]
-[JsonSerializable(typeof(GraphParser.UnresolvedNode))]
-[JsonSerializable(typeof(List<string>))]
-[JsonSerializable(typeof(string))]
-internal partial class SourceGenerationContext : JsonSerializerContext
-{
-}

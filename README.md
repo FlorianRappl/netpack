@@ -21,13 +21,13 @@ Integration ideas / explorations:
 - [ ] Sourcemaps
 - [x] Minification
 - [ ] DevServer
-- [ ] Bundle Analysis
+- [ ] Bundle analysis
 - [ ] Image / asset variants
 - [x] Copy public assets
 - [x] Externals
 
 ## Advanced
 
-- [ ] Importmap support
+- [x] Importmap support
 - [ ] Module Federation support
 - [ ] Native Federation support

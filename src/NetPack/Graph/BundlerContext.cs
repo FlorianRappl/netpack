@@ -1,6 +1,7 @@
 namespace NetPack.Graph;
 
 using System.Collections.Concurrent;
+using NetPack.Graph.Bundles;
 
 public sealed class BundlerContext
 {

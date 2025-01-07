@@ -1,4 +1,4 @@
-namespace NetPack.Graph;
+namespace NetPack.Graph.Bundles;
 
 public abstract class Bundle(Node root, BundleFlags flags)
 {

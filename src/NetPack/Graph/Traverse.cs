@@ -2,12 +2,13 @@ namespace NetPack.Graph;
 
 using System.Text.Json;
 using Acornima;
-using Acornima.Ast;
 using Acornima.Jsx;
 using AngleSharp;
 using AngleSharp.Css.Dom;
 using AngleSharp.Css.Parser;
 using NetPack.Fragments;
+using NetPack.Graph.Bundles;
+using NetPack.Graph.Visitors;
 using static NetPack.Helpers;
 
 public class Traverse
@@ -238,29 +239,10 @@ public class Traverse
             IsToleratingInvalidSelectors = true,
         };
         var parser = new CssParser(options, _browser);
-        var properties = new List<ICssProperty>();
         var sheet = await parser.ParseStyleSheetAsync(content);
-
-        foreach (var rule in sheet.Rules)
-        {
-            if (rule is ICssStyleRule style)
-            {
-                foreach (var decl in style.Style)
-                {
-                    var path = decl.RawValue.AsUrl();
-
-                    if (path is not null)
-                    {
-                        properties.Add(decl);
-                        tasks.Add(InnerProcess(bundle, current, path));
-                    }
-                }
-            }
-        }
-
-        var nodes = await Task.WhenAll(tasks);
-        var replacements = GetReplacements(nodes, properties);
-        CssBundle.Fragments.Add(new CssFragment(current, sheet, replacements));
+        var visitor = new CssVisitor(bundle, current, InnerProcess);
+        var fragment = await visitor.FindChildren(sheet);
+        CssBundle.Fragments.Add(fragment);
     }
 
     private async Task ProcessJavaScript(Node current, Bundle bundle)
@@ -287,8 +269,22 @@ public class Traverse
         var tasks = new List<Task<Node?>>();
         var document = await _browser.OpenAsync(res => res.Content(content));
         var elements = new List<AngleSharp.Dom.IElement>();
-        var publicDir = Path.Combine(current.ParentDir, "public");
+        AddStaticAssets(current, Path.Combine(current.ParentDir, "public"));
+        var visitor = new HtmlVisitor(bundle, current, InnerProcess, AddExternal);
+        var fragment = await visitor.FindChildren(document);
+        HtmlBundle.Fragments.Add(fragment);
+    }
 
+    private void AddExternal(string name)
+    {
+        if (!_context.Externals.Contains(name))
+        {
+            _context.Externals.Add(name);
+        }
+    }
+
+    private void AddStaticAssets(Node current, string publicDir)
+    {
         if (Directory.Exists(publicDir))
         {
             var files = Directory.GetFiles(publicDir, "*", SearchOption.AllDirectories);
@@ -298,32 +294,6 @@ public class Traverse
                 AddStaticAsset(current, file);
             }
         }
-
-        foreach (var element in document.QuerySelectorAll("img,script,audio,video"))
-        {
-            var src = element.GetAttribute("src");
-
-            if (src is not null)
-            {
-                elements.Add(element);
-                tasks.Add(InnerProcess(null, current, src));
-            }
-        }
-
-        foreach (var element in document.QuerySelectorAll("link,a"))
-        {
-            var href = element.GetAttribute("href");
-
-            if (href is not null)
-            {
-                elements.Add(element);
-                tasks.Add(InnerProcess(null, current, href));
-            }
-        }
-
-        var nodes = await Task.WhenAll(tasks);
-        var replacements = GetReplacements(nodes, elements);
-        HtmlBundle.Fragments.Add(new HtmlFragment(current, document, replacements));
     }
 
     private Node AddStaticAsset(Node parent, string fileName)

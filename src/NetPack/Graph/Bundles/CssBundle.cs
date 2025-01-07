@@ -1,4 +1,4 @@
-namespace NetPack.Graph;
+namespace NetPack.Graph.Bundles;
 
 using System.Collections.Concurrent;
 using System.Text;

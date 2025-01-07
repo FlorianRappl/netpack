@@ -1,0 +1,23 @@
+{
+  "name": "bundler-compare-custom",
+  "version": "1.0.0",
+  "description": "Custom Bundler",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": ["bundler", "comparison", "article"],
+  "author": "Florian Rappl",
+  "license": "MIT",
+  "dependencies": {
+    "@types/node": "^12.12.14",
+    "@types/react": "^16.9.15",
+    "@types/react-dom": "^16.9.4",
+    "react": "^16.12.0",
+    "react-dom": "^16.12.0",
+    "sass": "^1.23.7",
+    "typescript": "^3.7.3"
+  },
+  "devDependencies": {
+  }
+}

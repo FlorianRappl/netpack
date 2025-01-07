@@ -1,17 +1,18 @@
-namespace NetPack.Graph;
+namespace NetPack.Graph.Visitors;
 
 using Acornima.Ast;
 using NetPack.Fragments;
+using NetPack.Graph.Bundles;
 using static NetPack.Helpers;
 
-class JsVisitor(Bundle bundle, Node current, Func<Bundle?, Node, string, Task<Node?>> report) : Acornima.Jsx.JsxAstVisitor
+class JsVisitor(Bundle bundle, Graph.Node current, Func<Bundle?, Graph.Node, string, Task<Graph.Node?>> report) : Acornima.Jsx.JsxAstVisitor
 {
-    private readonly Func<Bundle?, Node, string, Task<Node?>> _report = report;
+    private readonly Func<Bundle?, Graph.Node, string, Task<Graph.Node?>> _report = report;
     private readonly Bundle _bundle = bundle;
-    private readonly Node _current = current;
+    private readonly Graph.Node _current = current;
     private readonly List<string> _exportNames = [];
-    private readonly List<Acornima.Ast.Node> _elements = [];
-    private readonly List<Task<Node?>> _tasks = [];
+    private readonly List<Node> _elements = [];
+    private readonly List<Task<Graph.Node?>> _tasks = [];
 
     public async Task<JsFragment> FindChildren(Module ast)
     {
