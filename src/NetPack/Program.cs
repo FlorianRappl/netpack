@@ -14,8 +14,9 @@ static class Program
             task.Wait();
             return 0;
         }
-        catch
+        catch (Exception ex)
         {
+            Console.WriteLine(ex.Message);
             return 1;
         }
     }

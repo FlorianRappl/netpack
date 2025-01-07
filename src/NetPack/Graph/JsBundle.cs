@@ -267,7 +267,7 @@ public sealed class JsBundle(BundlerContext context, Node root, BundleFlags flag
                 return new NonSpecialExpressionStatement(init);
             }
 
-            return new EmptyStatement();
+            return base.VisitImportDeclaration(node);
         }
 
         private static Expression GetImportName(ImportDeclarationSpecifier m)
@@ -386,6 +386,14 @@ public sealed class JsBundle(BundlerContext context, Node root, BundleFlags flag
         {
             if (node.Callee is Identifier ident && node.Arguments.Count == 1 && ident.Name == "require" && (_current?.Replacements.TryGetValue(node, out var reference) ?? false))
             {
+                var asset = _bundle.Context.Assets.FirstOrDefault(m => m.Root == reference);
+
+                if (asset is not null)
+                {
+                    var file = asset.GetFileName();
+                    return MakeAutoReference(file);
+                }
+
                 var name = GetName(reference);
                 return new CallExpression(node.Callee, NodeList.From<Expression>([MakeString(name)]), false);
             }

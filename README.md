@@ -23,8 +23,8 @@ Integration ideas / explorations:
 - [ ] DevServer
 - [ ] Bundle Analysis
 - [ ] Image / asset variants
-- [ ] Copy public / static assets
-- [ ] Externals
+- [x] Copy public assets
+- [x] Externals
 
 ## Advanced
 

@@ -40,7 +40,11 @@ public class Connected(Func<int, IEnumerable<Node>, string> getCommonName)
     {
         foreach (var node in nodes)
         {
-            if (allNodes.TryGetValue(node, out var parents))
+            if (node.IsEmpty)
+            {
+                // Ignore empty nodes
+            }
+            else if (allNodes.TryGetValue(node, out var parents))
             {
                 parents.Add(parent);
             }

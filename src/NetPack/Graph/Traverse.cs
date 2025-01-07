@@ -2,6 +2,7 @@ namespace NetPack.Graph;
 
 using System.Text.Json;
 using Acornima;
+using Acornima.Ast;
 using Acornima.Jsx;
 using AngleSharp;
 using AngleSharp.Css.Dom;
@@ -14,7 +15,7 @@ public class Traverse
     private readonly BundlerContext _context;
     private readonly BrowsingContext _browser;
 
-    private Traverse()
+    public Traverse()
     {
         _context = new BundlerContext();
         _browser = new BrowsingContext(Configuration.Default.WithCss());
@@ -22,9 +23,12 @@ public class Traverse
 
     public BundlerContext Context => _context;
 
-    public static async Task<Traverse> From(string path)
+    public static Task<Traverse> From(string path) => From(path, []);
+
+    public static async Task<Traverse> From(string path, IEnumerable<string> externals)
     {
         var traverse = new Traverse();
+        traverse.Context.Externals = [..externals];
         await traverse.Start(path);
         return traverse;
     }
@@ -182,6 +186,11 @@ public class Traverse
 
     private async Task<Node?> InnerProcess(Bundle? bundle, Node parent, string name)
     {
+        if (_context.Externals.Contains(name))
+        {
+            return AddExternalReference(parent, name);
+        }
+
         try
         {
             var file = await Resolve(parent.ParentDir, name);
@@ -250,7 +259,7 @@ public class Traverse
         }
 
         var nodes = await Task.WhenAll(tasks);
-        var replacements = properties.Select((r, i) => (nodes[i]!, r)).ToDictionary(m => m.r, m => m.Item1);
+        var replacements = GetReplacements(nodes, properties);
         CssBundle.Fragments.Add(new CssFragment(current, sheet, replacements));
     }
 
@@ -278,6 +287,17 @@ public class Traverse
         var tasks = new List<Task<Node?>>();
         var document = await _browser.OpenAsync(res => res.Content(content));
         var elements = new List<AngleSharp.Dom.IElement>();
+        var publicDir = Path.Combine(current.ParentDir, "public");
+
+        if (Directory.Exists(publicDir))
+        {
+            var files = Directory.GetFiles(publicDir, "*", SearchOption.AllDirectories);
+
+            foreach (var file in files)
+            {
+                AddStaticAsset(current, file);
+            }
+        }
 
         foreach (var element in document.QuerySelectorAll("img,script,audio,video"))
         {
@@ -302,8 +322,34 @@ public class Traverse
         }
 
         var nodes = await Task.WhenAll(tasks);
-        var replacements = elements.Select((r, i) => (nodes[i]!, r)).ToDictionary(m => m.r, m => m.Item1);
+        var replacements = GetReplacements(nodes, elements);
         HtmlBundle.Fragments.Add(new HtmlFragment(current, document, replacements));
+    }
+
+    private Node AddStaticAsset(Node parent, string fileName)
+    {
+        if (!_context.Modules.TryGetValue(fileName, out var node))
+        {
+            node = new Node(fileName);
+            _context.Assets.Add(new Asset(node, node.Type));
+            _context.Modules.TryAdd(fileName, node);
+        }
+
+        parent.Children.Add(node);
+        return node;
+    }
+
+    private Node AddExternalReference(Node parent, string name)
+    {
+        if (!_context.Modules.TryGetValue(name, out var node))
+        {
+            node = new Node(name, true);
+            _context.Modules.TryAdd(name, node);
+            JsBundle.Fragments.Add(new JsExternalFragment(node));
+        }
+
+        parent.Children.Add(node);
+        return node;
     }
 
     private Task<Node> AddNewBundle(string fileName) => AddToBundle(null, fileName);

@@ -1,5 +1,7 @@
 namespace NetPack;
 
+using NetPack.Graph;
+
 public static class Helpers
 {
     public static readonly Dictionary<string, string> ExtensionMap = new()
@@ -34,5 +36,11 @@ public static class Helpers
     public static string GetType(string extension)
     {
         return ExtensionMap.GetValueOrDefault(extension) ?? extension;
+    }
+
+    public static IDictionary<T, Node> GetReplacements<T>(Node?[] nodes, IEnumerable<T> elements)
+        where T : class
+    {
+        return elements.Select((r, i) => (nodes[i]!, r)).Where(m => m.Item1 is not null).ToDictionary(m => m.r, m => m.Item1);
     }
 }

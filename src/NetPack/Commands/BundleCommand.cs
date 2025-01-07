@@ -7,28 +7,43 @@ using NetPack.Graph;
 public class BundleCommand : ICommand
 {
     [Value(0, HelpText = "The entry point file where the bundler should start.")]
-    public string? FilePath { get; set; }
+    public string FilePath { get; set; } = "";
 
     [Option("outdir", Default = "dist", HelpText = "The directory where the generated files should be placed.")]
     public string OutDir { get; set; } = "dist";
 
     [Option("minify", Default = false, HelpText = "Indicates if the generated files should be optimized for file size.")]
-    public bool Minify { get; set; }
+    public bool Minify { get; set; } = false;
 
     [Option("clean", Default = false, HelpText = "Indicates if the output directory should be cleaned first.")]
-    public bool Clean { get; set; }
+    public bool Clean { get; set; } = false;
+
+    [Option("external", HelpText = "Indicates if an import should be treated as an external.")]
+    public IEnumerable<string> Externals { get; set; } = [];
 
     public async Task Run()
     {
-        var file = Path.Combine(Environment.CurrentDirectory, FilePath!);
+        if (string.IsNullOrEmpty(FilePath))
+        {
+            throw new InvalidOperationException("You must specify an entry point.");
+        }
+        
+        if (string.IsNullOrEmpty(OutDir))
+        {
+            throw new InvalidOperationException("You must specify a non-empty target directory.");
+        }
+
+        var file = Path.Combine(Environment.CurrentDirectory, FilePath);
         var outdir = Path.Combine(Environment.CurrentDirectory, OutDir);
-        var result = await Traverse.From(file);
+        var graph = await Traverse.From(file, Externals);
+        var result = new DiskResultWriter(graph.Context, outdir);
 
         if (Clean && Directory.Exists(outdir))
         {
             Directory.Delete(outdir, true);
         }
 
-        await result.Context.WriteOut(outdir, Minify);
+        Directory.CreateDirectory(outdir);
+        await result.WriteOut(Minify);
     }
 }

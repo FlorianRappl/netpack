@@ -2,6 +2,7 @@ namespace NetPack.Graph;
 
 using Acornima.Ast;
 using NetPack.Fragments;
+using static NetPack.Helpers;
 
 class JsVisitor(Bundle bundle, Node current, Func<Bundle?, Node, string, Task<Node?>> report) : Acornima.Jsx.JsxAstVisitor
 {
@@ -16,7 +17,7 @@ class JsVisitor(Bundle bundle, Node current, Func<Bundle?, Node, string, Task<No
     {
         Visit(ast);
         var nodes = await Task.WhenAll(_tasks);
-        var replacements = _elements.Select((r, i) => (nodes[i]!, r)).ToDictionary(m => m.r, m => m.Item1);
+        var replacements = GetReplacements(nodes, _elements);
         return new JsFragment(_current, ast, replacements, [.. _exportNames]);
     }
 
