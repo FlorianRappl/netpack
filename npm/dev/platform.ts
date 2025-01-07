@@ -10,8 +10,8 @@ export var NETPACK_BINARY_PATH: string | undefined =
 export const isValidBinaryPath = (x: string | undefined): x is string =>
   !!x && x !== "/usr/bin/netpack";
 
-const packageDarwin_arm64 = "@netpack/darwin-arm64";
-const packageDarwin_x64 = "@netpack/darwin-x64";
+const packageDarwin_arm64 = "@netpack/osx-arm64";
+const packageDarwin_x64 = "@netpack/osx-x64";
 
 export const knownWindowsPackages: Record<string, string> = {
   "win32 arm64 LE": "@netpack/win32-arm64",
@@ -22,8 +22,8 @@ export const knownWindowsPackages: Record<string, string> = {
 export const knownUnixlikePackages: Record<string, string> = {
   "aix ppc64 BE": "@netpack/aix-ppc64",
   "android arm64 LE": "@netpack/android-arm64",
-  "darwin arm64 LE": "@netpack/darwin-arm64",
-  "darwin x64 LE": "@netpack/darwin-x64",
+  "darwin arm64 LE": "@netpack/osx-arm64",
+  "darwin x64 LE": "@netpack/osx-x64",
   "freebsd arm64 LE": "@netpack/freebsd-arm64",
   "freebsd x64 LE": "@netpack/freebsd-x64",
   "linux arm LE": "@netpack/linux-arm",
