@@ -2,6 +2,7 @@ namespace NetPack.Commands;
 
 using CommandLine;
 using NetPack.Graph;
+using NetPack.Graph.Writers;
 
 [Verb("bundle", HelpText = "Bundles the code starting at the given entry point.")]
 public class BundleCommand : ICommand

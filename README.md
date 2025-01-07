@@ -20,7 +20,7 @@ Integration ideas / explorations:
 
 - [ ] Sourcemaps
 - [x] Minification
-- [ ] DevServer
+- [x] DevServer
 - [ ] Bundle analysis
 - [ ] Image / asset variants
 - [x] Copy public assets

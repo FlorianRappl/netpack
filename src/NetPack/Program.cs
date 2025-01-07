@@ -35,13 +35,15 @@ static class Program
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(BundleCommand))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(GraphCommand))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(InspectCommand))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ServeCommand))]
     static void Main(string[] args)
     {
-        Parser.Default.ParseArguments<BundleCommand, GraphCommand, InspectCommand>(args)
+        Parser.Default.ParseArguments<BundleCommand, GraphCommand, InspectCommand, ServeCommand>(args)
             .MapResult(
                 (BundleCommand opts) => Run(opts),
                 (GraphCommand opts) => Run(opts),
                 (InspectCommand opts) => Run(opts),
+                (ServeCommand opts) => Run(opts),
                 ShowError
             );
     }

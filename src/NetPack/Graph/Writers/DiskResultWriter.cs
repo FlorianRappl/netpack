@@ -1,4 +1,4 @@
-namespace NetPack.Graph;
+namespace NetPack.Graph.Writers;
 
 sealed class DiskResultWriter(BundlerContext context, string target) : ResultWriter(context)
 {
