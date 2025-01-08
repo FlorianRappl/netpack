@@ -3,6 +3,7 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net8.0</TargetFramework>
+    <TargetName>netpack</TargetName>
     <VersionPrefix>0.0.1</VersionPrefix>
     <RootNamespace>NetPack</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>

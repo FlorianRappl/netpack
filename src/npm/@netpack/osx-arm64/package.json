@@ -8,6 +8,9 @@
   },
   "license": "MIT",
   "preferUnplugged": true,
+  "publishConfig": {
+    "access": "public"
+  },
   "engines": {
     "node": ">=20"
   },
