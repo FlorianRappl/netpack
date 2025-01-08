@@ -1,6 +1,6 @@
 {
   "name": "@netpack/linux-x64",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "The Linux 64-bit binary for netpack, a web project bundler.",
   "repository": {
     "type": "git",

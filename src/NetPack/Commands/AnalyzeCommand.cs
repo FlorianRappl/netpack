@@ -14,7 +14,7 @@ public class AnalyzeCommand : ICommand
 {
     private readonly FileExtensionContentTypeProvider provider = new();
     
-    [Value(0, HelpText = "The entry point file where the bundler should start.")]
+    [Value(0, HelpText = "The entry point file where the bundler should start.", Required = true)]
     public string FilePath { get; set; } = "";
 
     [Option("outfile", HelpText = "The optional file where the inspection data should be stored as a JSON.")]
@@ -94,6 +94,12 @@ public class AnalyzeCommand : ICommand
             
             Console.WriteLine("[netpack] Analyzer server running at {0}", address);
             await Task.Run(() => app.RunAsync());
+        }
+        else if (string.IsNullOrEmpty(OutFile))
+        {
+            // in this case we just print to the console
+            Console.WriteLine("[netpack] Metadata =");
+            Console.WriteLine(results.Stringify());
         }
     }
 

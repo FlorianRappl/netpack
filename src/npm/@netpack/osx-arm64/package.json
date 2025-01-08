@@ -1,6 +1,6 @@
 {
   "name": "@netpack/osx-arm64",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "The macOS ARM 64-bit binary for netpack, a web project bundler.",
   "repository": {
     "type": "git",

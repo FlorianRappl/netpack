@@ -1,6 +1,6 @@
 {
   "name": "netpack",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "The blazing fast bundler and optimizer that just works for most web projects.",
   "repository": {
     "type": "git",

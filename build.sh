@@ -11,4 +11,5 @@ cp -r src/NetPack/bin/Release/net8.0/$PID/publish/ src/npm/@netpack/$PID/bin
 cd src/npm/dev
 npm i
 npm run build
+npm run update-version
 cd ../../..

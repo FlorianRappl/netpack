@@ -14,6 +14,7 @@ import * as child_process from "child_process";
 
 const versionFromPackageJSON: string = require(path.join(
   __dirname,
+  "..",
   "package.json"
 )).version;
 const toPath = path.join(__dirname, "bin", "netpack");

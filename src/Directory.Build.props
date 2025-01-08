@@ -1,0 +1,7 @@
+<Project>
+  <PropertyGroup>
+    <VersionPrefix>0.0.2</VersionPrefix>
+    <LangVersion>13</LangVersion>
+    <Company>Florian Rappl</Company>
+  </PropertyGroup>
+</Project>

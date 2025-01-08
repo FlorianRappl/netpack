@@ -1,7 +1,8 @@
 {
   "name": "netpack-dev",
   "scripts": {
-    "build": "esbuild install.ts main.ts --bundle --platform=node --outdir=../netpack/dist --external:netpack"
+    "build": "esbuild install.ts main.ts --bundle --platform=node --outdir=../netpack/dist --external:netpack",
+    "update-version": "node update.mjs"
   },
   "devDependencies": {
     "@types/node": "^22",

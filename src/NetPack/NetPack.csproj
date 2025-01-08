@@ -4,12 +4,11 @@
     <OutputType>Exe</OutputType>
     <TargetFramework>net8.0</TargetFramework>
     <TargetName>netpack</TargetName>
-    <VersionPrefix>0.0.1</VersionPrefix>
+    <AssemblyTitle>netpack</AssemblyTitle>
     <RootNamespace>NetPack</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
     <PublishAot>true</PublishAot>
     <Nullable>enable</Nullable>
-    <LangVersion>13</LangVersion>
     <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
     <EnableRequestDelegateGenerator>true</EnableRequestDelegateGenerator>
     <InterceptorsNamespaces>$(InterceptorsNamespaces);Microsoft.AspNetCore.Http.Generated</InterceptorsNamespaces>
