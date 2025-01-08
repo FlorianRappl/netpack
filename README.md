@@ -2,11 +2,11 @@
 
 # netpack
 
-netpack is an experiment to see if .NET written tooling can perform on an equal level to tools written in Rust or Go.
+🍭 netpack is an experiment to see if .NET written tooling can perform on an equal level to tools written in Rust or Go.
 
 Right now netpack is not production ready and the likelihood that it works for your project is low.
 
-If you like the idea and want to see this become a real thing then either support via code contributions or by [sponsoring the project](https://github.com/sponsors/FlorianRappl).
+If you like the idea and want to see this become a real thing then either support the project via code contributions or by [sponsoring me](https://github.com/sponsors/FlorianRappl) 🍻.
 
 ## Performance
 
@@ -168,6 +168,36 @@ Benchmark 1: npx rspack build --config rspack.large.mjs
 ```
 
 </details>
+
+## Installation
+
+Right now `netpack` is highly experimental and definitely **not** production ready.
+
+You can add `netpack` to your Node.js project via your favorite package manager, e.g.:
+
+```sh
+npm i netpack --save-dev
+```
+
+Now you can run netpack like:
+
+```sh
+npx netpack bundle src/index.html
+```
+
+Generally, any *index.html* as for Vite or Parcel should work fine as an entry point. You don't need to supply an HTML file. You can also provide a JavaScript file directly:
+
+```sh
+npx netpack bundle src/main.mjs
+```
+
+You can start the dev server with the `serve` command:
+
+```sh
+npx netpack serve src/index.html
+```
+
+Right now this watches the file system - but it does not incrementally build nor does it hot-reload. Instead, it will just rebuild everything and reload the browser.
 
 ## Overview
 
