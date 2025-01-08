@@ -208,7 +208,7 @@ The following items are features or topics that are relevant for bundlers - netp
 - [x] Handle JavaScript
 - [x] Handle JSX (right now only `React.createElement`)
 - [ ] Handle TypeScript
-- [x] Handle images
+- [x] Handle images (optimizes them using SkiaSharp)
 - [x] Handle any asset
 - [x] Handle CSS
 - [ ] Handle CSS modules
