@@ -1,17 +1,11 @@
 namespace NetPack.Graph.Bundles;
 
-using System.Collections.Concurrent;
 using System.Text;
 using System.Text.RegularExpressions;
 using AngleSharp.Css;
-using NetPack.Fragments;
 
 public sealed class CssBundle(BundlerContext context, Node root, BundleFlags flags) : Bundle(root, flags)
 {
-    private static readonly ConcurrentBag<CssFragment> _fragments = [];
-
-    public static ConcurrentBag<CssFragment> Fragments => _fragments;
-
     private readonly BundlerContext _context = context;
 
     public override Task<Stream> CreateStream(OutputOptions options)
@@ -24,9 +18,9 @@ public sealed class CssBundle(BundlerContext context, Node root, BundleFlags fla
     
     private void Stringify(MemoryStream ms, OutputOptions options)
     {
-        var root = _fragments.FirstOrDefault(m => m.Root == Root);
-
-        if (root is not null)
+        var fragments = _context.CssFragments;
+        
+        if (fragments.TryGetValue(Root, out var root))
         {
             var replacements = root.Replacements;
             var stylesheet = root.Stylesheet;

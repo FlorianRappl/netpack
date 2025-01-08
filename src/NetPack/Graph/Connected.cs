@@ -71,7 +71,7 @@ public class Connected(Func<int, IEnumerable<Node>, string> getCommonName)
                 if (!shared.TryGetValue(key, out var sharedNode))
                 {
                     var name = GetCommonName(shared.Count + 1, parents);
-                    sharedNode = new Node(name);
+                    sharedNode = new Node(name, 0);
                     shared.Add(key, sharedNode);
 
                     foreach (var parent in parents)

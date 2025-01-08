@@ -2,13 +2,15 @@ namespace NetPack.Graph;
 
 using NetPack.Assets;
 
-public sealed class Asset(Node root, string type, string hash = "")
+public sealed class Asset(Node root, string type, byte[] content, string hash = "")
 {
     public Node Root => root;
 
     public string Type => type;
 
     public string Hash => hash;
+
+    public byte[] Content => content;
 
     public string GetFileName()
     {

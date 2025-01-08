@@ -1,3 +1,5 @@
+![netpack](./art/logo.svg)
+
 # netpack
 
 netpack is an experiment to see if .NET written tooling can perform on an equal level to tools written in Rust or Go.
@@ -23,7 +25,7 @@ Another reason for having *another* bundler (but in .NET) is that it could be us
 
 ## Overview
 
-The following items are features or topics that are relevant for bundlers.
+The following items are features or topics that are relevant for bundlers - netpack in particular.
 
 ### General Features
 
@@ -42,8 +44,8 @@ The following items are features or topics that are relevant for bundlers.
 - [ ] Sourcemaps
 - [x] Minification
 - [x] DevServer
-- [ ] Bundle analysis
-- [ ] Image / asset variants
+- [x] Bundle analyzer
+- [ ] Image / asset variants (e.g., width/height optimized)
 - [x] Copy public assets
 - [x] Externals
 - [ ] True HMR (not just refresh)

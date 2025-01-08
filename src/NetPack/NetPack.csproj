@@ -28,4 +28,11 @@
     <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="3.116.1" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="../web/analyzer/index.css" />
+    <EmbeddedResource Include="../web/analyzer/index.html" />
+    <EmbeddedResource Include="../web/analyzer/index.js" />
+    <EmbeddedResource Include="../web/analyzer/logo.svg" />
+  </ItemGroup>
+
 </Project>

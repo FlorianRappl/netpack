@@ -1,6 +1,8 @@
 namespace NetPack.Graph.Writers;
 
-sealed class MemoryResultWriter(BundlerContext context) : ResultWriter(context)
+using NetPack.Server;
+
+sealed class MemoryResultWriter(BundlerContext context) : ResultWriter(context), IFileLocator
 {
     private readonly Dictionary<string, byte[]> _fs = [];
 
@@ -14,7 +16,7 @@ sealed class MemoryResultWriter(BundlerContext context) : ResultWriter(context)
         return null;
     }
 
-    public bool HasFile(string fullPath)
+    bool IFileLocator.HasFile(string fullPath)
     {
         return _context.Modules.Values.Any(m => m.FileName == fullPath);
     }

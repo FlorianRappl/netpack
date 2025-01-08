@@ -2,7 +2,7 @@ namespace NetPack.Graph;
 
 using System.Collections.Concurrent;
 
-public class Node(string fileName, bool empty = false)
+public class Node(string fileName, int bytes)
 {
     public string FileName => fileName;
 
@@ -12,7 +12,9 @@ public class Node(string fileName, bool empty = false)
 
     public string Type => Helpers.GetType(Extension);
 
-    public bool IsEmpty => empty;
+    public int Bytes => bytes;
+
+    public bool IsEmpty => bytes == 0;
 
     public ConcurrentBag<Node> Children = [];
 

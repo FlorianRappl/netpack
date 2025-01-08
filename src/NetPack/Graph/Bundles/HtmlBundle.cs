@@ -1,17 +1,11 @@
 namespace NetPack.Graph.Bundles;
 
-using System.Collections.Concurrent;
 using System.Text;
 using AngleSharp.Dom;
 using AngleSharp.Html;
-using NetPack.Fragments;
 
 public sealed class HtmlBundle(BundlerContext context, Graph.Node root, BundleFlags flags) : Bundle(root, flags)
 {
-    private static readonly ConcurrentBag<HtmlFragment> _fragments = [];
-
-    public static ConcurrentBag<HtmlFragment> Fragments => _fragments;
-
     private readonly BundlerContext _context = context;
 
     public override Task<Stream> CreateStream(OutputOptions options)
@@ -24,9 +18,9 @@ public sealed class HtmlBundle(BundlerContext context, Graph.Node root, BundleFl
 
     private void Stringify(MemoryStream ms, OutputOptions options)
     {
-        var root = _fragments.FirstOrDefault(m => m.Root == Root);
+        var fragments = _context.HtmlFragments;
 
-        if (root is not null)
+        if (fragments.TryGetValue(Root, out var root))
         {
             var replacements = root.Replacements;
             var document = root.Document;

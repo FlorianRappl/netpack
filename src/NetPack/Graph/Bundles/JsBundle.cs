@@ -1,6 +1,5 @@
 namespace NetPack.Graph.Bundles;
 
-using System.Collections.Concurrent;
 using System.Text;
 using Acornima.Ast;
 using Acornima.Jsx;
@@ -9,10 +8,6 @@ using NetPack.Fragments;
 
 public sealed class JsBundle(BundlerContext context, Graph.Node root, BundleFlags flags) : Bundle(root, flags)
 {
-    private static readonly ConcurrentBag<JsFragment> _fragments = [];
-
-    public static ConcurrentBag<JsFragment> Fragments => _fragments;
-
     public BundlerContext Context => context;
 
     public override async Task<Stream> CreateStream(OutputOptions options)
@@ -45,13 +40,15 @@ public sealed class JsBundle(BundlerContext context, Graph.Node root, BundleFlag
 
         public Program Transpile()
         {
+            var context = _bundle.Context;
+            var fragments = context.JsFragments;
             var imports = new List<Statement>();
             var exports = new List<Statement>();
             var body = new List<Statement>();
             var statements = new List<Statement>();
             var refNames = new List<string>();
             var exportNodes = _bundle.Items;
-            var referenced = _bundle.Context.Bundles.Where(m => m.IsShared && m != _bundle && _bundle.Items.Contains(m.Root));
+            var referenced = context.Bundles.Where(m => m.IsShared && m != _bundle && _bundle.Items.Contains(m.Root));
 
             foreach (var reference in referenced)
             {
@@ -67,9 +64,7 @@ public sealed class JsBundle(BundlerContext context, Graph.Node root, BundleFlag
 
             foreach (var node in exportNodes)
             {
-                var fragment = _fragments.FirstOrDefault(m => m.Root == node);
-
-                if (fragment is not null)
+                if (fragments.TryGetValue(node, out var fragment))
                 {
                     _current = fragment;
 
@@ -100,7 +95,7 @@ public sealed class JsBundle(BundlerContext context, Graph.Node root, BundleFlag
             {
                 exports.Add(new ExportDefaultDeclaration(_modules));
             }
-            else if (_fragments.FirstOrDefault(m => m.Root == _bundle.Root) is JsFragment fragment)
+            else if (fragments.TryGetValue(_bundle.Root, out var fragment))
             {
                 var name = GetName(fragment.Root);
                 var call = MakeRequireCall(name);

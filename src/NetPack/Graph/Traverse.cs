@@ -1,10 +1,10 @@
 namespace NetPack.Graph;
 
 using System.Text.Json;
+using System.Text.Unicode;
 using Acornima;
 using Acornima.Jsx;
 using AngleSharp;
-using AngleSharp.Css.Dom;
 using AngleSharp.Css.Parser;
 using NetPack.Fragments;
 using NetPack.Graph.Bundles;
@@ -215,22 +215,22 @@ public class Traverse
         }
     }
 
-    private async Task ProcessAsset(Node current, Bundle bundle)
+    private async Task ProcessAsset(Node current, byte[] bytes, Bundle bundle)
     {
-        using var stream = File.OpenRead(current.FileName);
+        using var stream = new MemoryStream(bytes);
         var hash = await Hash.ComputeHash(stream);
-        _context.Assets.Add(new Asset(current, current.Type, hash));
+        _context.Assets.Add(new Asset(current, current.Type, bytes, hash));
     }
 
-    private Task ProcessJson(Node current, Bundle bundle)
+    private Task ProcessJson(Node current, byte[] bytes, Bundle bundle)
     {
         // nothing on purpose
         return Task.CompletedTask;
     }
 
-    private async Task ProcessStyleSheet(Node current, Bundle bundle)
+    private async Task ProcessStyleSheet(Node current, byte[] bytes, Bundle bundle)
     {
-        using var content = File.OpenRead(current.FileName);
+        using var stream = new MemoryStream(bytes);
         var tasks = new List<Task<Node?>>();
         var options = new CssParserOptions
         {
@@ -239,15 +239,17 @@ public class Traverse
             IsToleratingInvalidSelectors = true,
         };
         var parser = new CssParser(options, _browser);
-        var sheet = await parser.ParseStyleSheetAsync(content);
+        var sheet = await parser.ParseStyleSheetAsync(stream);
         var visitor = new CssVisitor(bundle, current, InnerProcess);
         var fragment = await visitor.FindChildren(sheet);
-        CssBundle.Fragments.Add(fragment);
+        _context.CssFragments.TryAdd(current, fragment);
     }
 
-    private async Task ProcessJavaScript(Node current, Bundle bundle)
+    private async Task ProcessJavaScript(Node current, byte[] bytes, Bundle bundle)
     {
-        var content = await File.ReadAllTextAsync(current.FileName);
+        using var stream = new MemoryStream(bytes);
+        using var reader = new StreamReader(stream);
+        var content = await reader.ReadToEndAsync();
         var parser = new JsxParser(new JsxParserOptions
         {
             Tolerant = true,
@@ -260,19 +262,19 @@ public class Traverse
         var ast = parser.ParseModule(newContent, current.FileName);
         var visitor = new JsVisitor(bundle, current, InnerProcess);
         var fragment = await visitor.FindChildren(ast);
-        JsBundle.Fragments.Add(fragment);
+        _context.JsFragments.TryAdd(current, fragment);
     }
 
-    private async Task ProcessHtml(Node current, Bundle bundle)
+    private async Task ProcessHtml(Node current, byte[] bytes, Bundle bundle)
     {
-        using var content = File.OpenRead(current.FileName);
+        using var stream = new MemoryStream(bytes);
         var tasks = new List<Task<Node?>>();
-        var document = await _browser.OpenAsync(res => res.Content(content));
+        var document = await _browser.OpenAsync(res => res.Content(stream));
         var elements = new List<AngleSharp.Dom.IElement>();
-        AddStaticAssets(current, Path.Combine(current.ParentDir, "public"));
+        await AddStaticAssets(current, Path.Combine(current.ParentDir, "public"));
         var visitor = new HtmlVisitor(bundle, current, InnerProcess, AddExternal);
         var fragment = await visitor.FindChildren(document);
-        HtmlBundle.Fragments.Add(fragment);
+        _context.HtmlFragments.TryAdd(current, fragment);
     }
 
     private void AddExternal(string name)
@@ -283,25 +285,22 @@ public class Traverse
         }
     }
 
-    private void AddStaticAssets(Node current, string publicDir)
+    private async Task AddStaticAssets(Node current, string publicDir)
     {
         if (Directory.Exists(publicDir))
         {
             var files = Directory.GetFiles(publicDir, "*", SearchOption.AllDirectories);
-
-            foreach (var file in files)
-            {
-                AddStaticAsset(current, file);
-            }
+            await Task.WhenAll(files.Select(file => AddStaticAsset(current, file)));
         }
     }
 
-    private Node AddStaticAsset(Node parent, string fileName)
+    private async Task<Node> AddStaticAsset(Node parent, string fileName)
     {
         if (!_context.Modules.TryGetValue(fileName, out var node))
         {
-            node = new Node(fileName);
-            _context.Assets.Add(new Asset(node, node.Type));
+            var bytes = await File.ReadAllBytesAsync(fileName);
+            node = new Node(fileName, bytes.Length);
+            _context.Assets.Add(new Asset(node, node.Type, bytes));
             _context.Modules.TryAdd(fileName, node);
         }
 
@@ -313,9 +312,9 @@ public class Traverse
     {
         if (!_context.Modules.TryGetValue(name, out var node))
         {
-            node = new Node(name, true);
+            node = new Node(name, 0);
             _context.Modules.TryAdd(name, node);
-            JsBundle.Fragments.Add(new JsExternalFragment(node));
+            _context.JsFragments.TryAdd(node, new JsExternalFragment(node));
         }
 
         parent.Children.Add(node);
@@ -328,7 +327,8 @@ public class Traverse
     {
         if (!_context.Modules.TryGetValue(fileName, out var node))
         {
-            node = new Node(fileName);
+            var bytes = await File.ReadAllBytesAsync(fileName);
+            node = new Node(fileName, bytes.Length);
             _context.Modules.TryAdd(fileName, node);
 
             if (bundle is null)
@@ -340,11 +340,11 @@ public class Traverse
 
             await (node.Type switch
             {
-                ".js" => ProcessJavaScript(node, bundle),
-                ".html" => ProcessHtml(node, bundle),
-                ".css" => ProcessStyleSheet(node, bundle),
-                ".json" => ProcessJson(node, bundle),
-                _ => ProcessAsset(node, bundle),
+                ".js" => ProcessJavaScript(node, bytes, bundle),
+                ".html" => ProcessHtml(node, bytes, bundle),
+                ".css" => ProcessStyleSheet(node, bytes, bundle),
+                ".json" => ProcessJson(node, bytes, bundle),
+                _ => ProcessAsset(node, bytes, bundle),
             });
         }
 

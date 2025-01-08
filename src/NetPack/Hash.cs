@@ -5,7 +5,7 @@ using System.Text;
 
 public static class Hash
 {
-    public static async Task<string> ComputeHash(FileStream stream)
+    public static async Task<string> ComputeHash(Stream stream)
     {
         stream.Position = 0;
         var hash = await GetHashSha256(stream);
@@ -21,7 +21,7 @@ public static class Hash
         return sb.ToString();
     }
 
-    private static Task<byte[]> GetHashSha256(FileStream stream)
+    private static Task<byte[]> GetHashSha256(Stream stream)
     {
         var sha256 = SHA256.Create();
         return sha256.ComputeHashAsync(stream);

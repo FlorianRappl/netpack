@@ -16,7 +16,8 @@ public class GraphParser(string content)
         foreach (var unresolved in definition.Nodes)
         {
             var name = unresolved.Name ?? string.Empty;
-            var node = new Node(name);
+            var bytes = unresolved.Bytes ?? 1;
+            var node = new Node(name, bytes);
             nodeLookup[name] = node;
         }
 
@@ -84,6 +85,9 @@ public class GraphParser(string content)
     {
         [JsonPropertyName("name")]
         public string? Name { get; set; }
+
+        [JsonPropertyName("bytes")]
+        public int? Bytes { get; set; }
 
         [JsonPropertyName("children")]
         public List<string> ChildNames { get; set; } = [];

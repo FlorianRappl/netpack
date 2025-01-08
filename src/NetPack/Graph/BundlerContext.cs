@@ -1,6 +1,7 @@
 namespace NetPack.Graph;
 
 using System.Collections.Concurrent;
+using NetPack.Fragments;
 using NetPack.Graph.Bundles;
 
 public sealed class BundlerContext
@@ -14,4 +15,10 @@ public sealed class BundlerContext
     public ConcurrentDictionary<string, Node> Modules = [];
 
     public ConcurrentBag<string> Externals = [];
+
+    public ConcurrentDictionary<Node, HtmlFragment> HtmlFragments = [];
+
+    public ConcurrentDictionary<Node, JsFragment> JsFragments = [];
+
+    public ConcurrentDictionary<Node, CssFragment> CssFragments = [];
 }
