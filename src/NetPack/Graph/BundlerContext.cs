@@ -16,6 +16,8 @@ public sealed class BundlerContext
 
     public ConcurrentBag<string> Externals = [];
 
+    public ConcurrentBag<string> Shared = [];
+
     public ConcurrentDictionary<Node, HtmlFragment> HtmlFragments = [];
 
     public ConcurrentDictionary<Node, JsFragment> JsFragments = [];

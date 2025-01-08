@@ -46,7 +46,15 @@ public sealed class HtmlBundle(BundlerContext context, Graph.Node root, BundleFl
                     case "img":
                     case "video":
                     case "audio":
+                    case "source":
+                    case "iframe":
                         element.SetAttribute("src", $"./{reference}");
+                        break;
+                    case "object":
+                        element.SetAttribute("data", $"./{reference}");
+                        break;
+                    case "meta":
+                        element.SetAttribute("content", $"./{reference}");
                         break;
                 }
             }

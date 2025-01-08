@@ -22,6 +22,9 @@ public class BundleCommand : ICommand
     [Option("external", HelpText = "Indicates if an import should be treated as an external.")]
     public IEnumerable<string> Externals { get; set; } = [];
 
+    [Option("shared", HelpText = "Indicates if a dependency should be shared.")]
+    public IEnumerable<string> Shared { get; set; } = [];
+
     public async Task Run()
     {
         if (string.IsNullOrEmpty(FilePath))
@@ -36,7 +39,7 @@ public class BundleCommand : ICommand
 
         var file = Path.Combine(Environment.CurrentDirectory, FilePath);
         var outdir = Path.Combine(Environment.CurrentDirectory, OutDir);
-        var graph = await Traverse.From(file, Externals);
+        var graph = await Traverse.From(file, Externals, Shared);
         var result = new DiskResultWriter(graph.Context, outdir);
         var options = new OutputOptions
         {

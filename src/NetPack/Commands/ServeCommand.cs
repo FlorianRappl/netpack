@@ -25,11 +25,14 @@ public class ServeCommand : ICommand
     [Option("external", HelpText = "Indicates if an import should be treated as an external.")]
     public IEnumerable<string> Externals { get; set; } = [];
 
+    [Option("shared", HelpText = "Indicates if a dependency should be shared.")]
+    public IEnumerable<string> Shared { get; set; } = [];
+
     private async Task<MemoryResultWriter> Compile()
     {
         var file = Path.Combine(Environment.CurrentDirectory, FilePath);
         Console.WriteLine("[netpack] Starting build ...");
-        var graph = await Traverse.From(file, Externals);
+        var graph = await Traverse.From(file, Externals, Shared);
         var compilation = new MemoryResultWriter(graph.Context);
         var options = new OutputOptions
         {

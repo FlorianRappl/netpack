@@ -231,6 +231,7 @@ The following items are features or topics that are relevant for bundlers - netp
 ### More Advanced Topics
 
 - [x] Importmap support
+- [x] Shared dependencies
 - [ ] Module Federation support
 - [ ] Native Federation support
 - [ ] React Fast Refresh support

@@ -17,47 +17,96 @@ class HtmlVisitor(Bundle bundle, Graph.Node current, Func<Bundle?, Graph.Node, s
 
     public async Task<HtmlFragment> FindChildren(IDocument document)
     {
-        foreach (var element in document.QuerySelectorAll("img,script,audio,video"))
+        foreach (var element in document.All)
         {
-            var src = element.GetAttribute("src");
-
-            if (src is not null)
+            switch (element.LocalName)
             {
-                _elements.Add(element);
-                _tasks.Add(_report(null, _current, src));
-            }
-
-            if (element.LocalName == "script" && element.GetAttribute("type") == "importmap")
-            {
-                var source = element.TextContent;
-
-                try
-                {
-                    var importmap = JsonSerializer.Deserialize(source, SourceGenerationContext.Default.Importmap);
-
-                    if (importmap?.Imports is not null)
+                case "iframe":
+                case "source":
+                case "img":
+                case "script":
+                case "audio":
+                case "video":
                     {
-                        foreach (var name in importmap.Imports.Keys)
+                        var src = element.GetAttribute("src");
+
+                        if (src is not null)
                         {
-                            _addExternal(name);
+                            _elements.Add(element);
+                            _tasks.Add(_report(null, _current, src));
+                        }
+
+                        if (element.LocalName == "script" && element.GetAttribute("type") == "importmap")
+                        {
+                            var source = element.TextContent;
+
+                            try
+                            {
+                                var importmap = JsonSerializer.Deserialize(source, SourceGenerationContext.Default.Importmap);
+
+                                if (importmap?.Imports is not null)
+                                {
+                                    foreach (var name in importmap.Imports.Keys)
+                                    {
+                                        _addExternal(name);
+                                    }
+                                }
+                            }
+                            catch
+                            {
+                                // Ignore importmap issues
+                            }
                         }
                     }
-                }
-                catch
-                {
-                    // Ignore importmap issues
-                }
-            }
-        }
 
-        foreach (var element in document.QuerySelectorAll("link,a"))
-        {
-            var href = element.GetAttribute("href");
+                    break;
+                case "link":
+                case "a":
+                    {
+                        var href = element.GetAttribute("href");
 
-            if (href is not null)
-            {
-                _elements.Add(element);
-                _tasks.Add(_report(null, _current, href));
+                        if (href is not null)
+                        {
+                            _elements.Add(element);
+                            _tasks.Add(_report(null, _current, href));
+                        }
+                    }
+
+                    break;
+                case "object":
+                    {
+                        var href = element.GetAttribute("data");
+
+                        if (href is not null)
+                        {
+                            _elements.Add(element);
+                            _tasks.Add(_report(null, _current, href));
+                        }
+                    }
+
+                    break;
+                case "meta":
+                    {
+                        var name = element.GetAttribute("name") ?? element.GetAttribute("property");
+                        var content = element.GetAttribute("content");
+
+                        if (name is not null && content is not null)
+                        {
+                            switch (name)
+                            {
+                                case "og:image":
+                                case "og:audio":
+                                case "og:video":
+                                case "og:url":
+                                    _elements.Add(element);
+                                    _tasks.Add(_report(null, _current, content));
+                                    break;
+
+                            }
+                        }
+                    }
+
+                    break;
             }
         }
 

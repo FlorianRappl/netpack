@@ -7,6 +7,7 @@ public static class Helpers
     public static readonly Dictionary<string, string> ExtensionMap = new()
     {
         { ".json", ".json" },
+        { ".webmanifest", ".json" },
         { ".ts", ".js" },
         { ".cts", ".js" },
         { ".mts", ".js" },

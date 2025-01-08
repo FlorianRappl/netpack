@@ -24,12 +24,13 @@ public class Traverse
 
     public BundlerContext Context => _context;
 
-    public static Task<Traverse> From(string path) => From(path, []);
+    public static Task<Traverse> From(string path) => From(path, [], []);
 
-    public static async Task<Traverse> From(string path, IEnumerable<string> externals)
+    public static async Task<Traverse> From(string path, IEnumerable<string> externals, IEnumerable<string> shared)
     {
         var traverse = new Traverse();
-        traverse.Context.Externals = [..externals];
+        traverse.Context.Externals = [.. externals, .. shared];
+        traverse.Context.Shared = [.. shared];
         await traverse.Start(path);
         return traverse;
     }
@@ -58,7 +59,7 @@ public class Traverse
                 bundles.Add(bundle);
             }
 
-            bundle.Items = [..graph.Value];
+            bundle.Items = [.. graph.Value];
         }
     }
 
@@ -190,6 +191,12 @@ public class Traverse
         if (_context.Externals.Contains(name))
         {
             return AddExternalReference(parent, name);
+        }
+
+        if (name.StartsWith("//") || name.StartsWith("file:") || name.StartsWith("http:") || name.StartsWith("https:"))
+        {
+            // ignore URLs
+            return null;
         }
 
         try
