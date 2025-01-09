@@ -6,9 +6,9 @@ using NetPack.Graph.Bundles;
 
 public sealed class BundlerContext
 {
-    public ConcurrentBag<Asset> Assets = [];
+    public ConcurrentDictionary<Node, Asset> Assets = [];
 
-    public ConcurrentBag<Bundle> Bundles = [];
+    public ConcurrentDictionary<Node, Bundle> Bundles = [];
 
     public ConcurrentBag<Dependency> Dependencies = [];
 

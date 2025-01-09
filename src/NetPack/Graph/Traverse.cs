@@ -1,7 +1,7 @@
 namespace NetPack.Graph;
 
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
-using System.Text.Unicode;
 using Acornima;
 using Acornima.Jsx;
 using AngleSharp;
@@ -45,18 +45,15 @@ public class Traverse
     private void Populate()
     {
         var bundles = _context.Bundles;
-        var nodes = bundles.Select(m => m.Root);
         var connected = new Connected((i, nodes) => $"common.{i:0000}{nodes.First().Type}");
-        var graphs = connected.Apply(nodes);
+        var graphs = connected.Apply(bundles.Keys);
 
         foreach (var graph in graphs)
         {
-            var bundle = bundles.FirstOrDefault(m => m.Root == graph.Key);
-
-            if (bundle is null)
+            if (!bundles.TryGetValue(graph.Key, out var bundle))
             {
                 bundle = CreateBundle(graph.Key, BundleFlags.Shared);
-                bundles.Add(bundle);
+                bundles.TryAdd(graph.Key, bundle);
             }
 
             bundle.Items = [.. graph.Value];
@@ -65,12 +62,30 @@ public class Traverse
 
     private Bundle CreateBundle(Node root, BundleFlags flags)
     {
-        return root.Type switch
+        if (TryCreateBundle(root, flags, out var bundle))
         {
-            ".html" => new HtmlBundle(_context, root, flags),
-            ".js" => new JsBundle(_context, root, flags),
-            ".css" => new CssBundle(_context, root, flags),
-            _ => throw new NotSupportedException($"No bundle for type '{root.Type}' found."),
+            return bundle;
+        }
+
+        throw new NotSupportedException($"No bundle for type '{root.Type}' found.");
+    }
+
+    private bool TryCreateBundle(Node root, BundleFlags flags, [NotNullWhen(returnValue: true)] out Bundle? bundle)
+    {
+        switch (root.Type)
+        {
+            case ".html":
+                bundle = new HtmlBundle(_context, root, flags);
+                return true;
+            case ".js":
+                bundle = new JsBundle(_context, root, flags);
+                return true;
+            case ".css":
+                bundle = new CssBundle(_context, root, flags);
+                return true;
+            default:
+                bundle = default;
+                return false;
         };
     }
 
@@ -222,17 +237,31 @@ public class Traverse
         }
     }
 
-    private async Task ProcessAsset(Node current, byte[] bytes, Bundle bundle)
+    private async Task ProcessAsset(Node current, byte[] bytes)
     {
         using var stream = new MemoryStream(bytes);
         var hash = await Hash.ComputeHash(stream);
-        _context.Assets.Add(new Asset(current, current.Type, bytes, hash));
+        _context.Assets.TryAdd(current, new Asset(current, current.Type, bytes, hash));
     }
 
-    private Task ProcessJson(Node current, byte[] bytes, Bundle bundle)
+    private async Task ProcessJson(Node current, byte[] bytes, Bundle bundle)
     {
-        // nothing on purpose
-        return Task.CompletedTask;
+        if (bundle is JsBundle)
+        {
+            using var stream = new MemoryStream(bytes);
+            using var reader = new StreamReader(stream);
+            var content = await reader.ReadToEndAsync();
+            var parser = new JsxParser();
+            var newContent = $"export default ({content})";
+            var ast = parser.ParseModule(newContent, current.FileName);
+            var visitor = new JsVisitor(bundle, current, InnerProcess);
+            var fragment = await visitor.FindChildren(ast);
+            _context.JsFragments.TryAdd(current, fragment);
+        }
+        else
+        {
+            await ProcessAsset(current, bytes);
+        }
     }
 
     private async Task ProcessStyleSheet(Node current, byte[] bytes, Bundle bundle)
@@ -307,7 +336,7 @@ public class Traverse
         {
             var bytes = await File.ReadAllBytesAsync(fileName);
             node = new Node(fileName, bytes.Length);
-            _context.Assets.Add(new Asset(node, node.Type, bytes));
+            _context.Assets.TryAdd(node, new Asset(node, node.Type, bytes));
             _context.Modules.TryAdd(fileName, node);
         }
 
@@ -340,9 +369,18 @@ public class Traverse
 
             if (bundle is null)
             {
-                var flags = _context.Bundles.Count == 0 ? BundleFlags.Primary : BundleFlags.None;
-                bundle = CreateBundle(node, flags);
-                _context.Bundles.Add(bundle);
+                var flags = _context.Bundles.IsEmpty ? BundleFlags.Primary : BundleFlags.None;
+
+                if (TryCreateBundle(node, flags, out var newBundle))
+                {
+                    _context.Bundles.TryAdd(node, newBundle);
+                    bundle = newBundle;
+                }
+                else
+                {
+                    await ProcessAsset(node, bytes);
+                    return node;
+                }
             }
 
             await (node.Type switch
@@ -351,7 +389,7 @@ public class Traverse
                 ".html" => ProcessHtml(node, bytes, bundle),
                 ".css" => ProcessStyleSheet(node, bytes, bundle),
                 ".json" => ProcessJson(node, bytes, bundle),
-                _ => ProcessAsset(node, bytes, bundle),
+                _ => ProcessAsset(node, bytes),
             });
         }
 

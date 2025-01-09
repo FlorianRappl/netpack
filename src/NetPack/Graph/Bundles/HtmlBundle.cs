@@ -4,10 +4,8 @@ using System.Text;
 using AngleSharp.Dom;
 using AngleSharp.Html;
 
-public sealed class HtmlBundle(BundlerContext context, Graph.Node root, BundleFlags flags) : Bundle(root, flags)
+public sealed class HtmlBundle(BundlerContext context, Graph.Node root, BundleFlags flags) : Bundle(context, root, flags)
 {
-    private readonly BundlerContext _context = context;
-
     public override Task<Stream> CreateStream(OutputOptions options)
     {
         var src = new MemoryStream();
@@ -29,9 +27,7 @@ public sealed class HtmlBundle(BundlerContext context, Graph.Node root, BundleFl
             {
                 var element = replacement.Key;
                 var node = replacement.Value;
-                var bundle = _context.Bundles.FirstOrDefault(m => m.Root == node);
-                var asset = _context.Assets.FirstOrDefault(m => m.Root == node);
-                var reference = bundle?.GetFileName() ?? asset?.GetFileName() ?? Path.GetFileName(node.FileName);
+                var reference = GetReference(node);
 
                 switch (element.LocalName)
                 {

@@ -20,7 +20,7 @@ public class GraphCommand : ICommand
 
         Console.WriteLine("Assets:");
 
-        foreach (var asset in context.Assets)
+        foreach (var asset in context.Assets.Values)
         {
             Console.WriteLine("  {0} ({1})", asset.Root.FileName, asset.Type);
         }
@@ -36,7 +36,7 @@ public class GraphCommand : ICommand
         Console.WriteLine("");
         Console.WriteLine("Bundles:");
 
-        foreach (var bundle in context.Bundles)
+        foreach (var bundle in context.Bundles.Values)
         {
             Console.WriteLine("  {0} ({1})", bundle.Root.FileName, bundle.Root.Children.Count);
         }
@@ -47,7 +47,7 @@ public class GraphCommand : ICommand
         if (!string.IsNullOrEmpty(OutFile))
         {
             var target = Path.Combine(Environment.CurrentDirectory, OutFile);
-            var nodes = context.Bundles.Select(m => m.Root);
+            var nodes = context.Bundles.Keys;
             File.WriteAllText(target, GraphParser.Serialize(nodes, context.Modules.Values));
         }
     }

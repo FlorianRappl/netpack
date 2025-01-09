@@ -1,7 +1,9 @@
 namespace NetPack.Graph.Bundles;
 
-public abstract class Bundle(Node root, BundleFlags flags)
+public abstract class Bundle(BundlerContext context, Node root, BundleFlags flags)
 {
+    protected readonly BundlerContext _context = context;
+
     public Node Root => root;
 
     public bool IsPrimary => flags.HasFlag(BundleFlags.Primary);
@@ -21,4 +23,20 @@ public abstract class Bundle(Node root, BundleFlags flags)
     }
 
     public abstract Task<Stream> CreateStream(OutputOptions options);
+
+    protected string GetReference(Node node)
+    {
+        if (_context.Bundles.TryGetValue(node, out var bundle))
+        {
+            return bundle.GetFileName();
+        }
+        else if (_context.Assets.TryGetValue(node, out var asset))
+        {
+            return asset.GetFileName();
+        }
+        else
+        {
+            return Path.GetFileName(node.FileName);
+        }
+    }
 }

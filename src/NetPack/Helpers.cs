@@ -4,6 +4,8 @@ using NetPack.Graph;
 
 public static class Helpers
 {
+    public static readonly HashSet<string> BundleTypes = [".css", ".js", ".html"];
+
     public static readonly Dictionary<string, string> ExtensionMap = new()
     {
         { ".json", ".json" },
@@ -37,6 +39,11 @@ public static class Helpers
     public static string GetType(string extension)
     {
         return ExtensionMap.GetValueOrDefault(extension) ?? extension;
+    }
+
+    public static bool IsAssetType(string extension)
+    {
+        return !BundleTypes.Contains(extension);
     }
 
     public static IDictionary<T, Node> GetReplacements<T>(Node?[] nodes, IEnumerable<T> elements)

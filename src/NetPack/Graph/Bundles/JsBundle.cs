@@ -6,10 +6,8 @@ using Acornima.Jsx;
 using Acornima.Jsx.Ast;
 using NetPack.Fragments;
 
-public sealed class JsBundle(BundlerContext context, Graph.Node root, BundleFlags flags) : Bundle(root, flags)
+public sealed class JsBundle(BundlerContext context, Graph.Node root, BundleFlags flags) : Bundle(context, root, flags)
 {
-    public BundlerContext Context => context;
-
     public override async Task<Stream> CreateStream(OutputOptions options)
     {
         var content = Stringify(options);
@@ -40,7 +38,7 @@ public sealed class JsBundle(BundlerContext context, Graph.Node root, BundleFlag
 
         public Program Transpile()
         {
-            var context = _bundle.Context;
+            var context = _bundle._context;
             var fragments = context.JsFragments;
             var imports = new List<Statement>();
             var exports = new List<Statement>();
@@ -48,7 +46,7 @@ public sealed class JsBundle(BundlerContext context, Graph.Node root, BundleFlag
             var statements = new List<Statement>();
             var refNames = new List<string>();
             var exportNodes = _bundle.Items;
-            var referenced = context.Bundles.Where(m => m.IsShared && m != _bundle && _bundle.Items.Contains(m.Root));
+            var referenced = context.Bundles.Values.Where(m => m.IsShared && m != _bundle && _bundle.Items.Contains(m.Root));
 
             foreach (var reference in referenced)
             {
@@ -206,9 +204,8 @@ public sealed class JsBundle(BundlerContext context, Graph.Node root, BundleFlag
 
         protected override object? VisitImportExpression(ImportExpression node)
         {
-            if (_current?.Replacements.TryGetValue(node, out var referenceNode) ?? false)
+            if ((_current?.Replacements.TryGetValue(node, out var referenceNode) ?? false) && _bundle._context.Bundles.TryGetValue(referenceNode, out var bundle))
             {
-                var bundle = _bundle.Context.Bundles.First(m => m.Root == referenceNode);
                 var reference = bundle.GetFileName();
                 return new ImportExpression(MakeAutoReference(reference));
             }
@@ -220,9 +217,7 @@ public sealed class JsBundle(BundlerContext context, Graph.Node root, BundleFlag
         {
             if (_current?.Replacements.TryGetValue(node, out var reference) ?? false)
             {
-                var asset = _bundle.Context.Assets.FirstOrDefault(m => m.Root == reference);
-
-                if (asset is not null && node.Specifiers.Count == 1 && node.Specifiers[0] is ImportDefaultSpecifier specifier)
+                if (_bundle._context.Assets.TryGetValue(reference, out var asset) && node.Specifiers.Count == 1 && node.Specifiers[0] is ImportDefaultSpecifier specifier)
                 {
                     var name = specifier.Local;
                     var file = asset.GetFileName();
@@ -381,9 +376,7 @@ public sealed class JsBundle(BundlerContext context, Graph.Node root, BundleFlag
         {
             if (node.Callee is Identifier ident && node.Arguments.Count == 1 && ident.Name == "require" && (_current?.Replacements.TryGetValue(node, out var reference) ?? false))
             {
-                var asset = _bundle.Context.Assets.FirstOrDefault(m => m.Root == reference);
-
-                if (asset is not null)
+                if (_bundle._context.Assets.TryGetValue(reference, out var asset))
                 {
                     var file = asset.GetFileName();
                     return MakeAutoReference(file);

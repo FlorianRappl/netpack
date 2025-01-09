@@ -51,7 +51,7 @@ class Metadata(Traverse graph, MemoryResultWriter compilation) : IFileLocator
             }
         }
 
-        foreach (var bundle in _graph.Context.Bundles)
+        foreach (var bundle in _graph.Context.Bundles.Values)
         {
             var path = bundle.GetFileName();
             var file = _compilation.GetFile(path);

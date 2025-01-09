@@ -11,16 +11,17 @@ abstract class ResultWriter(BundlerContext context)
     {
         Started?.Invoke(this, EventArgs.Empty);
 
-        await Parallel.ForEachAsync(_context.Assets, async (asset, ct) =>
+        await Parallel.ForEachAsync(_context.Assets.Values, async (asset, ct) =>
         {
             var fn = asset.GetFileName();
+            Console.WriteLine("Writing {0} of node {1}", fn, asset.Root.FileName);
             using var dst = OpenWrite(fn);
             using var src = await asset.CreateStream(options);
             await src.CopyToAsync(dst, ct);
             CloseWrite(fn, dst);
         });
 
-        await Parallel.ForEachAsync(_context.Bundles, async (bundle, ct) =>
+        await Parallel.ForEachAsync(_context.Bundles.Values, async (bundle, ct) =>
         {
             var fn = bundle.GetFileName();
             using var dst = OpenWrite(fn);

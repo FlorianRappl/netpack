@@ -24,7 +24,6 @@ class HtmlVisitor(Bundle bundle, Graph.Node current, Func<Bundle?, Graph.Node, s
                 case "iframe":
                 case "source":
                 case "img":
-                case "script":
                 case "audio":
                 case "video":
                     {
@@ -35,8 +34,20 @@ class HtmlVisitor(Bundle bundle, Graph.Node current, Func<Bundle?, Graph.Node, s
                             _elements.Add(element);
                             _tasks.Add(_report(null, _current, src));
                         }
+                    }
 
-                        if (element.LocalName == "script" && element.GetAttribute("type") == "importmap")
+                    break;
+                case "script":
+                    {
+                        var src = element.GetAttribute("src");
+
+                        if (src is not null)
+                        {
+                            _elements.Add(element);
+                            _tasks.Add(_report(null, _current, src));
+                        }
+
+                        if (element.GetAttribute("type") == "importmap")
                         {
                             var source = element.TextContent;
 
@@ -56,6 +67,8 @@ class HtmlVisitor(Bundle bundle, Graph.Node current, Func<Bundle?, Graph.Node, s
                             {
                                 // Ignore importmap issues
                             }
+
+                            break;
                         }
                     }
 

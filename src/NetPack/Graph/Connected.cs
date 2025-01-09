@@ -26,7 +26,7 @@ public class Connected(Func<int, IEnumerable<Node>, string> getCommonName)
     {
         foreach (var node in nodes)
         {
-            if (processedNodes.Add(node))
+            if (processedNodes.Add(node) && !node.IsAsset)
             {
                 var currentGraph = new HashSet<Node>();
                 Traverse(node, currentGraph);
@@ -40,7 +40,7 @@ public class Connected(Func<int, IEnumerable<Node>, string> getCommonName)
     {
         foreach (var node in nodes)
         {
-            if (node.IsEmpty)
+            if (node.IsEmpty || node.IsAsset)
             {
                 // Ignore empty nodes
             }
