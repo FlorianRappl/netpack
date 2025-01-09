@@ -1,5 +1,6 @@
 namespace NetPack.Graph;
 
+using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using Acornima;
@@ -15,11 +16,13 @@ public class Traverse
 {
     private readonly BundlerContext _context;
     private readonly BrowsingContext _browser;
+    private readonly ConcurrentDictionary<string, Task<Node>> _reserved;
 
     public Traverse()
     {
-        _context = new BundlerContext();
-        _browser = new BrowsingContext(Configuration.Default.WithCss());
+        _context = new();
+        _browser = new(Configuration.Default.WithCss());
+        _reserved = [];
     }
 
     public BundlerContext Context => _context;
@@ -363,35 +366,48 @@ public class Traverse
     {
         if (!_context.Modules.TryGetValue(fileName, out var node))
         {
-            var bytes = await File.ReadAllBytesAsync(fileName);
-            node = new Node(fileName, bytes.Length);
-            _context.Modules.TryAdd(fileName, node);
-
-            if (bundle is null)
+            if (_reserved.TryGetValue(fileName, out var task))
             {
-                var flags = _context.Bundles.IsEmpty ? BundleFlags.Primary : BundleFlags.None;
-
-                if (TryCreateBundle(node, flags, out var newBundle))
-                {
-                    _context.Bundles.TryAdd(node, newBundle);
-                    bundle = newBundle;
-                }
-                else
-                {
-                    await ProcessAsset(node, bytes);
-                    return node;
-                }
+                return await task;
             }
 
-            await (node.Type switch
-            {
-                ".js" => ProcessJavaScript(node, bytes, bundle),
-                ".html" => ProcessHtml(node, bytes, bundle),
-                ".css" => ProcessStyleSheet(node, bytes, bundle),
-                ".json" => ProcessJson(node, bytes, bundle),
-                _ => ProcessAsset(node, bytes),
-            });
+            node = await _reserved.GetOrAdd(fileName, (_) => AddNewNodeToBundle(bundle, fileName));
+            _reserved.TryRemove(fileName, out _);
         }
+
+        return node;
+    }
+
+    private async Task<Node> AddNewNodeToBundle(Bundle? bundle, string fileName)
+    {
+        var bytes = await File.ReadAllBytesAsync(fileName);
+        var node = new Node(fileName, bytes.Length);
+        _context.Modules.TryAdd(fileName, node);
+
+        if (bundle is null)
+        {
+            var flags = _context.Bundles.IsEmpty ? BundleFlags.Primary : BundleFlags.None;
+
+            if (TryCreateBundle(node, flags, out var newBundle))
+            {
+                _context.Bundles.TryAdd(node, newBundle);
+                bundle = newBundle;
+            }
+            else
+            {
+                await ProcessAsset(node, bytes);
+                return node;
+            }
+        }
+
+        await (node.Type switch
+        {
+            ".js" => ProcessJavaScript(node, bytes, bundle),
+            ".html" => ProcessHtml(node, bytes, bundle),
+            ".css" => ProcessStyleSheet(node, bytes, bundle),
+            ".json" => ProcessJson(node, bytes, bundle),
+            _ => ProcessAsset(node, bytes),
+        });
 
         return node;
     }
