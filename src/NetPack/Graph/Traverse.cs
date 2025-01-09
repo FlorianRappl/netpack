@@ -32,20 +32,28 @@ public class Traverse
     public static async Task<Traverse> From(string path, IEnumerable<string> externals, IEnumerable<string> shared)
     {
         var traverse = new Traverse();
+        var root = Path.GetDirectoryName(path)!;
         traverse.Context.Externals = [.. externals, .. shared];
         traverse.Context.Shared = [.. shared];
-        await traverse.Start(path);
+        await traverse.Run(root, [path, ..shared]);
         return traverse;
     }
 
-    private async Task Start(string path)
+    private async Task Run(string root, params IEnumerable<string> entryPoints)
     {
-        var entry = await Resolve(Environment.CurrentDirectory, path);
-        await AddNewBundle(entry);
-        Populate();
+        var queue = new List<Task>();
+
+        foreach (var entryPoint in entryPoints)
+        {
+            var entry = await Resolve(root, entryPoint);
+            await AddNewBundle(entry);
+        }
+
+        await Task.WhenAll(queue);
+        Finish();
     }
 
-    private void Populate()
+    private void Finish()
     {
         var bundles = _context.Bundles;
         var connected = new Connected((i, nodes) => $"common.{i:0000}{nodes.First().Type}");

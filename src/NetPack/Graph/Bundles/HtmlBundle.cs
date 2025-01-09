@@ -1,6 +1,7 @@
 namespace NetPack.Graph.Bundles;
 
 using System.Text;
+using System.Text.Json;
 using AngleSharp.Dom;
 using AngleSharp.Html;
 
@@ -55,6 +56,28 @@ public sealed class HtmlBundle(BundlerContext context, Graph.Node root, BundleFl
                 }
             }
 
+            if (_context.Shared.Count > 0)
+            {
+                var importmap = document.QuerySelector("script[type=importmap]");
+
+                if (importmap is null)
+                {
+                    importmap = document.CreateElement("script");
+                    importmap.SetAttribute("type", "importmap");
+                    document.Head!.AppendChild(importmap);
+                }
+
+                var content = ReadImportmap(importmap);
+
+                foreach (var dependency in _context.Shared)
+                {
+                    var name = Helpers.ToFileName(dependency);
+                    content.Imports!.Add(dependency, $"./{name}.js");
+                }
+
+                WriteImportmap(importmap, content);
+            }
+
             if (options.IsOptimizing)
             {
                 foreach (var node in document.Head!.ChildNodes.OfType<IText>().ToArray())
@@ -84,5 +107,35 @@ public sealed class HtmlBundle(BundlerContext context, Graph.Node root, BundleFl
             using var writer = new StreamWriter(ms, Encoding.UTF8, -1, true);
             document.ToHtml(writer, formatter);
         }
+    }
+
+    private static void WriteImportmap(IElement importmap, Importmap content)
+    {
+        var source = JsonSerializer.Serialize(content, SourceGenerationContext.Default.Importmap);
+        importmap.TextContent = source;
+    }
+
+    private static Importmap ReadImportmap(IElement importmap)
+    {
+        var source = importmap.TextContent;
+        
+        try
+        {
+            var current = JsonSerializer.Deserialize(source, SourceGenerationContext.Default.Importmap);
+
+            if (current?.Imports is not null)
+            {
+                return current;
+            }
+        }
+        catch
+        {
+            // Ignore importmap issues
+        }
+
+        return new Importmap
+        {
+            Imports = [],
+        };
     }
 }

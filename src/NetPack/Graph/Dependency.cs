@@ -9,8 +9,11 @@ public sealed class Dependency(string location, JsonElement meta)
     private readonly JsonElement sideEffects = meta.TryGetProperty("sideEffects", out var element) ? default : element;
 
     public string Location => location;
+
     public string Name => meta.GetProperty("name").GetString()!;
+
     public string Version => meta.GetProperty("version").GetString()!;
+    
     public string Entry => CombinePath(Path.GetDirectoryName(location)!, GetEntry(meta));
 
     public bool HasSideEffects(string file)

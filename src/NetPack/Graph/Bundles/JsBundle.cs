@@ -101,7 +101,7 @@ public sealed class JsBundle(BundlerContext context, Graph.Node root, BundleFlag
 
                 if (exportNames.Length == 0)
                 {
-                    body.Add(new NonSpecialExpressionStatement(call));
+                    exports.Add(new ExportDefaultDeclaration(call));
                 }
                 else
                 {

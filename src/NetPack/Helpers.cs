@@ -1,9 +1,12 @@
 namespace NetPack;
 
+using System.Text;
 using NetPack.Graph;
 
 public static class Helpers
 {
+    private static readonly HashSet<char> invalid = [.. Path.GetInvalidFileNameChars()];
+
     public static readonly HashSet<string> BundleTypes = [".css", ".js", ".html"];
 
     public static readonly Dictionary<string, string> ExtensionMap = new()
@@ -50,5 +53,20 @@ public static class Helpers
         where T : class
     {
         return elements.Select((r, i) => (nodes[i]!, r)).Where(m => m.Item1 is not null).ToDictionary(m => m.r, m => m.Item1);
+    }
+
+    public static string ToFileName(string name)
+    {
+        var sb = new StringBuilder();
+
+        foreach (var c in name)
+        {
+            if (!invalid.Contains(c))
+            {
+                sb.Append(c);
+            }
+        }
+
+        return sb.ToString();
     }
 }

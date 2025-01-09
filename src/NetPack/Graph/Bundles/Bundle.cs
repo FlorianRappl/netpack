@@ -18,8 +18,19 @@ public abstract class Bundle(BundlerContext context, Node root, BundleFlags flag
 
     public string GetFileName()
     {
-        var name = Path.GetFileNameWithoutExtension(Root.FileName);
-        return $"{name}{Type}";
+        var entry = Name;
+        var dependency = _context.Dependencies.FirstOrDefault(m => m.Entry == entry);
+
+        if (dependency is not null)
+        {
+            var name = Helpers.ToFileName(dependency.Name);
+            return $"{name}{Type}";
+        }
+        else
+        {
+            var name = Path.GetFileNameWithoutExtension(entry);
+            return $"{name}{Type}";
+        }
     }
 
     public abstract Task<Stream> CreateStream(OutputOptions options);
