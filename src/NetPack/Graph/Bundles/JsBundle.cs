@@ -204,9 +204,9 @@ public sealed class JsBundle(BundlerContext context, Graph.Node root, BundleFlag
 
         protected override object? VisitImportExpression(ImportExpression node)
         {
-            if ((_current?.Replacements.TryGetValue(node, out var referenceNode) ?? false) && _bundle._context.Bundles.TryGetValue(referenceNode, out var bundle))
+            if (_current?.Replacements.TryGetValue(node, out var referenceNode) ?? false)
             {
-                var reference = bundle.GetFileName();
+                var reference = _bundle.GetReference(referenceNode);
                 return new ImportExpression(MakeAutoReference(reference));
             }
 
