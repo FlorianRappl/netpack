@@ -225,13 +225,13 @@ The following items are features or topics that are relevant for bundlers - netp
 - [x] Bundle analyzer
 - [ ] Image / asset variants (e.g., width/height optimized)
 - [x] Copy public assets
-- [x] Externals
+- [x] Externals (`--external react react-dom`; works also automatically if an importmap is present)
 - [ ] True HMR (not just refresh)
 
 ### More Advanced Topics
 
 - [x] Importmap support
-- [x] Shared dependencies
+- [x] Shared dependencies (`--external react react-dom`; automatically adds an importmap if HTML is used)
 - [ ] Module Federation support
 - [ ] Native Federation support
 - [ ] React Fast Refresh support
