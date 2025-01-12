@@ -15,8 +15,8 @@ public class GraphCommand : ICommand
     public async Task Run()
     {
         var file = Path.Combine(Environment.CurrentDirectory, FilePath!);
-        var result = await Traverse.From(file);
-        var context = result.Context;
+        using var graph = await Traverse.From(file);
+        var context = graph.Context;
 
         Console.WriteLine("Assets:");
 

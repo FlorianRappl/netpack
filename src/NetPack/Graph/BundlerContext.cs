@@ -4,8 +4,10 @@ using System.Collections.Concurrent;
 using NetPack.Fragments;
 using NetPack.Graph.Bundles;
 
-public sealed class BundlerContext
+public sealed class BundlerContext(string root)
 {
+    public string Root => root;
+
     public ConcurrentDictionary<Node, Asset> Assets = [];
 
     public ConcurrentDictionary<Node, Bundle> Bundles = [];

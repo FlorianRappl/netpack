@@ -32,7 +32,7 @@ public class ServeCommand : ICommand
     {
         var file = Path.Combine(Environment.CurrentDirectory, FilePath);
         Console.WriteLine("[netpack] Starting build ...");
-        var graph = await Traverse.From(file, Externals, Shared);
+        using var graph = await Traverse.From(file, Externals, Shared);
         var compilation = new MemoryResultWriter(graph.Context);
         var options = new OutputOptions
         {

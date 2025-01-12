@@ -2,6 +2,7 @@ namespace NetPack.Graph;
 
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
+using System.Text;
 using System.Text.Json;
 using Acornima;
 using Acornima.Jsx;
@@ -12,17 +13,29 @@ using NetPack.Graph.Bundles;
 using NetPack.Graph.Visitors;
 using static NetPack.Helpers;
 
-public class Traverse
+public class Traverse : IDisposable
 {
     private readonly BundlerContext _context;
     private readonly BrowsingContext _browser;
     private readonly ConcurrentDictionary<string, Task<Node>> _reserved;
+    private readonly NodeJs _njs;
 
-    public Traverse()
+    public Traverse(string root)
     {
-        _context = new();
+        _context = new(root);
         _browser = new(Configuration.Default.WithCss());
         _reserved = [];
+        _njs = new(root);
+    }
+
+    private Task<string> TranspileTypeScript(string content)
+    {
+        return _njs.RunCommand("tsc", content);
+    }
+
+    private Task<string> TranspileSass(string content)
+    {
+        return _njs.RunCommand("sass", content);
     }
 
     public BundlerContext Context => _context;
@@ -31,8 +44,8 @@ public class Traverse
 
     public static async Task<Traverse> From(string path, IEnumerable<string> externals, IEnumerable<string> shared)
     {
-        var traverse = new Traverse();
         var root = Path.GetDirectoryName(path)!;
+        var traverse = new Traverse(root);
         traverse.Context.Externals = [.. externals, .. shared];
         traverse.Context.Shared = [.. shared];
         await traverse.Run(root, [path, ..shared]);
@@ -277,6 +290,17 @@ public class Traverse
 
     private async Task ProcessStyleSheet(Node current, byte[] bytes, Bundle bundle)
     {
+        var enableSass = true;
+
+        if (enableSass && (current.FileName.EndsWith(".scss") || current.FileName.EndsWith(".sass")))
+        {
+            using var istream = new MemoryStream(bytes);
+            using var reader = new StreamReader(istream);
+            var content = await reader.ReadToEndAsync();
+            content = await TranspileSass(content);
+            bytes = Encoding.UTF8.GetBytes(content);
+        }
+
         using var stream = new MemoryStream(bytes);
         var tasks = new List<Task<Node?>>();
         var options = new CssParserOptions
@@ -297,15 +321,22 @@ public class Traverse
         using var stream = new MemoryStream(bytes);
         using var reader = new StreamReader(stream);
         var content = await reader.ReadToEndAsync();
+        var enableTsc = false;
         var parser = new JsxParser(new JsxParserOptions
         {
             Tolerant = true,
             AllowAwaitOutsideFunction = true,
             JsxAllowNamespaces = true,
         });
+
+        if (enableTsc && (current.FileName.EndsWith(".ts") || current.FileName.EndsWith(".tsx")))
+        {
+            content = await TranspileTypeScript(content);
+        }
+
         var newContent = content
-            .Replace("process.env.NODE_ENV", "'production'")
-            .Replace(": ChangeEvent<HTMLInputElement>", ""); // this should be removed; just for now.
+            .Replace(": ChangeEvent<HTMLInputElement>", "") // Remove this line
+            .Replace("process.env.NODE_ENV", "'production'");
         var ast = parser.ParseModule(newContent, current.FileName);
         var visitor = new JsVisitor(bundle, current, InnerProcess);
         var fragment = await visitor.FindChildren(ast);
@@ -418,5 +449,11 @@ public class Traverse
         });
 
         return node;
+    }
+
+    public void Dispose()
+    {
+        _njs.Dispose();
+        ((IDisposable)_browser).Dispose();
     }
 }

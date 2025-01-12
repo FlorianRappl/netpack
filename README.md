@@ -212,7 +212,8 @@ The following items are features or topics that are relevant for bundlers - netp
 - [x] Handle any asset
 - [x] Handle CSS
 - [ ] Handle CSS modules
-- [ ] Handle SASS
+- [ ] Handle PostCSS (incl. Tailwind)
+- [x] Handle SASS
 - [x] Handle HTML
 - [x] Handle JSON
 - [ ] Handle codegen
@@ -235,9 +236,11 @@ The following items are features or topics that are relevant for bundlers - netp
 - [ ] Module Federation support
 - [ ] Native Federation support
 - [ ] React Fast Refresh support
+- [ ] Custom JSX factory
 - [ ] Platforms (web, npm)
 - [ ] Tree shaking
 - [ ] Other formats (esm, cjs, systemjs, umd)
+- [ ] Presets / configuration system
 
 ## Idea Stash
 
@@ -246,3 +249,4 @@ Integration ideas / explorations:
 - [Evaluate SASS from its official lib](https://github.com/Taritsyn/LibSassHost)
 - [Port Acornima to support streaming + TypeScript](https://github.com/adams85/acornima/)
 - [Integrate Codegen natively via Node.js](https://github.com/FlorianRappl/codegen-js/)
+- [Make native Node.js module using Microsoft.JavaScript.NodeApi](https://microsoft.github.io/node-api-dotnet/)

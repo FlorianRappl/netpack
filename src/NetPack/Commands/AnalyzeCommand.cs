@@ -40,7 +40,7 @@ public class AnalyzeCommand : ICommand
             IsOptimizing = true,
             IsReloading = false,
         };
-        var graph = await Traverse.From(file, Externals, Shared);
+        using var graph = await Traverse.From(file, Externals, Shared);
         var compilation = new MemoryResultWriter(graph.Context);
         await compilation.WriteOut(options);
         var results = new Metadata(graph, compilation);

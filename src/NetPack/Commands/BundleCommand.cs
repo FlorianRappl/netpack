@@ -39,7 +39,7 @@ public class BundleCommand : ICommand
 
         var file = Path.Combine(Environment.CurrentDirectory, FilePath);
         var outdir = Path.Combine(Environment.CurrentDirectory, OutDir);
-        var graph = await Traverse.From(file, Externals, Shared);
+        using var graph = await Traverse.From(file, Externals, Shared);
         var result = new DiskResultWriter(graph.Context, outdir);
         var options = new OutputOptions
         {
