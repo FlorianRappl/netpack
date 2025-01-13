@@ -1,7 +1,7 @@
 namespace NetPack.Graph;
 
 using System.Text.Json;
-using System.Text.Json.Serialization;
+using NetPack.Json;
 
 public class GraphParser(string content)
 {
@@ -70,29 +70,5 @@ public class GraphParser(string content)
             }).ToList(),
         };
         return JsonSerializer.Serialize(definition, SourceGenerationContext.Default.NodesDefinition);
-    }
-
-    public sealed class NodesDefinition
-    {
-        [JsonPropertyName("entries")]
-        public List<string> Entries { get; set; } = [];
-
-        [JsonPropertyName("nodes")]
-        public List<UnresolvedNode> Nodes { get; set; } = [];
-    }
-
-    public sealed class UnresolvedNode
-    {
-        [JsonPropertyName("name")]
-        public string? Name { get; set; }
-
-        [JsonPropertyName("bytes")]
-        public int? Bytes { get; set; }
-
-        [JsonPropertyName("children")]
-        public List<string> ChildNames { get; set; } = [];
-
-        [JsonPropertyName("references")]
-        public List<string> ReferenceNames { get; set; } = [];
     }
 }

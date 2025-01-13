@@ -2,8 +2,19 @@ namespace NetPack.Fragments;
 
 using Acornima.Ast;
 
-public class JsExternalFragment(Graph.Node root) : JsFragment(root, MakeExternalFragment(root), new Dictionary<Node, Graph.Node>(), [])
+public class JsExternalFragment : JsFragment
 {
+    private JsExternalFragment(Graph.Node root, Module ast)
+        : base(root, ast, new Dictionary<Node, Graph.Node>(), [])
+    {
+    }
+
+    public static JsFragment CreateFrom(Graph.Node node)
+    {
+        var ast = MakeExternalFragment(node);
+        return new JsExternalFragment(node, ast);
+    }
+
     private static Module MakeExternalFragment(Graph.Node root)
     {
         var name = root.FileName;

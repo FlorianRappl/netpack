@@ -392,7 +392,7 @@ public class Traverse : IDisposable
         {
             node = new Node(name, 0);
             _context.Modules.TryAdd(name, node);
-            _context.JsFragments.TryAdd(node, new JsExternalFragment(node));
+            _context.JsFragments.TryAdd(node, JsExternalFragment.CreateFrom(node));
         }
 
         parent.Children.Add(node);
