@@ -199,6 +199,16 @@ npx netpack serve src/index.html
 
 Right now this watches the file system - but it does not incrementally build nor does it hot-reload. Instead, it will just rebuild everything and reload the browser.
 
+### Supported Architectures
+
+- [ ] Windows x64 (`win-x64`)
+- [ ] Windows x86 (`win-x86`)
+- [ ] Windows ARM64 (`win-arm64`)
+- [x] Linux x64 (`linux-x64`) [npm package](https://www.npmjs.com/package/@netpack/linux-x64)
+- [ ] Linux ARM64 (`linux-arm64`)
+- [ ] MacOS x64 (`osx-x64`)
+- [x] MacOS ARM64 (`osx-arm64`) [npm package](https://www.npmjs.com/package/@netpack/osx-arm64)
+
 ## Overview
 
 The following items are features or topics that are relevant for bundlers - netpack in particular.

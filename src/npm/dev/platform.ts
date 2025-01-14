@@ -14,37 +14,37 @@ const packageDarwin_arm64 = "@netpack/osx-arm64";
 const packageDarwin_x64 = "@netpack/osx-x64";
 
 export const knownWindowsPackages: Record<string, string> = {
-  "win32 arm64 LE": "@netpack/win32-arm64",
-  "win32 ia32 LE": "@netpack/win32-ia32",
-  "win32 x64 LE": "@netpack/win32-x64",
+  // "win32 arm64 LE": "@netpack/win-arm64",
+  // "win32 ia32 LE": "@netpack/win-x86",
+  // "win32 x64 LE": "@netpack/win-x64",
 };
 
 export const knownUnixlikePackages: Record<string, string> = {
-  "aix ppc64 BE": "@netpack/aix-ppc64",
-  "android arm64 LE": "@netpack/android-arm64",
+  // "aix ppc64 BE": "@netpack/aix-ppc64",
+  // "android arm64 LE": "@netpack/android-arm64",
   "darwin arm64 LE": "@netpack/osx-arm64",
-  "darwin x64 LE": "@netpack/osx-x64",
-  "freebsd arm64 LE": "@netpack/freebsd-arm64",
-  "freebsd x64 LE": "@netpack/freebsd-x64",
-  "linux arm LE": "@netpack/linux-arm",
-  "linux arm64 LE": "@netpack/linux-arm64",
-  "linux ia32 LE": "@netpack/linux-ia32",
-  "linux mips64el LE": "@netpack/linux-mips64el",
-  "linux ppc64 LE": "@netpack/linux-ppc64",
-  "linux riscv64 LE": "@netpack/linux-riscv64",
-  "linux s390x BE": "@netpack/linux-s390x",
+  // "darwin x64 LE": "@netpack/osx-x64",
+  // "freebsd arm64 LE": "@netpack/freebsd-arm64",
+  // "freebsd x64 LE": "@netpack/freebsd-x64",
+  // "linux arm LE": "@netpack/linux-arm",
+  // "linux arm64 LE": "@netpack/linux-arm64",
+  // "linux ia32 LE": "@netpack/linux-ia32",
+  // "linux mips64el LE": "@netpack/linux-mips64el",
+  // "linux ppc64 LE": "@netpack/linux-ppc64",
+  // "linux riscv64 LE": "@netpack/linux-riscv64",
+  // "linux s390x BE": "@netpack/linux-s390x",
   "linux x64 LE": "@netpack/linux-x64",
-  "linux loong64 LE": "@netpack/linux-loong64",
-  "netbsd arm64 LE": "@netpack/netbsd-arm64",
-  "netbsd x64 LE": "@netpack/netbsd-x64",
-  "openbsd arm64 LE": "@netpack/openbsd-arm64",
-  "openbsd x64 LE": "@netpack/openbsd-x64",
-  "sunos x64 LE": "@netpack/sunos-x64",
+  // "linux loong64 LE": "@netpack/linux-loong64",
+  // "netbsd arm64 LE": "@netpack/netbsd-arm64",
+  // "netbsd x64 LE": "@netpack/netbsd-x64",
+  // "openbsd arm64 LE": "@netpack/openbsd-arm64",
+  // "openbsd x64 LE": "@netpack/openbsd-x64",
+  // "sunos x64 LE": "@netpack/sunos-x64",
 };
 
 export const knownWebAssemblyFallbackPackages: Record<string, string> = {
-  "android arm LE": "@netpack/android-arm",
-  "android x64 LE": "@netpack/android-x64",
+  // "android arm LE": "@netpack/android-arm",
+  // "android x64 LE": "@netpack/android-x64",
 };
 
 export function pkgAndSubpathForCurrentPlatform(): {
