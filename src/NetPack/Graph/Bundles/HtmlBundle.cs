@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json;
 using AngleSharp.Dom;
 using AngleSharp.Html;
+using NetPack.Json;
 
 public sealed class HtmlBundle(BundlerContext context, Graph.Node root, BundleFlags flags) : Bundle(context, root, flags)
 {

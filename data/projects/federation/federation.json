@@ -1,0 +1,10 @@
+{
+    "name": "red",
+    "shared": {
+        "react": {}
+    },
+    "exposes": {
+        "./Foo": "./src/Foo.tsx"
+    },
+    "remotes": {}
+}

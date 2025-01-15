@@ -228,6 +228,17 @@ The following items are features or topics that are relevant for bundlers - netp
 - [x] Handle JSON
 - [ ] Handle codegen
 
+### Frameworks
+
+- [ ] Angular
+- [ ] Astro
+- [x] React
+- [ ] Preact
+- [ ] Solid
+- [ ] Svelte
+- [x] Vanilla
+- [ ] Vue
+
 ### Bundler Basics
 
 - [ ] Sourcemaps

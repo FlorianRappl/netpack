@@ -1,8 +1,13 @@
 {
   "name": "netpack-dev",
   "scripts": {
-    "build": "esbuild install.ts main.ts --bundle --platform=node --outdir=../netpack/dist --external:netpack",
+    "build": "npm run build:envelope && npm run build:mf-remote",
+    "build:envelope": "esbuild install.ts main.ts --bundle --platform=node --outdir=../netpack/dist --external:netpack",
+    "build:mf-remote": "esbuild remote.ts --bundle --minify --platform=browser --format=esm --outdir=../../resources/module-federation",
     "update-version": "node update.mjs"
+  },
+  "dependencies": {
+    "@module-federation/runtime": "0.8.8"
   },
   "devDependencies": {
     "@types/node": "^22",

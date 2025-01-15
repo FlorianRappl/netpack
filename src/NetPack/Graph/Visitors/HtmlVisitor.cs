@@ -4,6 +4,7 @@ using System.Text.Json;
 using AngleSharp.Dom;
 using NetPack.Fragments;
 using NetPack.Graph.Bundles;
+using NetPack.Json;
 using static NetPack.Helpers;
 
 class HtmlVisitor(Bundle bundle, Graph.Node current, Func<Bundle?, Graph.Node, string, Task<Graph.Node?>> report, Action<string> addExternal)

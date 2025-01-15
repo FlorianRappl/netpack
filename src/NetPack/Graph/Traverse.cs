@@ -59,7 +59,18 @@ public class Traverse : IDisposable
         foreach (var entryPoint in entryPoints)
         {
             var entry = await Resolve(root, entryPoint);
-            await AddNewBundle(entry);
+            var name = Path.GetFileName(entry);
+
+            switch (name)
+            {
+                // special case - Module Federation
+                case "federation.json":
+                    await AddModuleFederation(entry);
+                    break;
+                default:
+                    await AddNewBundle(entry);
+                    break;
+            }
         }
 
         await Task.WhenAll(queue);
@@ -316,18 +327,25 @@ public class Traverse : IDisposable
         _context.CssFragments.TryAdd(current, fragment);
     }
 
-    private async Task ProcessJavaScript(Node current, byte[] bytes, Bundle bundle)
+    private Task<JsFragment> ParseJsModule(Bundle bundle, Node current, string content)
     {
-        using var stream = new MemoryStream(bytes);
-        using var reader = new StreamReader(stream);
-        var content = await reader.ReadToEndAsync();
-        var enableTsc = false;
         var parser = new JsxParser(new JsxParserOptions
         {
             Tolerant = true,
             AllowAwaitOutsideFunction = true,
             JsxAllowNamespaces = true,
         });
+        var ast = parser.ParseModule(content, current.FileName);
+        var visitor = new JsVisitor(bundle, current, InnerProcess);
+        return visitor.FindChildren(ast);
+    }
+
+    private async Task ProcessJavaScript(Node current, byte[] bytes, Bundle bundle)
+    {
+        using var stream = new MemoryStream(bytes);
+        using var reader = new StreamReader(stream);
+        var content = await reader.ReadToEndAsync();
+        var enableTsc = false;
 
         if (enableTsc && (current.FileName.EndsWith(".ts") || current.FileName.EndsWith(".tsx")))
         {
@@ -337,9 +355,7 @@ public class Traverse : IDisposable
         var newContent = content
             .Replace(": ChangeEvent<HTMLInputElement>", "") // Remove this line
             .Replace("process.env.NODE_ENV", "'production'");
-        var ast = parser.ParseModule(newContent, current.FileName);
-        var visitor = new JsVisitor(bundle, current, InnerProcess);
-        var fragment = await visitor.FindChildren(ast);
+        var fragment = await ParseJsModule(bundle, current, newContent);
         _context.JsFragments.TryAdd(current, fragment);
     }
 
@@ -353,6 +369,34 @@ public class Traverse : IDisposable
         var visitor = new HtmlVisitor(bundle, current, InnerProcess, AddExternal);
         var fragment = await visitor.FindChildren(document);
         _context.HtmlFragments.TryAdd(current, fragment);
+    }
+
+    private async Task<Node> AddModuleFederation(string entry)
+    {
+        var definition = await ModuleFederationHelpers.ReadFrom(entry);
+
+        if (definition.Shared is not null)
+        {
+            var tasks = new List<Task>();
+
+            foreach (var name in definition.Shared.Keys)
+            {
+                _context.Externals.Add(name);
+                tasks.Add(ResolveFromNodeModules(_context.Root, name));
+            }
+
+            await Task.WhenAll(tasks);
+        }
+
+        var code = await ModuleFederationHelpers.CreateContainerCode(_context, definition);
+        var fileName = Path.Combine(Path.GetDirectoryName(entry)!, definition.FileName);
+        var node = new Node(fileName, code.Length);
+        var bundle = CreateBundle(node, BundleFlags.Primary);
+        _context.Modules.TryAdd(fileName, node);
+        _context.Bundles.TryAdd(node, bundle);
+        var fragment = await ParseJsModule(bundle, node, code);
+        _context.JsFragments.TryAdd(node, fragment);
+        return node;
     }
 
     private void AddExternal(string name)

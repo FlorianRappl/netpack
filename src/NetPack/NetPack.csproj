@@ -29,10 +29,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="../web/analyzer/index.css" />
-    <EmbeddedResource Include="../web/analyzer/index.html" />
-    <EmbeddedResource Include="../web/analyzer/index.js" />
-    <EmbeddedResource Include="../web/analyzer/logo.svg" />
+    <EmbeddedResource Include="../resources/analyzer/index.css" />
+    <EmbeddedResource Include="../resources/analyzer/index.html" />
+    <EmbeddedResource Include="../resources/analyzer/index.js" />
+    <EmbeddedResource Include="../resources/analyzer/logo.svg" />
+    <EmbeddedResource Include="../resources/module-federation/remote.js" />
   </ItemGroup>
 
 </Project>
