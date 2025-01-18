@@ -16,6 +16,8 @@ public sealed class BundlerContext(string root)
 
     public ConcurrentDictionary<string, Node> Modules = [];
 
+    public ConcurrentDictionary<string, string> Aliases = [];
+
     public ConcurrentBag<string> Externals = [];
 
     public ConcurrentBag<string> Shared = [];

@@ -29,7 +29,7 @@ static class ModuleFederationHelpers
             .Replace("__share_strategy__", GetString(details.ShareStrategy))
             .Replace("__exposes__", GetObject(details.Exposes?.Select(m => $"[{GetString(m.Key)}]: () => import({GetString(m.Value)})") ?? []))
             .Replace("__remotes__", GetArray(details.Remotes?.Select(m => $"{{ alias: {GetString(m.Key)}, name: {GetString(m.Value.Name)}, entry: {GetString(m.Value.Entry)}, type: {GetString(m.Value.Entry)} }}") ?? []))
-            .Replace("__shared__", GetObject(details.Shared?.Select(m => $"[{GetString(m.Key)}]: {{ version: {GetString(GetDependencyVersion(m.Key, context))}, scope: {GetString(m.Value.ShareScope)}, lib: () => import({GetString(m.Key)}), shareConfig: {{ singleton: {GetString(m.Value.IsSingleton)}, requiredVersion: {GetString(m.Value.RequiredVersion)} }} }}") ?? []));
+            .Replace("__shared__", GetObject(details.Shared?.Select(m => $"[{GetString(m.Key)}]: {{ version: {GetString(GetDependencyVersion(m.Key, context))}, scope: {GetString(m.Value.ShareScope)}, lib: () => import({GetString("shared:" + m.Key)}), shareConfig: {{ singleton: {GetString(m.Value.IsSingleton)}, requiredVersion: {GetString(m.Value.RequiredVersion)} }} }}") ?? []));
     }
 
     private static string GetDependencyVersion(string name, BundlerContext context)

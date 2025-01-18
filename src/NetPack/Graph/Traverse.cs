@@ -238,6 +238,11 @@ public class Traverse : IDisposable
 
     private async Task<Node?> InnerProcess(Bundle? bundle, Node parent, string name)
     {
+        if (_context.Aliases.TryGetValue(name, out var alias))
+        {
+            return await InnerProcess(bundle, parent, alias);
+        }
+
         if (_context.Externals.Contains(name))
         {
             return AddExternalReference(parent, name);
@@ -371,21 +376,24 @@ public class Traverse : IDisposable
         _context.HtmlFragments.TryAdd(current, fragment);
     }
 
+    private async Task AddModuleFederationDependency(string name)
+    {
+        var path = await ResolveFromNodeModules(_context.Root, name);
+
+        if (!string.IsNullOrEmpty(path))
+        {
+            _context.Aliases.TryAdd(name, "..."); //TODO virtual module here
+            _context.Aliases.TryAdd($"shared:{name}", path);
+        }
+    }
+
     private async Task<Node> AddModuleFederation(string entry)
     {
         var definition = await ModuleFederationHelpers.ReadFrom(entry);
 
-        if (definition.Shared is not null)
+        if (definition.Shared is not null && definition.Shared.Count > 0)
         {
-            var tasks = new List<Task>();
-
-            foreach (var name in definition.Shared.Keys)
-            {
-                _context.Externals.Add(name);
-                tasks.Add(ResolveFromNodeModules(_context.Root, name));
-            }
-
-            await Task.WhenAll(tasks);
+            await Task.WhenAll(definition.Shared.Keys.Select(AddModuleFederationDependency));
         }
 
         var code = await ModuleFederationHelpers.CreateContainerCode(_context, definition);
