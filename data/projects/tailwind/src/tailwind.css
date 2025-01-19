@@ -1,0 +1,53 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+@tailwind variants;
+
+.App-logo {
+  width: 300px;
+}
+
+.card.state-1 {
+  opacity: 1;
+  transform: scale(1.0);
+  transition: opacity 350ms, transform 350ms;
+}
+
+.card.state-1:hover {
+  opacity: .75;
+  transform: scale(1.025);
+  transition: opacity 350ms, transform 350ms;
+}
+
+.state-2.enter {
+  opacity: 0;
+  transform: scale(0.9);
+}
+
+.state-2.enter-active {
+  opacity: 1;
+  transform: translateX(0);
+  transition: opacity 350ms, transform 350ms;
+}
+
+.state-2.enter-active p,
+.state-2.enter-active h3 {
+  color: blue;
+  transition: color 350ms;
+}
+
+.state-2.exit-active p,
+.state-2.exit-active h3 {
+  color: red;
+  transition: color 350ms;
+}
+
+.state-2.exit {
+  opacity: 1;
+}
+
+.state-2.exit-active {
+  opacity: 0;
+  transform: scale(0.9);
+  transition: opacity 350ms, transform 350ms;
+}

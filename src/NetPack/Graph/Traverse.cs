@@ -44,7 +44,7 @@ public class Traverse(string root, FeatureFlags features) : IDisposable
 
     private async Task<string> TranspilePostCss(string content, string file)
     {
-        var result = await _njs.RunCommand("postCss", content, file);
+        var result = await _njs.RunCommand("postcss", content, file);
         var sass = result.Deserialize(SourceGenerationContext.Default.SassCommandResult);
         return sass?.Css ?? "";
     }
@@ -62,21 +62,22 @@ public class Traverse(string root, FeatureFlags features) : IDisposable
     public static async Task<Traverse> From(string path, IEnumerable<string> externals, IEnumerable<string> shared)
     {
         var root = Path.GetDirectoryName(path)!;
-        var features = await FindFeatures(root);
-        var traverse = new Traverse(root, features);
+        var packageRoot = FindRoot(root);
+        var features = await FindFeatures(packageRoot);
+        var traverse = new Traverse(packageRoot ?? root, features);
         traverse.Context.Externals = [.. externals, .. shared];
         traverse.Context.Shared = [.. shared];
-        await traverse.Run(root, [path, .. shared]);
+        await traverse.Run([path, .. shared]);
         return traverse;
     }
 
-    private async Task Run(string root, params IEnumerable<string> entryPoints)
+    private async Task Run(params IEnumerable<string> entryPoints)
     {
         var queue = new List<Task>();
 
         foreach (var entryPoint in entryPoints)
         {
-            var entry = await Resolve(root, entryPoint);
+            var entry = await Resolve(_context.Root, entryPoint);
             var name = Path.GetFileName(entry);
 
             switch (name)
@@ -143,14 +144,34 @@ public class Traverse(string root, FeatureFlags features) : IDisposable
         }
     }
 
-    private static async Task<FeatureFlags> FindFeatures(string root)
+    private static string? FindRoot(string root)
     {
         var files = Directory.GetFiles(root);
         var packageJsonPath = Path.Combine(root, "package.json");
 
         if (files.Contains(packageJsonPath))
         {
-            var features = FeatureFlags.None;
+            return root;
+        }
+
+        var parent = Directory.GetParent(root)?.FullName;
+
+        if (parent is not null && parent != root)
+        {
+            return FindRoot(parent);
+        }
+
+        return null;
+    }
+
+    private static async Task<FeatureFlags> FindFeatures(string? root)
+    {
+        var features = FeatureFlags.None;
+
+        if (root is not null)
+        {
+            var files = Directory.GetFiles(root);
+            var packageJsonPath = Path.Combine(root, "package.json");
             var postCssPath = Path.Combine(root, "postcss.config.js");
             using var packageJson = File.OpenRead(packageJsonPath);
             var jsonDoc = await JsonDocument.ParseAsync(packageJson);
@@ -183,18 +204,9 @@ public class Traverse(string root, FeatureFlags features) : IDisposable
             {
                 Inspect(devDependencies);
             }
-
-            return features;
         }
 
-        var parent = Directory.GetParent(root)?.FullName;
-
-        if (parent is not null && parent != root)
-        {
-            return await FindFeatures(parent);
-        }
-
-        return FeatureFlags.None;
+        return features;
     }
 
     private async Task<string> Resolve(string dir, string name)
@@ -345,7 +357,7 @@ public class Traverse(string root, FeatureFlags features) : IDisposable
         }
         catch (Exception err)
         {
-            Console.WriteLine("Error from {1}! {0}", err, parent.FileName);
+            Console.WriteLine("Error from '{0}': {1}", parent.FileName, err.Message);
             return null;
         }
     }

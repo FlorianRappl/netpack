@@ -30,8 +30,12 @@ public sealed class JsBundle(BundlerContext context, Graph.Node root, BundleFlag
         private static readonly NullLiteral _nullLiteral = new("null");
         private static readonly BooleanLiteral _trueLiteral = new(true, "true");
         private static readonly Identifier _modules = new("_modules");
+        private static readonly Identifier _exports = new("exports");
+        private static readonly Identifier _module = new("module");
         private static readonly Identifier _require = new("require");
-        private static readonly Identifier _default = new("_default");
+        private static readonly Identifier _default = new("default");
+        private static readonly Identifier __default = new("_default");
+        private static readonly Identifier ___adjModule = new("__adjModule");
         private readonly JsBundle _bundle = bundle;
         private readonly bool _optimize = optimize;
         private JsFragment? _current;
@@ -59,6 +63,7 @@ public sealed class JsBundle(BundlerContext context, Graph.Node root, BundleFlag
             body.Add(MakeModuleCache(refNames));
             body.Add(MakeModuleFunction());
             body.Add(MakeRequireFunction());
+            body.Add(MakeAdjModuleFunction());
 
             foreach (var node in exportNodes)
             {
@@ -81,6 +86,16 @@ public sealed class JsBundle(BundlerContext context, Graph.Node root, BundleFlag
                         else if (statement is not ExportDeclaration)
                         {
                             statements.Add(statement);
+                        }
+                        else if (statement is ExportNamedDeclaration decl && decl.Declaration is not null)
+                        {
+                            var identifier = GetIdentifierOf(decl.Declaration);
+
+                            if (identifier is not null)
+                            {
+                                statements.Add(decl.Declaration);
+                                statements.Add(new NonSpecialExpressionStatement(SetExport(identifier, identifier)));
+                            }
                         }
                     }
 
@@ -109,14 +124,14 @@ public sealed class JsBundle(BundlerContext context, Graph.Node root, BundleFlag
 
                     body.Add(new VariableDeclaration(VariableDeclarationKind.Const, NodeList.From(new VariableDeclarator(new ObjectExpression(
                         NodeList.From<Node>(exportNames.Select(m => m == "default" ?
-                          new ObjectProperty(PropertyKind.Property, new Identifier(m), _default, false, false, false) :
+                          new ObjectProperty(PropertyKind.Property, new Identifier(m), __default, false, false, false) :
                           new ObjectProperty(PropertyKind.Property, new Identifier(m), new Identifier(m), false, true, false)))
                     ), call))));
 
                     if (exportNames.Contains("default"))
                     {
                         offset = 1;
-                        exports.Add(new ExportDefaultDeclaration(_default));
+                        exports.Add(new ExportDefaultDeclaration(__default));
                     }
 
                     if (exportNames.Length > offset)
@@ -137,6 +152,28 @@ public sealed class JsBundle(BundlerContext context, Graph.Node root, BundleFlag
             var initial = NodeList.From<Node>(refNames.Select(name => new SpreadElement(new Identifier(name))));
             var decl = new VariableDeclarator(_modules, new ObjectExpression(initial));
             return new VariableDeclaration(VariableDeclarationKind.Const, NodeList.From([decl]));
+        }
+
+        private static FunctionDeclaration MakeAdjModuleFunction()
+        {
+            var moduleExports = new MemberExpression(_module, _exports, false, false);
+            var defaultExport = new MemberExpression(moduleExports, new Identifier("default"), false, false);
+            var defaultTest = new LogicalExpression(Acornima.Operator.LogicalAnd,
+                new LogicalExpression(Acornima.Operator.LogicalOr,
+                    new NonLogicalBinaryExpression(Acornima.Operator.StrictEquality, new NonUpdateUnaryExpression(Acornima.Operator.TypeOf, moduleExports), MakeString("object")),
+                    new NonLogicalBinaryExpression(Acornima.Operator.StrictEquality, new NonUpdateUnaryExpression(Acornima.Operator.TypeOf, moduleExports), MakeString("function"))
+                ),
+                new NonLogicalBinaryExpression(Acornima.Operator.StrictEquality, defaultExport, new Identifier("undefined"))
+            );
+            var defaultAliasDefinition = new NestedBlockStatement(NodeList.From<Statement>([
+                new NonSpecialExpressionStatement(new AssignmentExpression(Acornima.Operator.Assignment, defaultExport, moduleExports)),
+            ]));
+            var body = new FunctionBody(NodeList.From<Statement>([
+                new IfStatement(defaultTest, defaultAliasDefinition, null),
+                new ReturnStatement(moduleExports),
+            ]), false);
+            var parameters = NodeList.From<Node>([_module]);
+            return new FunctionDeclaration(___adjModule, parameters, body, false, false);
         }
 
         private static CallExpression MakeRequireCall(string name)
@@ -297,7 +334,12 @@ public sealed class JsBundle(BundlerContext context, Graph.Node root, BundleFlag
                 return new NonSpecialExpressionStatement(new SequenceExpression(sequence));
             }
 
-            return new NonSpecialExpressionStatement(new SequenceExpression(NodeList.From(node.Specifiers.Select(m => SetExport(m.Exported, m.Local)))));
+            if (node.Declaration is null)
+            {
+                return new NonSpecialExpressionStatement(new SequenceExpression(NodeList.From(node.Specifiers.Select(m => SetExport(m.Exported, m.Local)))));
+            }
+
+            return node;
         }
 
         protected override object? VisitExportDefaultDeclaration(ExportDefaultDeclaration node)
@@ -453,17 +495,33 @@ public sealed class JsBundle(BundlerContext context, Graph.Node root, BundleFlag
             return new MemberExpression(relative, new Identifier("href"), false, false);
         }
 
+        private static Identifier? GetIdentifierOf(Declaration declaration)
+        {
+            if (declaration is VariableDeclaration variable)
+            {
+                return variable.Declarations[0].Id as Identifier;
+            }
+            else if (declaration is ClassDeclaration cls)
+            {
+                return cls.Id;
+            }
+            else if (declaration is FunctionDeclaration func)
+            {
+                return func.Id;
+            }
+
+            return null;
+        }
+
         private static NonSpecialExpressionStatement WrapBody(string name, IEnumerable<Statement> statements)
         {
-            var module = new Identifier("module");
-            var exports = new Identifier("exports");
             var initial = new VariableDeclaration(VariableDeclarationKind.Const, NodeList.From([
-                new VariableDeclarator(exports, new ObjectExpression([])),
-                new VariableDeclarator(module, new ObjectExpression(NodeList.From<Node>([
-                    new ObjectProperty(PropertyKind.Property, exports, exports, false, true, false)
+                new VariableDeclarator(_exports, new ObjectExpression([])),
+                new VariableDeclarator(_module, new ObjectExpression(NodeList.From<Node>([
+                    new ObjectProperty(PropertyKind.Property, _exports, _exports, false, true, false)
                 ]))),
             ]));
-            var final = new ReturnStatement(new MemberExpression(module, exports, false, false));
+            var final = new ReturnStatement(new CallExpression(___adjModule, NodeList.From<Expression>([_module]), false));
             var content = statements.Prepend(initial).Append(final);
             var body = new FunctionBody(NodeList.From(content), false);
             var callee = new ArrowFunctionExpression([], body, false, false);

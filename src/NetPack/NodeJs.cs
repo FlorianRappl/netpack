@@ -39,9 +39,11 @@ const commands = {
     const rootpath = dirname(file);
     return less.render(content, { rootFileInfo: { filename, rootpath } });
   },
-  postCss: (content, file) => {
-    const postcss = require('postcss').default([]);
-    return postcss.process(content, { to: file, from: file });
+  postcss: (content, file, root) => {
+    const postcss = require('postcss');
+    const config = require('./postcss.config.js');
+    const instance = postcss(config.plugins);
+    return instance.process(content, { to: file, from: file });
   },
   codegen: async (file) => {
     const context = { name: file, options: {}, addDependency() {} };
@@ -56,8 +58,8 @@ rl.on('line', async (data) => {
   const result = await command(...cmd.args);
   
   if (result) {
-  	client.write(JSON.stringify(result));
-	client.write('\n');
+    client.write(JSON.stringify(result));
+    client.write('\n');
   }
 });
 ";
