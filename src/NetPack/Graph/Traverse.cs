@@ -8,26 +8,19 @@ using Acornima;
 using Acornima.Jsx;
 using AngleSharp;
 using AngleSharp.Css.Parser;
+using AngleSharp.Text;
 using NetPack.Fragments;
 using NetPack.Graph.Bundles;
 using NetPack.Graph.Visitors;
 using NetPack.Json;
 using static NetPack.Helpers;
 
-public class Traverse : IDisposable
+public class Traverse(string root, FeatureFlags features) : IDisposable
 {
-    private readonly BundlerContext _context;
-    private readonly BrowsingContext _browser;
-    private readonly ConcurrentDictionary<string, Task<Node>> _reserved;
-    private readonly NodeJs _njs;
-
-    public Traverse(string root)
-    {
-        _context = new(root);
-        _browser = new(Configuration.Default.WithCss());
-        _reserved = [];
-        _njs = new(root);
-    }
+    private readonly BundlerContext _context = new(root, features);
+    private readonly BrowsingContext _browser = new(Configuration.Default.WithCss());
+    private readonly ConcurrentDictionary<string, Task<Node>> _reserved = [];
+    private readonly NodeJs _njs = new(root);
 
     private async Task<string> TranspileTypeScript(string content, string file)
     {
@@ -38,6 +31,13 @@ public class Traverse : IDisposable
     private async Task<string> TranspileSass(string content, string file)
     {
         var result = await _njs.RunCommand("sass", content, file);
+        var sass = result.Deserialize(SourceGenerationContext.Default.SassCommandResult);
+        return sass?.Css ?? "";
+    }
+
+    private async Task<string> TranspileLess(string content, string file)
+    {
+        var result = await _njs.RunCommand("less", content, file);
         var sass = result.Deserialize(SourceGenerationContext.Default.SassCommandResult);
         return sass?.Css ?? "";
     }
@@ -62,7 +62,8 @@ public class Traverse : IDisposable
     public static async Task<Traverse> From(string path, IEnumerable<string> externals, IEnumerable<string> shared)
     {
         var root = Path.GetDirectoryName(path)!;
-        var traverse = new Traverse(root);
+        var features = await FindFeatures(root);
+        var traverse = new Traverse(root, features);
         traverse.Context.Externals = [.. externals, .. shared];
         traverse.Context.Shared = [.. shared];
         await traverse.Run(root, [path, .. shared]);
@@ -130,6 +131,7 @@ public class Traverse : IDisposable
                 bundle = new HtmlBundle(_context, root, flags);
                 return true;
             case ".js":
+            case ".codegen":
                 bundle = new JsBundle(_context, root, flags);
                 return true;
             case ".css":
@@ -139,7 +141,60 @@ public class Traverse : IDisposable
                 bundle = default;
                 return false;
         }
-        ;
+    }
+
+    private static async Task<FeatureFlags> FindFeatures(string root)
+    {
+        var files = Directory.GetFiles(root);
+        var packageJsonPath = Path.Combine(root, "package.json");
+
+        if (files.Contains(packageJsonPath))
+        {
+            var features = FeatureFlags.None;
+            var postCssPath = Path.Combine(root, "postcss.config.js");
+            using var packageJson = File.OpenRead(packageJsonPath);
+            var jsonDoc = await JsonDocument.ParseAsync(packageJson);
+            var jsonObj = jsonDoc.RootElement;
+
+            void Inspect(JsonElement element)
+            {
+                if (element.TryGetProperty("postcss", out _) && files.Contains(postCssPath))
+                {
+                    features |= FeatureFlags.PostCss;
+                }
+
+                if (element.TryGetProperty("sass", out _))
+                {
+                    features |= FeatureFlags.Sass;
+                }
+
+                if (element.TryGetProperty("less", out _))
+                {
+                    features |= FeatureFlags.Less;
+                }
+            }
+
+            if (jsonObj.TryGetProperty("dependencies", out var dependencies))
+            {
+                Inspect(dependencies);
+            }
+
+            if (jsonObj.TryGetProperty("devDependencies", out var devDependencies))
+            {
+                Inspect(devDependencies);
+            }
+
+            return features;
+        }
+
+        var parent = Directory.GetParent(root)?.FullName;
+
+        if (parent is not null && parent != root)
+        {
+            return await FindFeatures(parent);
+        }
+
+        return FeatureFlags.None;
     }
 
     private async Task<string> Resolve(string dir, string name)
@@ -302,6 +357,13 @@ public class Traverse : IDisposable
         _context.Assets.TryAdd(current, new Asset(current, current.Type, bytes, hash));
     }
 
+    private async Task ProcessCodegen(Node current, byte[] bytes, Bundle bundle)
+    {
+        var content = await TranspileCodegen(current.FileName);
+        var fragment = await ParseJsModule(bundle, current, content);
+        _context.JsFragments.TryAdd(current, fragment);
+    }
+
     private async Task ProcessJson(Node current, byte[] bytes, Bundle bundle)
     {
         if (bundle is JsBundle)
@@ -324,7 +386,9 @@ public class Traverse : IDisposable
 
     private async Task ProcessStyleSheet(Node current, byte[] bytes, Bundle bundle)
     {
-        var enableSass = true;
+        var enableSass = _context.Features.HasFlag(FeatureFlags.Sass);
+        var enableLess = _context.Features.HasFlag(FeatureFlags.Less);
+        var enablePostCss = _context.Features.HasFlag(FeatureFlags.PostCss);
 
         if (enableSass && (current.FileName.EndsWith(".scss") || current.FileName.EndsWith(".sass")))
         {
@@ -332,6 +396,24 @@ public class Traverse : IDisposable
             using var reader = new StreamReader(istream);
             var content = await reader.ReadToEndAsync();
             content = await TranspileSass(content, current.FileName);
+            bytes = Encoding.UTF8.GetBytes(content);
+        }
+
+        if (enableLess && current.FileName.EndsWith(".less"))
+        {
+            using var istream = new MemoryStream(bytes);
+            using var reader = new StreamReader(istream);
+            var content = await reader.ReadToEndAsync();
+            content = await TranspileLess(content, current.FileName);
+            bytes = Encoding.UTF8.GetBytes(content);
+        }
+
+        if (enablePostCss)
+        {
+            using var istream = new MemoryStream(bytes);
+            using var reader = new StreamReader(istream);
+            var content = await reader.ReadToEndAsync();
+            content = await TranspilePostCss(content, current.FileName);
             bytes = Encoding.UTF8.GetBytes(content);
         }
 
@@ -368,7 +450,7 @@ public class Traverse : IDisposable
         using var stream = new MemoryStream(bytes);
         using var reader = new StreamReader(stream);
         var content = await reader.ReadToEndAsync();
-        var enableTsc = false;
+        var enableTsc = _context.Features.HasFlag(FeatureFlags.TypeScript);
 
         if (enableTsc && (current.FileName.EndsWith(".ts") || current.FileName.EndsWith(".tsx")))
         {
@@ -515,6 +597,7 @@ public class Traverse : IDisposable
             ".html" => ProcessHtml(node, bytes, bundle),
             ".css" => ProcessStyleSheet(node, bytes, bundle),
             ".json" => ProcessJson(node, bytes, bundle),
+            ".codegen" => ProcessCodegen(node, bytes, bundle),
             _ => ProcessAsset(node, bytes),
         });
 

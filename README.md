@@ -222,11 +222,12 @@ The following items are features or topics that are relevant for bundlers - netp
 - [x] Handle any asset
 - [x] Handle CSS
 - [ ] Handle CSS modules
-- [ ] Handle PostCSS (incl. Tailwind)
+- [x] Handle PostCSS (incl. Tailwind)
 - [x] Handle SASS
+- [x] Handle LESS
 - [x] Handle HTML
 - [x] Handle JSON
-- [ ] Handle codegen
+- [x] Handle codegen
 
 ### Frameworks
 
@@ -254,7 +255,7 @@ The following items are features or topics that are relevant for bundlers - netp
 
 - [x] Importmap support
 - [x] Shared dependencies (`--external react react-dom`; automatically adds an importmap if HTML is used)
-- [ ] Module Federation support
+- [x] Module Federation support
 - [ ] Native Federation support
 - [ ] React Fast Refresh support
 - [ ] Custom JSX factory

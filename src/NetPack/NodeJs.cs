@@ -13,6 +13,7 @@ class NodeJs : IDisposable
 {
     private static readonly string command = @"const net = require('net');
 const { pathToFileURL } = require('url');
+const { basename, dirname } = require('path');
 const readline = require('readline/promises');
 
 const client = net.createConnection({ port: +process.argv.pop(), host: '127.0.0.1' }, () => {
@@ -31,6 +32,12 @@ const commands = {
     const sass = require('sass');
     const url = pathToFileURL(file);
     return sass.compileString(content, { url });
+  },
+  less: (content, file) => {
+    const less = require('less');
+    const filename = basename(file);
+    const rootpath = dirname(file);
+    return less.render(content, { rootFileInfo: { filename, rootpath } });
   },
   postCss: (content, file) => {
     const postcss = require('postcss').default([]);

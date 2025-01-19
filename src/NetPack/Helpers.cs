@@ -13,6 +13,8 @@ public static class Helpers
     {
         { ".json", ".json" },
         { ".webmanifest", ".json" },
+        { ".codegen", ".codegen" },
+        { ".js", ".js" },
         { ".ts", ".js" },
         { ".cts", ".js" },
         { ".mts", ".js" },
