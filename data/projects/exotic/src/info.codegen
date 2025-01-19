@@ -1,0 +1,14 @@
+const details = require('../package.json');
+
+module.exports = function() {
+  return `
+    const info = ${JSON.stringify({
+        name: details.name,
+        version: details.version,
+    })};
+
+    export default function () {
+      console.log('Hello from app!', info);
+    };
+  `;
+};
