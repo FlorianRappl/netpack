@@ -11,6 +11,7 @@ using AngleSharp.Css.Parser;
 using NetPack.Fragments;
 using NetPack.Graph.Bundles;
 using NetPack.Graph.Visitors;
+using NetPack.Json;
 using static NetPack.Helpers;
 
 public class Traverse : IDisposable
@@ -28,14 +29,30 @@ public class Traverse : IDisposable
         _njs = new(root);
     }
 
-    private Task<string> TranspileTypeScript(string content)
+    private async Task<string> TranspileTypeScript(string content, string file)
     {
-        return _njs.RunCommand("tsc", content);
+        var result = await _njs.RunCommand("tsc", content, file);
+        return result.Deserialize(SourceGenerationContext.Default.String) ?? "";
     }
 
-    private Task<string> TranspileSass(string content)
+    private async Task<string> TranspileSass(string content, string file)
     {
-        return _njs.RunCommand("sass", content);
+        var result = await _njs.RunCommand("sass", content, file);
+        var sass = result.Deserialize(SourceGenerationContext.Default.SassCommandResult);
+        return sass?.Css ?? "";
+    }
+
+    private async Task<string> TranspilePostCss(string content, string file)
+    {
+        var result = await _njs.RunCommand("postCss", content, file);
+        var sass = result.Deserialize(SourceGenerationContext.Default.SassCommandResult);
+        return sass?.Css ?? "";
+    }
+
+    private async Task<string> TranspileCodegen(string file)
+    {
+        var result = await _njs.RunCommand("codegen", file);
+        return result.Deserialize(SourceGenerationContext.Default.String) ?? "";
     }
 
     public BundlerContext Context => _context;
@@ -48,7 +65,7 @@ public class Traverse : IDisposable
         var traverse = new Traverse(root);
         traverse.Context.Externals = [.. externals, .. shared];
         traverse.Context.Shared = [.. shared];
-        await traverse.Run(root, [path, ..shared]);
+        await traverse.Run(root, [path, .. shared]);
         return traverse;
     }
 
@@ -121,7 +138,8 @@ public class Traverse : IDisposable
             default:
                 bundle = default;
                 return false;
-        };
+        }
+        ;
     }
 
     private async Task<string> Resolve(string dir, string name)
@@ -313,7 +331,7 @@ public class Traverse : IDisposable
             using var istream = new MemoryStream(bytes);
             using var reader = new StreamReader(istream);
             var content = await reader.ReadToEndAsync();
-            content = await TranspileSass(content);
+            content = await TranspileSass(content, current.FileName);
             bytes = Encoding.UTF8.GetBytes(content);
         }
 
@@ -354,7 +372,7 @@ public class Traverse : IDisposable
 
         if (enableTsc && (current.FileName.EndsWith(".ts") || current.FileName.EndsWith(".tsx")))
         {
-            content = await TranspileTypeScript(content);
+            content = await TranspileTypeScript(content, current.FileName);
         }
 
         var newContent = content

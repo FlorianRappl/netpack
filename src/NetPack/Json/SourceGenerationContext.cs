@@ -25,6 +25,8 @@ using NetPack.Graph;
 [JsonSerializable(typeof(Dictionary<string, RemoteEntry>))]
 [JsonSerializable(typeof(SharedEntry))]
 [JsonSerializable(typeof(RemoteEntry))]
+[JsonSerializable(typeof(CommandDefinition))]
+[JsonSerializable(typeof(SassCommandResult))]
 [JsonSerializable(typeof(Dictionary<string, string>))]
 [JsonSerializable(typeof(List<string>))]
 [JsonSerializable(typeof(string))]
