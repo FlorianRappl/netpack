@@ -245,21 +245,21 @@ The following items are features or topics that are relevant for bundlers - netp
 - [ ] Sourcemaps
 - [x] Minification
 - [x] DevServer with reload
-- [x] Bundle analyzer
+- [x] Bundle analyzer (start with `analyze`)
 - [ ] Image / asset variants (e.g., width/height optimized)
-- [x] Copy public assets
+- [x] Copy public assets ("public" folder below entry-HTML)
 - [x] Externals (`--external react react-dom`; works also automatically if an importmap is present)
 - [ ] True HMR (not just refresh)
 
 ### More Advanced Topics
 
 - [x] Importmap support
-- [x] Shared dependencies (`--external react react-dom`; automatically adds an importmap if HTML is used)
+- [x] Shared dependencies (`--shared react react-dom`; automatically adds an importmap if HTML is used)
 - [x] Module Federation support
 - [ ] Native Federation support
 - [ ] React Fast Refresh support
 - [ ] Custom JSX factory
-- [ ] Platforms (web, npm)
+- [ ] Platforms (web, npm, deno)
 - [ ] Tree shaking
 - [ ] Other formats (esm, cjs, systemjs, umd)
 - [ ] Presets / configuration system
@@ -270,5 +270,4 @@ Integration ideas / explorations:
 
 - [Evaluate SASS from its official lib](https://github.com/Taritsyn/LibSassHost)
 - [Port Acornima to support streaming + TypeScript](https://github.com/adams85/acornima/)
-- [Integrate Codegen natively via Node.js](https://github.com/FlorianRappl/codegen-js/)
 - [Make native Node.js module using Microsoft.JavaScript.NodeApi](https://microsoft.github.io/node-api-dotnet/)
