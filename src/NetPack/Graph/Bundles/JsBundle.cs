@@ -9,15 +9,28 @@ using Ast = NetPack.Syntax.Ast;
 using GraphNode = NetPack.Graph.Node;
 
 /// <summary>
-/// Bundles a JavaScript module graph into a single ES module. The heavy lifting
-/// is a tree rewrite (<see cref="JsxToJavaScriptTranspiler"/>) that lowers every
-/// module into a registration in a tiny runtime module cache, rewrites imports
-/// and <c>require()</c> calls to that cache, and lowers JSX to
-/// <c>React.createElement</c> calls. The result is rendered with
-/// <see cref="JsPrinter"/> — NetPack's own code generator (no Acornima).
+/// Bundles a JavaScript module graph into a single ES module.
+///
+/// Every module is lowered into a factory <c>(module, exports, require) =&gt; { … }</c>
+/// stored in a registry keyed by a compact integer id. A tiny <c>require</c>
+/// runtime instantiates modules lazily and — crucially — registers a module's
+/// <c>exports</c> object in the cache <i>before</i> running its factory, so
+/// circular dependencies observe the in-progress exports (matching CommonJS /
+/// webpack semantics) instead of <c>undefined</c>.
+///
+/// When <see cref="OutputOptions.IsReloading"/> is set (dev server) the runtime
+/// additionally exposes a <c>module.hot</c> API and a <c>globalThis.__netpack</c>
+/// entry point so individual module factories can be swapped without a full
+/// reload. In optimizing builds the whole thing is run through the
+/// <see cref="Mangler"/> and printed compactly.
 /// </summary>
 public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags flags) : Bundle(context, root, flags)
 {
+    // Runtime symbols. These live at module scope and are intentionally short;
+    // the mangler leaves module-scope names alone, so we keep them tiny here.
+    private const string Registry = JsRuntime.Registry;
+    private const string Require = JsRuntime.Require;
+
     public override async Task<Stream> CreateStream(OutputOptions options)
     {
         var content = Stringify(options);
@@ -30,12 +43,11 @@ public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags
 
     public string Stringify(OutputOptions options)
     {
-        var transpiler = new JsxToJavaScriptTranspiler(this, options.IsOptimizing);
+        var transpiler = new JsxToJavaScriptTranspiler(this, options.IsReloading);
         var ast = transpiler.Transpile();
 
         if (options.IsOptimizing)
         {
-            // Shorten local identifiers before printing compactly.
             new Mangler().Process(ast);
         }
 
@@ -45,17 +57,12 @@ public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags
 
     private static Ast.StringLiteral MakeString(string text) => new(text, text);
 
-    internal sealed class JsxToJavaScriptTranspiler(JsBundle bundle, bool optimize) : Ast.AstRewriter
+    internal sealed class JsxToJavaScriptTranspiler(JsBundle bundle, bool reloading) : Ast.AstRewriter
     {
-        private static readonly Ast.Identifier _modules = new("_modules");
-        private static readonly Ast.Identifier _exports = new("exports");
-        private static readonly Ast.Identifier _module = new("module");
-        private static readonly Ast.Identifier _require = new("require");
         private static readonly Ast.Identifier __default = new("_default");
-        private static readonly Ast.Identifier ___adjModule = new("__adjModule");
 
         private readonly JsBundle _bundle = bundle;
-        private readonly bool _optimize = optimize;
+        private readonly bool _reloading = reloading;
         private JsFragment? _current;
 
         public Ast.SourceFile Transpile()
@@ -63,217 +70,175 @@ public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags
             var context = _bundle._context;
             var fragments = context.JsFragments;
             var imports = new List<Ast.Statement>();
-            var exports = new List<Ast.Statement>();
-            var body = new List<Ast.Statement>();
-            var statements = new List<Ast.Statement>();
-            var refNames = new List<string>();
+            var registrations = new List<Ast.Node>();
+            var trailer = new List<Ast.Statement>();
             var exportNodes = _bundle.Items;
-            var referenced = context.Bundles.Values.Where(m => m.IsShared && m != _bundle && _bundle.Items.Contains(m.Root));
+            var referenced = context.Bundles.Values
+                .Where(m => m.IsShared && m != _bundle && _bundle.Items.Contains(m.Root))
+                .ToList();
 
+            var sharedNames = new List<string>();
+            var index = 0;
             foreach (var reference in referenced)
             {
-                var name = $"_{GetName(reference.Root)}";
-                var specifiers = new List<Ast.ImportSpecifierBase> { new Ast.ImportDefaultSpecifier(new Ast.Identifier(name)) };
-                imports.Add(new Ast.ImportDeclaration(specifiers, MakeString($"./{reference.GetFileName()}"), false));
-                refNames.Add(name);
+                var name = $"__s{index++}";
+                imports.Add(new Ast.ImportDeclaration(
+                    new List<Ast.ImportSpecifierBase> { new Ast.ImportDefaultSpecifier(new Ast.Identifier(name)) },
+                    MakeString($"./{reference.GetFileName()}"), false));
+                sharedNames.Add(name);
             }
-
-            body.Add(MakeModuleCache(refNames));
-            body.Add(MakeModuleFunction());
-            body.Add(MakeRequireFunction());
-            body.Add(MakeAdjModuleFunction());
 
             foreach (var node in exportNodes)
             {
-                if (fragments.TryGetValue(node, out var fragment))
+                if (!fragments.TryGetValue(node, out var fragment))
                 {
-                    _current = fragment;
+                    continue;
+                }
 
-                    var ast = (Ast.SourceFile)Visit(fragment.Ast)!;
+                _current = fragment;
+                var ast = (Ast.SourceFile)Visit(fragment.Ast)!;
+                var body = new List<Ast.Statement>();
 
-                    foreach (var statement in ast.Body)
+                foreach (var statement in ast.Body)
+                {
+                    if (statement is Ast.EmptyStatement || statement is Ast.TypeOnlyDeclaration)
                     {
-                        if (statement is Ast.EmptyStatement || statement is Ast.TypeOnlyDeclaration)
+                        // erased
+                    }
+                    else if (statement is Ast.ImportDeclaration)
+                    {
+                        // Hoist real ESM imports (e.g. externals) to the bundle top;
+                        // factories close over them.
+                        imports.Add(statement);
+                    }
+                    else if (statement is Ast.ExportNamedDeclaration decl && decl.Declaration is not null)
+                    {
+                        var identifier = GetIdentifierOf(decl.Declaration);
+                        if (identifier is not null)
                         {
-                            // ignore
-                        }
-                        else if (statement is Ast.ImportDeclaration)
-                        {
-                            imports.Add(statement);
-                        }
-                        else if (statement is Ast.ExportNamedDeclaration decl && decl.Declaration is not null)
-                        {
-                            var identifier = GetIdentifierOf(decl.Declaration);
-
-                            if (identifier is not null)
-                            {
-                                statements.Add(decl.Declaration);
-                                statements.Add(new Ast.ExpressionStatement(SetExport(new Ast.Identifier(identifier.Name), new Ast.Identifier(identifier.Name))));
-                            }
-                        }
-                        else if (!IsExportDeclaration(statement))
-                        {
-                            statements.Add(statement);
+                            body.Add(decl.Declaration);
+                            body.Add(new Ast.ExpressionStatement(SetExport(new Ast.Identifier(identifier.Name), new Ast.Identifier(identifier.Name))));
                         }
                     }
-
-                    body.Add(WrapBody(GetName(node), statements));
-                    statements.Clear();
+                    else if (!IsExportDeclaration(statement))
+                    {
+                        body.Add(statement);
+                    }
                 }
+
+                var id = GetId(node);
+                var factory = MakeFactoryArrow(body);
+
+                if (_reloading)
+                {
+                    // Capture the pre-mangle factory source so the dev server can
+                    // diff and hot-swap this module later.
+                    _bundle._context.ModuleFactories[id] = JsPrinter.Print(factory, PrinterOptions.Pretty);
+                }
+
+                registrations.Add(new Ast.Property(IdLiteral(id), factory, Ast.PropertyKind.Init, computed: false, shorthand: false, method: false));
             }
+
+            // const __m = { 0: (module, exports, require) => { … }, 1: … };
+            var registry = new Ast.VariableStatement(Ast.VariableKind.Const, new List<Ast.VariableDeclarator>
+            {
+                new Ast.VariableDeclarator(new Ast.Identifier(Registry), new Ast.ObjectExpression(registrations)),
+            });
 
             if (_bundle.IsShared)
             {
-                exports.Add(new Ast.ExportDefaultDeclaration(_modules));
+                trailer.Add(new Ast.ExportDefaultDeclaration(new Ast.Identifier(Registry)));
             }
-            else if (fragments.TryGetValue(_bundle.Root, out var fragment))
+            else if (fragments.TryGetValue(_bundle.Root, out var rootFragment))
             {
-                var name = GetName(fragment.Root);
-                var call = MakeRequireCall(name);
-                var exportNames = fragment.ExportNames;
-
-                if (exportNames.Length == 0)
-                {
-                    exports.Add(new Ast.ExportDefaultDeclaration(call));
-                }
-                else
-                {
-                    var offset = 0;
-                    var properties = new List<Ast.Node>();
-
-                    foreach (var m in exportNames)
-                    {
-                        properties.Add(m == "default"
-                            ? new Ast.Property(new Ast.Identifier(m), __default, Ast.PropertyKind.Init, false, false, false)
-                            : new Ast.Property(new Ast.Identifier(m), new Ast.Identifier(m), Ast.PropertyKind.Init, false, true, false));
-                    }
-
-                    body.Add(new Ast.VariableStatement(Ast.VariableKind.Const, new List<Ast.VariableDeclarator>
-                    {
-                        new Ast.VariableDeclarator(new Ast.ObjectExpression(properties), call),
-                    }));
-
-                    if (exportNames.Contains("default"))
-                    {
-                        offset = 1;
-                        exports.Add(new Ast.ExportDefaultDeclaration(__default));
-                    }
-
-                    if (exportNames.Length > offset)
-                    {
-                        var names = exportNames
-                            .Where(m => m != "default")
-                            .Select(m => new Ast.ExportSpecifier(new Ast.Identifier(m), new Ast.Identifier(m), false))
-                            .ToList();
-                        exports.Add(new Ast.ExportNamedDeclaration(null, names, null, false));
-                    }
-                }
+                BuildRootExports(rootFragment, trailer);
             }
 
-            var all = new List<Ast.Statement>(imports.Count + body.Count + exports.Count);
+            var runtime = BuildRuntime(sharedNames);
+
+            var all = new List<Ast.Statement>(imports.Count + 1 + runtime.Count + trailer.Count);
             all.AddRange(imports);
-            all.AddRange(body);
-            all.AddRange(exports);
+            all.Add(registry);
+            all.AddRange(runtime);
+            all.AddRange(trailer);
             return new Ast.SourceFile(_bundle.Root.FileName, all, System.Array.Empty<Diagnostic>());
         }
 
-        private static string GetName(GraphNode node) => node.FileName.GetHashCode().ToString("x");
+        private int GetId(GraphNode node) => _bundle._context.GetModuleId(node);
+
+        private static Ast.NumericLiteral IdLiteral(int id) => new(id.ToString(System.Globalization.CultureInfo.InvariantCulture));
 
         private static bool IsExportDeclaration(Ast.Statement statement)
             => statement is Ast.ExportNamedDeclaration or Ast.ExportDefaultDeclaration or Ast.ExportAllDeclaration;
 
-        // -- runtime module-system builders --------------------------------
+        // -- registry + runtime --------------------------------------------
 
-        private static Ast.VariableStatement MakeModuleCache(IEnumerable<string> refNames)
+        private static Ast.ArrowFunctionExpression MakeFactoryArrow(List<Ast.Statement> body)
         {
-            var initial = refNames.Select(name => (Ast.Node)new Ast.SpreadElement(new Ast.Identifier(name))).ToList();
-            var decl = new Ast.VariableDeclarator(_modules, new Ast.ObjectExpression(initial));
-            return new Ast.VariableStatement(Ast.VariableKind.Const, new List<Ast.VariableDeclarator> { decl });
+            var parameters = new List<Ast.Parameter>
+            {
+                Param(new Ast.Identifier("module")),
+                Param(new Ast.Identifier("exports")),
+                Param(new Ast.Identifier("require")),
+            };
+            return new Ast.ArrowFunctionExpression(parameters, new Ast.BlockStatement(body), false);
         }
 
-        private static Ast.FunctionDeclaration MakeAdjModuleFunction()
+        /// <summary>Builds the runtime prelude by writing it as ordinary JS and
+        /// parsing it, so the printer and mangler treat it like any other code
+        /// (its locals get shortened; the module-scope <c>__r</c>/<c>__m</c> stay).</summary>
+        private List<Ast.Statement> BuildRuntime(IReadOnlyList<string> sharedNames)
         {
-            var moduleExports = new Ast.MemberExpression(_module, _exports, false, false);
-            var defaultExport = new Ast.MemberExpression(moduleExports, new Ast.Identifier("default"), false, false);
-            var defaultTest = new Ast.LogicalExpression(TokenKind.AmpersandAmpersand,
-                new Ast.LogicalExpression(TokenKind.BarBar,
-                    new Ast.BinaryExpression(TokenKind.EqualsEqualsEquals, new Ast.UnaryExpression(TokenKind.TypeOfKeyword, moduleExports), MakeString("object")),
-                    new Ast.BinaryExpression(TokenKind.EqualsEqualsEquals, new Ast.UnaryExpression(TokenKind.TypeOfKeyword, moduleExports), MakeString("function"))
-                ),
-                new Ast.BinaryExpression(TokenKind.EqualsEqualsEquals, defaultExport, new Ast.Identifier("undefined"))
-            );
-            var defaultAliasDefinition = new Ast.BlockStatement(new List<Ast.Statement>
+            var source = JsRuntime.Build(_bundle.IsShared, sharedNames, _reloading);
+            if (source.Length == 0)
             {
-                new Ast.ExpressionStatement(new Ast.AssignmentExpression(TokenKind.Equals, defaultExport, moduleExports)),
-            });
-            var body = new Ast.BlockStatement(new List<Ast.Statement>
-            {
-                new Ast.IfStatement(defaultTest, defaultAliasDefinition, null),
-                new Ast.ReturnStatement(moduleExports),
-            });
-            return new Ast.FunctionDeclaration(___adjModule, new List<Ast.Parameter> { Param(_module) }, body, false, false);
+                return new List<Ast.Statement>();
+            }
+            var options = new ParserOptions { Tolerant = true, Jsx = false, TypeScript = false };
+            var module = Parser.ParseModule(source, "netpack:runtime", options);
+            return new List<Ast.Statement>(module.Body);
         }
 
-        private static Ast.CallExpression MakeRequireCall(string name)
-            => new(_require, new List<Ast.Expression> { MakeString(name) }, false);
-
-        private static Ast.FunctionDeclaration MakeRequireFunction()
+        private void BuildRootExports(JsFragment fragment, List<Ast.Statement> trailer)
         {
-            var name = new Ast.Identifier("name");
-            var body = new Ast.BlockStatement(new List<Ast.Statement>
-            {
-                new Ast.ReturnStatement(new Ast.CallExpression(new Ast.MemberExpression(_modules, name, true, false), new List<Ast.Expression>(), false)),
-            });
-            return new Ast.FunctionDeclaration(_require, new List<Ast.Parameter> { Param(name) }, body, false, false);
-        }
+            var id = GetId(fragment.Root);
+            var call = new Ast.CallExpression(new Ast.Identifier(Require), new List<Ast.Expression> { IdLiteral(id) }, false);
+            var exportNames = fragment.ExportNames;
 
-        private static Ast.FunctionDeclaration MakeModuleFunction()
-        {
-            var name = new Ast.Identifier("name");
-            var evalBody = new Ast.BlockStatement(new List<Ast.Statement>
+            if (exportNames.Length == 0)
             {
-                new Ast.ExpressionStatement(new Ast.AssignmentExpression(TokenKind.Equals, new Ast.Identifier("done"), new Ast.BooleanLiteral(true))),
-                new Ast.ExpressionStatement(new Ast.AssignmentExpression(TokenKind.Equals, new Ast.Identifier("result"),
-                    new Ast.CallExpression(new Ast.Identifier("run"), new List<Ast.Expression>(), false))),
-            });
-            var notDone = new Ast.UnaryExpression(TokenKind.Exclamation, new Ast.Identifier("done"));
-            var innerBody = new Ast.BlockStatement(new List<Ast.Statement>
-            {
-                new Ast.IfStatement(notDone, evalBody, null),
-                new Ast.ReturnStatement(new Ast.Identifier("result")),
-            });
-            var arrow = new Ast.ArrowFunctionExpression(new List<Ast.Parameter>(), innerBody, false);
-            var body = new Ast.BlockStatement(new List<Ast.Statement>
-            {
-                new Ast.VariableStatement(Ast.VariableKind.Let, new List<Ast.VariableDeclarator>
-                {
-                    new Ast.VariableDeclarator(new Ast.Identifier("result"), null),
-                    new Ast.VariableDeclarator(new Ast.Identifier("done"), null),
-                }),
-                new Ast.ExpressionStatement(new Ast.AssignmentExpression(TokenKind.Equals,
-                    new Ast.MemberExpression(_modules, name, true, false), arrow)),
-            });
-            return new Ast.FunctionDeclaration(new Ast.Identifier("addModule"),
-                new List<Ast.Parameter> { Param(name), Param(new Ast.Identifier("run")) }, body, false, false);
-        }
+                trailer.Add(new Ast.ExportDefaultDeclaration(call));
+                return;
+            }
 
-        private static Ast.ExpressionStatement WrapBody(string name, IEnumerable<Ast.Statement> statements)
-        {
-            var initial = new Ast.VariableStatement(Ast.VariableKind.Const, new List<Ast.VariableDeclarator>
+            var offset = 0;
+            var properties = new List<Ast.Node>();
+            foreach (var m in exportNames)
             {
-                new Ast.VariableDeclarator(_exports, new Ast.ObjectExpression(new List<Ast.Node>())),
-                new Ast.VariableDeclarator(_module, new Ast.ObjectExpression(new List<Ast.Node>
-                {
-                    new Ast.Property(_exports, _exports, Ast.PropertyKind.Init, false, true, false),
-                })),
-            });
-            var final = new Ast.ReturnStatement(new Ast.CallExpression(___adjModule, new List<Ast.Expression> { _module }, false));
-            var content = new List<Ast.Statement> { initial };
-            content.AddRange(statements);
-            content.Add(final);
-            var callee = new Ast.ArrowFunctionExpression(new List<Ast.Parameter>(), new Ast.BlockStatement(content), false);
-            var call = new Ast.CallExpression(new Ast.Identifier("addModule"), new List<Ast.Expression> { MakeString(name), callee }, false);
-            return new Ast.ExpressionStatement(call);
+                properties.Add(m == "default"
+                    ? new Ast.Property(new Ast.Identifier(m), __default, Ast.PropertyKind.Init, false, false, false)
+                    : new Ast.Property(new Ast.Identifier(m), new Ast.Identifier(m), Ast.PropertyKind.Init, false, true, false));
+            }
+
+            trailer.Add(new Ast.VariableStatement(Ast.VariableKind.Const, new List<Ast.VariableDeclarator>
+            {
+                new Ast.VariableDeclarator(new Ast.ObjectExpression(properties), call),
+            }));
+
+            if (exportNames.Contains("default"))
+            {
+                offset = 1;
+                trailer.Add(new Ast.ExportDefaultDeclaration(__default));
+            }
+
+            if (exportNames.Length > offset)
+            {
+                var names = exportNames
+                    .Where(m => m != "default")
+                    .Select(m => new Ast.ExportSpecifier(new Ast.Identifier(m), new Ast.Identifier(m), false))
+                    .ToList();
+                trailer.Add(new Ast.ExportNamedDeclaration(null, names, null, false));
+            }
         }
 
         private static Ast.Parameter Param(Ast.Identifier id) => new(id, null, false);
@@ -334,7 +299,7 @@ public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags
 
                 var properties = new List<Ast.Node>();
                 var decls = new List<Ast.VariableDeclarator>();
-                Ast.Expression init = MakeRequireCall(GetName(reference));
+                Ast.Expression init = RequireCall(GetId(reference));
 
                 foreach (var spec in node.Specifiers)
                 {
@@ -378,7 +343,7 @@ public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags
         {
             if (_current?.Replacements.TryGetValue(node, out var reference) ?? false)
             {
-                var payload = MakeRequireCall(GetName(reference));
+                var payload = RequireCall(GetId(reference));
                 var objectAssign = new Ast.MemberExpression(new Ast.Identifier("Object"), new Ast.Identifier("assign"), false, false);
                 var call = new Ast.CallExpression(objectAssign, new List<Ast.Expression> { new Ast.Identifier("exports"), payload }, false);
                 return new Ast.ExpressionStatement(call);
@@ -391,7 +356,7 @@ public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags
         {
             if (_current?.Replacements.TryGetValue(node, out var reference) ?? false)
             {
-                var require = MakeRequireCall(GetName(reference));
+                var require = RequireCall(GetId(reference));
                 var specs = node.Specifiers.Select(m => (Ast.Expression)SetExport(
                     AsExpression(m.Exported),
                     new Ast.MemberExpression(require, m.Local, m.Local is Ast.StringLiteral, false))).ToList();
@@ -448,6 +413,9 @@ public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags
             }
         }
 
+        private static Ast.CallExpression RequireCall(int id)
+            => new(new Ast.Identifier("require"), new List<Ast.Expression> { IdLiteral(id) }, false);
+
         private static Ast.MemberExpression MakeAutoReference(string reference)
         {
             var import = new Ast.Identifier("import");
@@ -469,8 +437,7 @@ public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags
                     return MakeAutoReference(file);
                 }
 
-                var name = GetName(reference);
-                return new Ast.CallExpression(node.Callee, new List<Ast.Expression> { MakeString(name) }, false);
+                return new Ast.CallExpression(node.Callee, new List<Ast.Expression> { IdLiteral(GetId(reference)) }, false);
             }
 
             return base.VisitCallExpression(node);

@@ -94,6 +94,18 @@ source ──Tokenizer──▶ tokens ──Parser──▶ AST (SourceFile)
   `export enum`.
 - **Acornima removed**: `Traverse`, `JsVisitor`, `JsBundle`, `JsFragment` and
   `JsExternalFragment` all run on this module; the package references are gone.
+- **Optimized bundle runtime** (`JsBundle` / `JsRuntime`): modules become
+  `(module, exports, require) => { … }` factories in a compact registry keyed by
+  small integer ids (`BundlerContext.GetModuleId`). A cache-before-run `require`
+  gives correct circular-dependency semantics; ESM/CJS default interop is inlined.
+- **Working hot-module replacement** (dev server): stable module ids across
+  recompiles (`ModuleIdMap`), a dependency-graph-aware runtime that records
+  importers and bubbles a changed module up to the nearest `module.hot.accept`
+  boundary (re-running it, running dispose handlers, transferring `hot.data`),
+  and a full-reload fallback. The dev server diffs each module's factory source
+  between compiles and pushes only the changed factories over SSE; the injected
+  client applies them via `globalThis.__netpack.apply`. Non-JS changes and
+  module add/remove fall back to a reload.
 
 ## Next (opportunities)
 

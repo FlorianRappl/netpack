@@ -10,9 +10,13 @@ using NetPack.Json;
 
 static class LiveServer
 {
-    public static WebApplication Create<T>(string address, FileWatcher<T> watcher)
+    public static WebApplication Create<T>(string address, FileWatcher<T> watcher, Func<string>? message = null)
         where T : IFileLocator
     {
+        // Default behaviour (used by the analyzer): a plain change event that the
+        // client turns into a full reload.
+        message ??= static () => "event: change\ndata: {}\n\n";
+
         var builder = WebApplication.CreateSlimBuilder();
 
         builder.Logging.SetMinimumLevel(LogLevel.Warning);
@@ -37,8 +41,7 @@ static class LiveServer
             while (!ct.IsCancellationRequested)
             {
                 await Task.WhenAny(watcher.Next, cancel.Task);
-                await ctx.Response.WriteAsync("event: change\n", ct);
-                await ctx.Response.WriteAsync("data: {}\n\n", ct);
+                await ctx.Response.WriteAsync(message(), ct);
                 await ctx.Response.Body.FlushAsync(ct);
             }
         });

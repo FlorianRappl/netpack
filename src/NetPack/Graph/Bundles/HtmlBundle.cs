@@ -8,6 +8,16 @@ using NetPack.Json;
 
 public sealed class HtmlBundle(BundlerContext context, Graph.Node root, BundleFlags flags) : Bundle(context, root, flags)
 {
+    // Dev-server client: listens for hot updates and applies them through the
+    // bundle's HMR runtime (globalThis.__netpack), falling back to a full reload
+    // when an update cannot be applied or the runtime is unavailable.
+    private const string HmrClient =
+        "(function(){var s=new EventSource('/netpack');function r(){location.reload();}" +
+        "s.addEventListener('reload',r);s.addEventListener('change',r);" +
+        "s.addEventListener('update',function(e){try{var n=globalThis.__netpack;if(!n)return r();" +
+        "var p=JSON.parse(e.data);n.apply(p.m.map(function(u){return{id:u.i,factory:(0,eval)('('+u.c+')')};}));}" +
+        "catch(err){r();}});})();";
+
     public override Task<Stream> CreateStream(OutputOptions options)
     {
         var src = new MemoryStream();

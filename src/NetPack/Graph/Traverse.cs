@@ -14,9 +14,9 @@ using NetPack.Json;
 using NetPack.Syntax;
 using static NetPack.Helpers;
 
-public class Traverse(string root, FeatureFlags features) : IDisposable
+public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds = null) : IDisposable
 {
-    private readonly BundlerContext _context = new(root, features);
+    private readonly BundlerContext _context = new(root, features, moduleIds);
     private readonly BrowsingContext _browser = new(Configuration.Default.WithCss());
     private readonly ConcurrentDictionary<string, Task<Node>> _reserved = [];
     private readonly NodeJs _njs = new(root);
@@ -58,12 +58,12 @@ public class Traverse(string root, FeatureFlags features) : IDisposable
 
     public static Task<Traverse> From(string path) => From(path, [], []);
 
-    public static async Task<Traverse> From(string path, IEnumerable<string> externals, IEnumerable<string> shared)
+    public static async Task<Traverse> From(string path, IEnumerable<string> externals, IEnumerable<string> shared, ModuleIdMap? moduleIds = null)
     {
         var root = Path.GetDirectoryName(path)!;
         var packageRoot = FindRoot(root);
         var features = await FindFeatures(packageRoot);
-        var traverse = new Traverse(packageRoot ?? root, features);
+        var traverse = new Traverse(packageRoot ?? root, features, moduleIds);
         traverse.Context.Externals = [.. externals, .. shared];
         traverse.Context.Shared = [.. shared];
         await traverse.Run([path, .. shared]);
