@@ -4,8 +4,6 @@ using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using System.Text.Json;
-using Acornima;
-using Acornima.Jsx;
 using AngleSharp;
 using AngleSharp.Css.Parser;
 using AngleSharp.Text;
@@ -13,6 +11,7 @@ using NetPack.Fragments;
 using NetPack.Graph.Bundles;
 using NetPack.Graph.Visitors;
 using NetPack.Json;
+using NetPack.Syntax;
 using static NetPack.Helpers;
 
 public class Traverse(string root, FeatureFlags features) : IDisposable
@@ -383,9 +382,8 @@ public class Traverse(string root, FeatureFlags features) : IDisposable
             using var stream = new MemoryStream(bytes);
             using var reader = new StreamReader(stream);
             var content = await reader.ReadToEndAsync();
-            var parser = new JsxParser();
             var newContent = $"export default ({content})";
-            var ast = parser.ParseModule(newContent, current.FileName);
+            var ast = Parser.ParseModule(newContent, current.FileName, ParserOptions.ForFile(current.FileName));
             var visitor = new JsVisitor(bundle, current, InnerProcess);
             var fragment = await visitor.FindChildren(ast);
             _context.JsFragments.TryAdd(current, fragment);
@@ -446,13 +444,8 @@ public class Traverse(string root, FeatureFlags features) : IDisposable
 
     private Task<JsFragment> ParseJsModule(Bundle bundle, Node current, string content)
     {
-        var parser = new JsxParser(new JsxParserOptions
-        {
-            Tolerant = true,
-            AllowAwaitOutsideFunction = true,
-            JsxAllowNamespaces = true,
-        });
-        var ast = parser.ParseModule(content, current.FileName);
+        var options = ParserOptions.ForFile(current.FileName);
+        var ast = Parser.ParseModule(content, current.FileName, options);
         var visitor = new JsVisitor(bundle, current, InnerProcess);
         return visitor.FindChildren(ast);
     }

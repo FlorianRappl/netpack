@@ -1,14 +1,21 @@
 namespace NetPack.Fragments;
 
-using NetPack.Graph;
+using NetPack.Syntax.Ast;
+using GraphNode = NetPack.Graph.Node;
 
-public class JsFragment(Node root, Acornima.Ast.Module ast, IDictionary<Acornima.Ast.Node, Node> replacements, string[] exportNames)
+/// <summary>
+/// The parsed representation of a JavaScript/TypeScript module: its NetPack AST,
+/// the collected export names, and the map from reference-bearing AST nodes
+/// (imports, requires, dynamic imports) to the graph nodes they resolve to.
+/// </summary>
+public class JsFragment(GraphNode root, SourceFile ast, IDictionary<Node, GraphNode> replacements, string[] exportNames)
 {
-    public Node Root => root;
-    
-    public Acornima.Ast.Module Ast => ast;
+    public GraphNode Root => root;
 
-    public IDictionary<Acornima.Ast.Node, Node> Replacements => replacements;
+    public SourceFile Ast => ast;
+
+    /// <summary>Maps an AST node (import/require/dynamic-import) to the resolved graph node.</summary>
+    public IDictionary<Node, GraphNode> Replacements => replacements;
 
     public string[] ExportNames => exportNames;
 }

@@ -5,6 +5,8 @@ VisualStudioVersion = 17.5.002.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NetPack", "NetPack\NetPack.csproj", "{BE9F0181-3633-4EB4-B7D5-94C7F5E612BA}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NetPack.Tests", "NetPack.Tests\NetPack.Tests.csproj", "{C3D8B2A1-7F4E-4A2B-9C1D-2E5F6A7B8C90}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{BE9F0181-3633-4EB4-B7D5-94C7F5E612BA}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{BE9F0181-3633-4EB4-B7D5-94C7F5E612BA}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{BE9F0181-3633-4EB4-B7D5-94C7F5E612BA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C3D8B2A1-7F4E-4A2B-9C1D-2E5F6A7B8C90}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C3D8B2A1-7F4E-4A2B-9C1D-2E5F6A7B8C90}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C3D8B2A1-7F4E-4A2B-9C1D-2E5F6A7B8C90}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C3D8B2A1-7F4E-4A2B-9C1D-2E5F6A7B8C90}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

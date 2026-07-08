@@ -1,12 +1,22 @@
 namespace NetPack.Graph.Bundles;
 
 using System.Text;
-using Acornima.Ast;
-using Acornima.Jsx;
-using Acornima.Jsx.Ast;
 using NetPack.Fragments;
+using NetPack.Syntax;
+using NetPack.Syntax.Minifier;
+using NetPack.Syntax.Printer;
+using Ast = NetPack.Syntax.Ast;
+using GraphNode = NetPack.Graph.Node;
 
-public sealed class JsBundle(BundlerContext context, Graph.Node root, BundleFlags flags) : Bundle(context, root, flags)
+/// <summary>
+/// Bundles a JavaScript module graph into a single ES module. The heavy lifting
+/// is a tree rewrite (<see cref="JsxToJavaScriptTranspiler"/>) that lowers every
+/// module into a registration in a tiny runtime module cache, rewrites imports
+/// and <c>require()</c> calls to that cache, and lowers JSX to
+/// <c>React.createElement</c> calls. The result is rendered with
+/// <see cref="JsPrinter"/> — NetPack's own code generator (no Acornima).
+/// </summary>
+public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags flags) : Bundle(context, root, flags)
 {
     public override async Task<Stream> CreateStream(OutputOptions options)
     {
@@ -22,32 +32,40 @@ public sealed class JsBundle(BundlerContext context, Graph.Node root, BundleFlag
     {
         var transpiler = new JsxToJavaScriptTranspiler(this, options.IsOptimizing);
         var ast = transpiler.Transpile();
-        return ast.ToJsx();
+
+        if (options.IsOptimizing)
+        {
+            // Shorten local identifiers before printing compactly.
+            new Mangler().Process(ast);
+        }
+
+        var printerOptions = options.IsOptimizing ? PrinterOptions.Compact : PrinterOptions.Pretty;
+        return JsPrinter.Print(ast, printerOptions);
     }
 
-    internal sealed class JsxToJavaScriptTranspiler(JsBundle bundle, bool optimize) : JsxAstRewriter
+    private static Ast.StringLiteral MakeString(string text) => new(text, text);
+
+    internal sealed class JsxToJavaScriptTranspiler(JsBundle bundle, bool optimize) : Ast.AstRewriter
     {
-        private static readonly NullLiteral _nullLiteral = new("null");
-        private static readonly BooleanLiteral _trueLiteral = new(true, "true");
-        private static readonly Identifier _modules = new("_modules");
-        private static readonly Identifier _exports = new("exports");
-        private static readonly Identifier _module = new("module");
-        private static readonly Identifier _require = new("require");
-        private static readonly Identifier _default = new("default");
-        private static readonly Identifier __default = new("_default");
-        private static readonly Identifier ___adjModule = new("__adjModule");
+        private static readonly Ast.Identifier _modules = new("_modules");
+        private static readonly Ast.Identifier _exports = new("exports");
+        private static readonly Ast.Identifier _module = new("module");
+        private static readonly Ast.Identifier _require = new("require");
+        private static readonly Ast.Identifier __default = new("_default");
+        private static readonly Ast.Identifier ___adjModule = new("__adjModule");
+
         private readonly JsBundle _bundle = bundle;
         private readonly bool _optimize = optimize;
         private JsFragment? _current;
 
-        public Program Transpile()
+        public Ast.SourceFile Transpile()
         {
             var context = _bundle._context;
             var fragments = context.JsFragments;
-            var imports = new List<Statement>();
-            var exports = new List<Statement>();
-            var body = new List<Statement>();
-            var statements = new List<Statement>();
+            var imports = new List<Ast.Statement>();
+            var exports = new List<Ast.Statement>();
+            var body = new List<Ast.Statement>();
+            var statements = new List<Ast.Statement>();
             var refNames = new List<string>();
             var exportNodes = _bundle.Items;
             var referenced = context.Bundles.Values.Where(m => m.IsShared && m != _bundle && _bundle.Items.Contains(m.Root));
@@ -55,8 +73,8 @@ public sealed class JsBundle(BundlerContext context, Graph.Node root, BundleFlag
             foreach (var reference in referenced)
             {
                 var name = $"_{GetName(reference.Root)}";
-                var specifier = NodeList.From<ImportDeclarationSpecifier>([new ImportDefaultSpecifier(new Identifier(name))]);
-                imports.Add(new ImportDeclaration(specifier, MakeString($"./{reference.GetFileName()}"), []));
+                var specifiers = new List<Ast.ImportSpecifierBase> { new Ast.ImportDefaultSpecifier(new Ast.Identifier(name)) };
+                imports.Add(new Ast.ImportDeclaration(specifiers, MakeString($"./{reference.GetFileName()}"), false));
                 refNames.Add(name);
             }
 
@@ -71,31 +89,31 @@ public sealed class JsBundle(BundlerContext context, Graph.Node root, BundleFlag
                 {
                     _current = fragment;
 
-                    var ast = VisitAndConvert(fragment.Ast);
+                    var ast = (Ast.SourceFile)Visit(fragment.Ast)!;
 
                     foreach (var statement in ast.Body)
                     {
-                        if (statement is EmptyStatement)
+                        if (statement is Ast.EmptyStatement || statement is Ast.TypeOnlyDeclaration)
                         {
                             // ignore
                         }
-                        else if (statement is ImportDeclaration)
+                        else if (statement is Ast.ImportDeclaration)
                         {
                             imports.Add(statement);
                         }
-                        else if (statement is not ExportDeclaration)
-                        {
-                            statements.Add(statement);
-                        }
-                        else if (statement is ExportNamedDeclaration decl && decl.Declaration is not null)
+                        else if (statement is Ast.ExportNamedDeclaration decl && decl.Declaration is not null)
                         {
                             var identifier = GetIdentifierOf(decl.Declaration);
 
                             if (identifier is not null)
                             {
                                 statements.Add(decl.Declaration);
-                                statements.Add(new NonSpecialExpressionStatement(SetExport(identifier, identifier)));
+                                statements.Add(new Ast.ExpressionStatement(SetExport(new Ast.Identifier(identifier.Name), new Ast.Identifier(identifier.Name))));
                             }
+                        }
+                        else if (!IsExportDeclaration(statement))
+                        {
+                            statements.Add(statement);
                         }
                     }
 
@@ -106,7 +124,7 @@ public sealed class JsBundle(BundlerContext context, Graph.Node root, BundleFlag
 
             if (_bundle.IsShared)
             {
-                exports.Add(new ExportDefaultDeclaration(_modules));
+                exports.Add(new Ast.ExportDefaultDeclaration(_modules));
             }
             else if (fragments.TryGetValue(_bundle.Root, out var fragment))
             {
@@ -116,307 +134,334 @@ public sealed class JsBundle(BundlerContext context, Graph.Node root, BundleFlag
 
                 if (exportNames.Length == 0)
                 {
-                    exports.Add(new ExportDefaultDeclaration(call));
+                    exports.Add(new Ast.ExportDefaultDeclaration(call));
                 }
                 else
                 {
                     var offset = 0;
+                    var properties = new List<Ast.Node>();
 
-                    body.Add(new VariableDeclaration(VariableDeclarationKind.Const, NodeList.From(new VariableDeclarator(new ObjectExpression(
-                        NodeList.From<Node>(exportNames.Select(m => m == "default" ?
-                          new ObjectProperty(PropertyKind.Property, new Identifier(m), __default, false, false, false) :
-                          new ObjectProperty(PropertyKind.Property, new Identifier(m), new Identifier(m), false, true, false)))
-                    ), call))));
+                    foreach (var m in exportNames)
+                    {
+                        properties.Add(m == "default"
+                            ? new Ast.Property(new Ast.Identifier(m), __default, Ast.PropertyKind.Init, false, false, false)
+                            : new Ast.Property(new Ast.Identifier(m), new Ast.Identifier(m), Ast.PropertyKind.Init, false, true, false));
+                    }
+
+                    body.Add(new Ast.VariableStatement(Ast.VariableKind.Const, new List<Ast.VariableDeclarator>
+                    {
+                        new Ast.VariableDeclarator(new Ast.ObjectExpression(properties), call),
+                    }));
 
                     if (exportNames.Contains("default"))
                     {
                         offset = 1;
-                        exports.Add(new ExportDefaultDeclaration(__default));
+                        exports.Add(new Ast.ExportDefaultDeclaration(__default));
                     }
 
                     if (exportNames.Length > offset)
                     {
-                        var names = exportNames.Where(m => m != "default").Select(m => new ExportSpecifier(new Identifier(m)));
-                        exports.Add(new ExportNamedDeclaration(null, NodeList.From(names), null, []));
+                        var names = exportNames
+                            .Where(m => m != "default")
+                            .Select(m => new Ast.ExportSpecifier(new Ast.Identifier(m), new Ast.Identifier(m), false))
+                            .ToList();
+                        exports.Add(new Ast.ExportNamedDeclaration(null, names, null, false));
                     }
                 }
             }
 
-            return new Module(NodeList.From(imports.Concat(body).Concat(exports)));
+            var all = new List<Ast.Statement>(imports.Count + body.Count + exports.Count);
+            all.AddRange(imports);
+            all.AddRange(body);
+            all.AddRange(exports);
+            return new Ast.SourceFile(_bundle.Root.FileName, all, System.Array.Empty<Diagnostic>());
         }
 
-        private static string GetName(Graph.Node node) => node.FileName.GetHashCode().ToString("x");
+        private static string GetName(GraphNode node) => node.FileName.GetHashCode().ToString("x");
 
-        private static VariableDeclaration MakeModuleCache(IEnumerable<string> refNames)
+        private static bool IsExportDeclaration(Ast.Statement statement)
+            => statement is Ast.ExportNamedDeclaration or Ast.ExportDefaultDeclaration or Ast.ExportAllDeclaration;
+
+        // -- runtime module-system builders --------------------------------
+
+        private static Ast.VariableStatement MakeModuleCache(IEnumerable<string> refNames)
         {
-            var initial = NodeList.From<Node>(refNames.Select(name => new SpreadElement(new Identifier(name))));
-            var decl = new VariableDeclarator(_modules, new ObjectExpression(initial));
-            return new VariableDeclaration(VariableDeclarationKind.Const, NodeList.From([decl]));
+            var initial = refNames.Select(name => (Ast.Node)new Ast.SpreadElement(new Ast.Identifier(name))).ToList();
+            var decl = new Ast.VariableDeclarator(_modules, new Ast.ObjectExpression(initial));
+            return new Ast.VariableStatement(Ast.VariableKind.Const, new List<Ast.VariableDeclarator> { decl });
         }
 
-        private static FunctionDeclaration MakeAdjModuleFunction()
+        private static Ast.FunctionDeclaration MakeAdjModuleFunction()
         {
-            var moduleExports = new MemberExpression(_module, _exports, false, false);
-            var defaultExport = new MemberExpression(moduleExports, new Identifier("default"), false, false);
-            var defaultTest = new LogicalExpression(Acornima.Operator.LogicalAnd,
-                new LogicalExpression(Acornima.Operator.LogicalOr,
-                    new NonLogicalBinaryExpression(Acornima.Operator.StrictEquality, new NonUpdateUnaryExpression(Acornima.Operator.TypeOf, moduleExports), MakeString("object")),
-                    new NonLogicalBinaryExpression(Acornima.Operator.StrictEquality, new NonUpdateUnaryExpression(Acornima.Operator.TypeOf, moduleExports), MakeString("function"))
+            var moduleExports = new Ast.MemberExpression(_module, _exports, false, false);
+            var defaultExport = new Ast.MemberExpression(moduleExports, new Ast.Identifier("default"), false, false);
+            var defaultTest = new Ast.LogicalExpression(TokenKind.AmpersandAmpersand,
+                new Ast.LogicalExpression(TokenKind.BarBar,
+                    new Ast.BinaryExpression(TokenKind.EqualsEqualsEquals, new Ast.UnaryExpression(TokenKind.TypeOfKeyword, moduleExports), MakeString("object")),
+                    new Ast.BinaryExpression(TokenKind.EqualsEqualsEquals, new Ast.UnaryExpression(TokenKind.TypeOfKeyword, moduleExports), MakeString("function"))
                 ),
-                new NonLogicalBinaryExpression(Acornima.Operator.StrictEquality, defaultExport, new Identifier("undefined"))
+                new Ast.BinaryExpression(TokenKind.EqualsEqualsEquals, defaultExport, new Ast.Identifier("undefined"))
             );
-            var defaultAliasDefinition = new NestedBlockStatement(NodeList.From<Statement>([
-                new NonSpecialExpressionStatement(new AssignmentExpression(Acornima.Operator.Assignment, defaultExport, moduleExports)),
-            ]));
-            var body = new FunctionBody(NodeList.From<Statement>([
-                new IfStatement(defaultTest, defaultAliasDefinition, null),
-                new ReturnStatement(moduleExports),
-            ]), false);
-            var parameters = NodeList.From<Node>([_module]);
-            return new FunctionDeclaration(___adjModule, parameters, body, false, false);
-        }
-
-        private static CallExpression MakeRequireCall(string name)
-        {
-            return new CallExpression(_require, NodeList.From<Expression>(MakeString(name)), false);
-        }
-
-        private static FunctionDeclaration MakeRequireFunction()
-        {
-            var name = new Identifier("name");
-            var body = new FunctionBody(NodeList.From<Statement>([
-                new ReturnStatement(new CallExpression(new MemberExpression(_modules, name, true, false), [], false)),
-            ]), false);
-            var parameters = NodeList.From<Node>([name]);
-            return new FunctionDeclaration(_require, parameters, body, false, false);
-        }
-
-        private static FunctionDeclaration MakeModuleFunction()
-        {
-            var name = new Identifier("name");
-            var evalBody = new NestedBlockStatement(NodeList.From<Statement>([
-                new NonSpecialExpressionStatement(
-                    new AssignmentExpression(Acornima.Operator.Assignment, new Identifier("done"), _trueLiteral)
-                ),
-                new NonSpecialExpressionStatement(
-                    new AssignmentExpression(Acornima.Operator.Assignment, new Identifier("result"),
-                    new CallExpression(new Identifier("run"), [], false))
-                ),
-            ]));
-            var notDone = new NonUpdateUnaryExpression(Acornima.Operator.LogicalNot, new Identifier("done"));
-            var innerBody = new FunctionBody(NodeList.From<Statement>([
-                new IfStatement(notDone, evalBody, null),
-                new ReturnStatement(new Identifier("result")),
-            ]), false);
-            var body = new FunctionBody(NodeList.From<Statement>([
-                new VariableDeclaration(VariableDeclarationKind.Let, NodeList.From([
-                    new VariableDeclarator(new Identifier("result"), null),
-                    new VariableDeclarator(new Identifier("done"), null),
-                ])),
-                new NonSpecialExpressionStatement(
-                    new AssignmentExpression(Acornima.Operator.Assignment, new MemberExpression(_modules, name, true, false),
-                    new ArrowFunctionExpression([], innerBody, false, false))
-                ),
-            ]), false);
-            var parameters = NodeList.From<Node>([name, new Identifier("run")]);
-            return new FunctionDeclaration(new Identifier("addModule"), parameters, body, false, false);
-        }
-
-        protected override object? VisitIfStatement(IfStatement node)
-        {
-            if (node.Test is BinaryExpression be && be.Left is StringLiteral left && be.Right is StringLiteral right)
+            var defaultAliasDefinition = new Ast.BlockStatement(new List<Ast.Statement>
             {
-                if ((be.Operator == Acornima.Operator.StrictEquality && left.Value == right.Value) || (be.Operator == Acornima.Operator.StrictInequality && left.Value != right.Value))
+                new Ast.ExpressionStatement(new Ast.AssignmentExpression(TokenKind.Equals, defaultExport, moduleExports)),
+            });
+            var body = new Ast.BlockStatement(new List<Ast.Statement>
+            {
+                new Ast.IfStatement(defaultTest, defaultAliasDefinition, null),
+                new Ast.ReturnStatement(moduleExports),
+            });
+            return new Ast.FunctionDeclaration(___adjModule, new List<Ast.Parameter> { Param(_module) }, body, false, false);
+        }
+
+        private static Ast.CallExpression MakeRequireCall(string name)
+            => new(_require, new List<Ast.Expression> { MakeString(name) }, false);
+
+        private static Ast.FunctionDeclaration MakeRequireFunction()
+        {
+            var name = new Ast.Identifier("name");
+            var body = new Ast.BlockStatement(new List<Ast.Statement>
+            {
+                new Ast.ReturnStatement(new Ast.CallExpression(new Ast.MemberExpression(_modules, name, true, false), new List<Ast.Expression>(), false)),
+            });
+            return new Ast.FunctionDeclaration(_require, new List<Ast.Parameter> { Param(name) }, body, false, false);
+        }
+
+        private static Ast.FunctionDeclaration MakeModuleFunction()
+        {
+            var name = new Ast.Identifier("name");
+            var evalBody = new Ast.BlockStatement(new List<Ast.Statement>
+            {
+                new Ast.ExpressionStatement(new Ast.AssignmentExpression(TokenKind.Equals, new Ast.Identifier("done"), new Ast.BooleanLiteral(true))),
+                new Ast.ExpressionStatement(new Ast.AssignmentExpression(TokenKind.Equals, new Ast.Identifier("result"),
+                    new Ast.CallExpression(new Ast.Identifier("run"), new List<Ast.Expression>(), false))),
+            });
+            var notDone = new Ast.UnaryExpression(TokenKind.Exclamation, new Ast.Identifier("done"));
+            var innerBody = new Ast.BlockStatement(new List<Ast.Statement>
+            {
+                new Ast.IfStatement(notDone, evalBody, null),
+                new Ast.ReturnStatement(new Ast.Identifier("result")),
+            });
+            var arrow = new Ast.ArrowFunctionExpression(new List<Ast.Parameter>(), innerBody, false);
+            var body = new Ast.BlockStatement(new List<Ast.Statement>
+            {
+                new Ast.VariableStatement(Ast.VariableKind.Let, new List<Ast.VariableDeclarator>
                 {
-                    return Visit(node.Consequent);
+                    new Ast.VariableDeclarator(new Ast.Identifier("result"), null),
+                    new Ast.VariableDeclarator(new Ast.Identifier("done"), null),
+                }),
+                new Ast.ExpressionStatement(new Ast.AssignmentExpression(TokenKind.Equals,
+                    new Ast.MemberExpression(_modules, name, true, false), arrow)),
+            });
+            return new Ast.FunctionDeclaration(new Ast.Identifier("addModule"),
+                new List<Ast.Parameter> { Param(name), Param(new Ast.Identifier("run")) }, body, false, false);
+        }
+
+        private static Ast.ExpressionStatement WrapBody(string name, IEnumerable<Ast.Statement> statements)
+        {
+            var initial = new Ast.VariableStatement(Ast.VariableKind.Const, new List<Ast.VariableDeclarator>
+            {
+                new Ast.VariableDeclarator(_exports, new Ast.ObjectExpression(new List<Ast.Node>())),
+                new Ast.VariableDeclarator(_module, new Ast.ObjectExpression(new List<Ast.Node>
+                {
+                    new Ast.Property(_exports, _exports, Ast.PropertyKind.Init, false, true, false),
+                })),
+            });
+            var final = new Ast.ReturnStatement(new Ast.CallExpression(___adjModule, new List<Ast.Expression> { _module }, false));
+            var content = new List<Ast.Statement> { initial };
+            content.AddRange(statements);
+            content.Add(final);
+            var callee = new Ast.ArrowFunctionExpression(new List<Ast.Parameter>(), new Ast.BlockStatement(content), false);
+            var call = new Ast.CallExpression(new Ast.Identifier("addModule"), new List<Ast.Expression> { MakeString(name), callee }, false);
+            return new Ast.ExpressionStatement(call);
+        }
+
+        private static Ast.Parameter Param(Ast.Identifier id) => new(id, null, false);
+
+        private static Ast.Identifier? GetIdentifierOf(Ast.Statement declaration) => declaration switch
+        {
+            Ast.VariableStatement variable => variable.Declarations.Count > 0 ? variable.Declarations[0].Id as Ast.Identifier : null,
+            Ast.ClassDeclaration cls => cls.Id,
+            Ast.FunctionDeclaration func => func.Id,
+            _ => null,
+        };
+
+        // -- constant folding ----------------------------------------------
+
+        protected override Ast.Node VisitIfStatement(Ast.IfStatement node)
+        {
+            if (node.Test is Ast.BinaryExpression be && be.Left is Ast.StringLiteral left && be.Right is Ast.StringLiteral right)
+            {
+                if ((be.Operator == TokenKind.EqualsEqualsEquals && left.Value == right.Value) ||
+                    (be.Operator == TokenKind.ExclamationEqualsEquals && left.Value != right.Value))
+                {
+                    return Visit(node.Consequent)!;
                 }
-                else if ((be.Operator == Acornima.Operator.StrictEquality && left.Value != right.Value) || (be.Operator == Acornima.Operator.StrictInequality && left.Value == right.Value))
+                if ((be.Operator == TokenKind.EqualsEqualsEquals && left.Value != right.Value) ||
+                    (be.Operator == TokenKind.ExclamationEqualsEquals && left.Value == right.Value))
                 {
-                    return node.Alternate is not null ? Visit(node.Alternate) : new EmptyStatement();
+                    return node.Alternate is not null ? Visit(node.Alternate)! : new Ast.EmptyStatement();
                 }
             }
 
             return base.VisitIfStatement(node);
         }
 
-        protected override object? VisitImportExpression(ImportExpression node)
+        // -- import / require rewriting ------------------------------------
+
+        protected override Ast.Node VisitImportExpression(Ast.ImportExpression node)
         {
             if (_current?.Replacements.TryGetValue(node, out var referenceNode) ?? false)
             {
                 var reference = _bundle.GetReference(referenceNode);
-                return new ImportExpression(MakeAutoReference(reference));
+                return new Ast.ImportExpression(MakeAutoReference(reference));
             }
 
             return base.VisitImportExpression(node);
         }
 
-        protected override object? VisitImportDeclaration(ImportDeclaration node)
+        protected override Ast.Node VisitImportDeclaration(Ast.ImportDeclaration node)
         {
             if (_current?.Replacements.TryGetValue(node, out var reference) ?? false)
             {
-                if (_bundle._context.Assets.TryGetValue(reference, out var asset) && node.Specifiers.Count == 1 && node.Specifiers[0] is ImportDefaultSpecifier specifier)
+                if (_bundle._context.Assets.TryGetValue(reference, out var asset) && node.Specifiers.Count == 1 && node.Specifiers[0] is Ast.ImportDefaultSpecifier specifier)
                 {
-                    var name = specifier.Local;
+                    var local = specifier.Local;
                     var file = asset.GetFileName();
-                    var declarator = new VariableDeclarator(name, MakeAutoReference(file));
-                    return new VariableDeclaration(VariableDeclarationKind.Const, NodeList.From([declarator]));
+                    var declarator = new Ast.VariableDeclarator(local, MakeAutoReference(file));
+                    return new Ast.VariableStatement(Ast.VariableKind.Const, new List<Ast.VariableDeclarator> { declarator });
                 }
 
-                var properties = new List<ObjectProperty>();
-                var decls = new List<VariableDeclarator>();
-                Expression init = MakeRequireCall(GetName(reference));
+                var properties = new List<Ast.Node>();
+                var decls = new List<Ast.VariableDeclarator>();
+                Ast.Expression init = MakeRequireCall(GetName(reference));
 
                 foreach (var spec in node.Specifiers)
                 {
-                    if (spec is ImportNamespaceSpecifier)
+                    if (spec is Ast.ImportNamespaceSpecifier)
                     {
-                        var id = new Identifier(spec.Local.Name);
-                        decls.Add(new VariableDeclarator(id, init));
+                        var id = new Ast.Identifier(spec.Local.Name);
+                        decls.Add(new Ast.VariableDeclarator(id, init));
                         init = id;
                     }
                     else
                     {
-                        properties.Add(new ObjectProperty(PropertyKind.Property, GetImportName(spec), spec.Local, false, false, false));
+                        properties.Add(new Ast.Property(GetImportName(spec), spec.Local, Ast.PropertyKind.Init, false, false, false));
                     }
                 }
 
                 if (properties.Count > 0)
                 {
-                    var variables = new ObjectExpression(NodeList.From<Node>(properties));
-                    decls.Add(new VariableDeclarator(variables, init));
+                    var variables = new Ast.ObjectExpression(properties);
+                    decls.Add(new Ast.VariableDeclarator(variables, init));
                 }
 
                 if (decls.Count > 0)
                 {
-                    return new VariableDeclaration(VariableDeclarationKind.Const, NodeList.From(decls));
+                    return new Ast.VariableStatement(Ast.VariableKind.Const, decls);
                 }
 
-                return new NonSpecialExpressionStatement(init);
+                return new Ast.ExpressionStatement(init);
             }
 
             return base.VisitImportDeclaration(node);
         }
 
-        private static Expression GetImportName(ImportDeclarationSpecifier m)
+        private static Ast.Node GetImportName(Ast.ImportSpecifierBase m) => m switch
         {
-            if (m is ImportSpecifier spec)
-            {
-                return spec.Imported;
-            }
-            else if (m is ImportDefaultSpecifier)
-            {
-                return new Identifier("default");
-            }
+            Ast.ImportSpecifier spec => spec.Imported,
+            Ast.ImportDefaultSpecifier => new Ast.Identifier("default"),
+            _ => m.Local,
+        };
 
-            return m.Local;
-        }
-
-        protected override object? VisitExportAllDeclaration(ExportAllDeclaration node)
+        protected override Ast.Node VisitExportAllDeclaration(Ast.ExportAllDeclaration node)
         {
             if (_current?.Replacements.TryGetValue(node, out var reference) ?? false)
             {
                 var payload = MakeRequireCall(GetName(reference));
-                var objectAssign = new MemberExpression(new Identifier("Object"), new Identifier("assign"), false, false);
-                var call = new CallExpression(objectAssign, NodeList.From<Expression>([new Identifier("exports"), payload]), false);
-                return new NonSpecialExpressionStatement(call);
+                var objectAssign = new Ast.MemberExpression(new Ast.Identifier("Object"), new Ast.Identifier("assign"), false, false);
+                var call = new Ast.CallExpression(objectAssign, new List<Ast.Expression> { new Ast.Identifier("exports"), payload }, false);
+                return new Ast.ExpressionStatement(call);
             }
 
             return node;
         }
 
-        protected override object? VisitExportNamedDeclaration(ExportNamedDeclaration node)
+        protected override Ast.Node VisitExportNamedDeclaration(Ast.ExportNamedDeclaration node)
         {
             if (_current?.Replacements.TryGetValue(node, out var reference) ?? false)
             {
                 var require = MakeRequireCall(GetName(reference));
-                var specs = node.Specifiers.Select(m => SetExport(m.Exported, new MemberExpression(require, m.Local, m.Local is StringLiteral, false)));
-                var sequence = NodeList.From(specs);
-                return new NonSpecialExpressionStatement(new SequenceExpression(sequence));
+                var specs = node.Specifiers.Select(m => (Ast.Expression)SetExport(
+                    AsExpression(m.Exported),
+                    new Ast.MemberExpression(require, m.Local, m.Local is Ast.StringLiteral, false))).ToList();
+                return new Ast.ExpressionStatement(new Ast.SequenceExpression(specs));
             }
 
             if (node.Declaration is null)
             {
-                return new NonSpecialExpressionStatement(new SequenceExpression(NodeList.From(node.Specifiers.Select(m => SetExport(m.Exported, m.Local)))));
+                var seq = node.Specifiers.Select(m => (Ast.Expression)SetExport(AsExpression(m.Exported), AsExpression(m.Local))).ToList();
+                return new Ast.ExpressionStatement(new Ast.SequenceExpression(seq));
             }
 
             return node;
         }
 
-        protected override object? VisitExportDefaultDeclaration(ExportDefaultDeclaration node)
+        protected override Ast.Node VisitExportDefaultDeclaration(Ast.ExportDefaultDeclaration node)
         {
-            var payload = VisitAndConvert(node.Declaration);
-            return SetExport(new Identifier("default"), payload);
+            var payload = Visit(node.Declaration)!;
+            return SetExport(new Ast.Identifier("default"), payload);
         }
 
-        private static Expression SetExport(Expression name, Expression expr)
+        private static Ast.Expression AsExpression(Ast.Node node)
+            => node as Ast.Expression ?? new Ast.Identifier((node as Ast.Identifier)?.Name ?? string.Empty);
+
+        private static Ast.AssignmentExpression SetExport(Ast.Expression name, Ast.Expression expr)
         {
-            var computed = name is StringLiteral;
-            var left = new MemberExpression(new Identifier("exports"), name, computed, false);
-            return new AssignmentExpression(Acornima.Operator.Assignment, left, expr);
+            var computed = name is Ast.StringLiteral;
+            var left = new Ast.MemberExpression(new Ast.Identifier("exports"), name, computed, false);
+            return new Ast.AssignmentExpression(TokenKind.Equals, left, expr);
         }
 
-        private static StatementOrExpression SetExport(Expression name, StatementOrExpression payload)
+        private static Ast.Statement SetExport(Ast.Expression name, Ast.Node payload)
         {
-            var computed = name is StringLiteral;
+            var computed = name is Ast.StringLiteral;
 
-            if (payload is Expression expr)
+            switch (payload)
             {
-                var assignment = SetExport(name, expr);
-                return new NonSpecialExpressionStatement(assignment);
-            }
-            else if (payload is FunctionDeclaration func)
-            {
-                var left = new MemberExpression(new Identifier("exports"), name, computed, false);
-                var fuxpr = new FunctionExpression(func.Id, func.Params, func.Body, func.Generator, func.Async);
-                var assignment = new AssignmentExpression(Acornima.Operator.Assignment, left, fuxpr);
-                return new NonSpecialExpressionStatement(assignment);
-            }
-
-            return payload;
-        }
-
-        public override object? VisitJsxAttribute(JsxAttribute node)
-        {
-            var attributeName = MakeString(node.Name.GetQualifiedName());
-            var attributeValue = node.Value is null ? _trueLiteral : VisitAndConvert(node.Value);
-            return new ObjectProperty(PropertyKind.Init, attributeName, attributeValue, computed: false, shorthand: false, method: false);
-        }
-
-        public override object? VisitJsxElement(JsxElement node)
-        {
-            var elementNameArg = GetName(node.OpeningElement.Name);
-
-            Expression attributesArg;
-
-            if (node.OpeningElement.Attributes.Count > 0)
-            {
-                var properties = new List<Node>(capacity: node.OpeningElement.Attributes.Count);
-
-                foreach (var attribute in node.OpeningElement.Attributes)
+                case Ast.Expression expr:
+                    return new Ast.ExpressionStatement(SetExport(name, expr));
+                case Ast.FunctionDeclaration func:
                 {
-                    properties.Add((Node)Visit(attribute)!);
+                    var left = new Ast.MemberExpression(new Ast.Identifier("exports"), name, computed, false);
+                    var fuxpr = new Ast.FunctionExpression(func.Id, func.Parameters, func.Body, func.Async, func.Generator);
+                    return new Ast.ExpressionStatement(new Ast.AssignmentExpression(TokenKind.Equals, left, fuxpr));
                 }
-
-                attributesArg = new ObjectExpression(NodeList.From(properties));
+                case Ast.ClassDeclaration cls:
+                {
+                    var left = new Ast.MemberExpression(new Ast.Identifier("exports"), name, computed, false);
+                    var cexpr = new Ast.ClassExpression(cls.Id, cls.SuperClass, cls.Body);
+                    return new Ast.ExpressionStatement(new Ast.AssignmentExpression(TokenKind.Equals, left, cexpr));
+                }
+                default:
+                    return payload as Ast.Statement ?? new Ast.EmptyStatement();
             }
-            else
-            {
-                attributesArg = _nullLiteral;
-            }
-
-            var childrenArg = node.OpeningElement.SelfClosing
-                ? _nullLiteral
-                : VisitJsxElementChildren(node.Children);
-
-            var react = new Identifier("React");
-            var createElement = new Identifier("createElement");
-            var reactCreateElement = new MemberExpression(react, createElement, false, false);
-            return new CallExpression(reactCreateElement, NodeList.From(elementNameArg, attributesArg, childrenArg), false);
         }
 
-        protected override object? VisitCallExpression(CallExpression node)
+        private static Ast.MemberExpression MakeAutoReference(string reference)
         {
-            if (node.Callee is Identifier ident && node.Arguments.Count == 1 && ident.Name == "require" && (_current?.Replacements.TryGetValue(node, out var reference) ?? false))
+            var import = new Ast.Identifier("import");
+            var importMeta = new Ast.MemberExpression(import, new Ast.Identifier("meta"), false, false);
+            var importMetaUrl = new Ast.MemberExpression(importMeta, new Ast.Identifier("url"), false, false);
+            var urlParse = new Ast.MemberExpression(new Ast.Identifier("URL"), new Ast.Identifier("parse"), false, false);
+            var relative = new Ast.CallExpression(urlParse, new List<Ast.Expression> { MakeString($"./{reference}"), importMetaUrl }, false);
+            return new Ast.MemberExpression(relative, new Ast.Identifier("href"), false, false);
+        }
+
+        protected override Ast.Node VisitCallExpression(Ast.CallExpression node)
+        {
+            if (node.Callee is Ast.Identifier ident && node.Arguments.Count == 1 && ident.Name == "require" &&
+                (_current?.Replacements.TryGetValue(node, out var reference) ?? false))
             {
                 if (_bundle._context.Assets.TryGetValue(reference, out var asset))
                 {
@@ -425,182 +470,134 @@ public sealed class JsBundle(BundlerContext context, Graph.Node root, BundleFlag
                 }
 
                 var name = GetName(reference);
-                return new CallExpression(node.Callee, NodeList.From<Expression>([MakeString(name)]), false);
+                return new Ast.CallExpression(node.Callee, new List<Ast.Expression> { MakeString(name) }, false);
             }
 
             return base.VisitCallExpression(node);
         }
 
-        private Expression VisitJsxElementChildren(in NodeList<JsxNode> children)
+        // -- JSX lowering --------------------------------------------------
+
+        protected override Ast.Node VisitJsxElement(Ast.JsxElement node)
         {
-            if (children.Count > 0)
+            var elementNameArg = GetName(node.OpeningElement.Name);
+
+            Ast.Expression attributesArg;
+            if (node.OpeningElement.Attributes.Count > 0)
             {
-                var elements = new List<Expression?>(capacity: children.Count);
-
-                foreach (var child in children)
+                var properties = new List<Ast.Node>(node.OpeningElement.Attributes.Count);
+                foreach (var attribute in node.OpeningElement.Attributes)
                 {
-                    var element = (Expression)Visit(child)!;
-
-                    if (element is not JsxEmptyExpression && element is not null)
+                    if (attribute is Ast.JsxSpreadAttribute spread)
                     {
-                        elements.Add(element);
+                        properties.Add(new Ast.SpreadElement((Ast.Expression)Visit(spread.Argument)!));
+                    }
+                    else if (attribute is Ast.JsxAttribute attr)
+                    {
+                        properties.Add(ConvertAttribute(attr));
                     }
                 }
-
-                return new ArrayExpression(NodeList.From(elements));
-            }
-
-            return _nullLiteral;
-        }
-
-        public override object? VisitJsxFragment(JsxFragment node)
-        {
-            var react = new Identifier("React");
-            var createElement = new Identifier("createElement");
-            var fragment = new Identifier("Fragment");
-            var elementNameArg = new MemberExpression(react, fragment, false, false);
-            var childrenArg = VisitJsxElementChildren(node.Children);
-            var reactCreateElement = new MemberExpression(react, createElement, false, false);
-            return new CallExpression(reactCreateElement, NodeList.From(elementNameArg, _nullLiteral, childrenArg), false);
-        }
-
-        public override object? VisitJsxExpressionContainer(JsxExpressionContainer node)
-        {
-            return VisitAndConvert(node.Expression);
-        }
-
-        public override object? VisitJsxSpreadAttribute(JsxSpreadAttribute node)
-        {
-            return new SpreadElement(node.Argument);
-        }
-
-        public override object? VisitJsxText(JsxText node)
-        {
-            if (!string.IsNullOrWhiteSpace(node.Value))
-            {
-                return MakeString(node.Value);
-            }
-
-            return null;
-        }
-
-        private static MemberExpression MakeAutoReference(string reference)
-        {
-            var url = new Identifier("URL");
-            var import = new Identifier("import");
-            var importMeta = new MemberExpression(import, new Identifier("meta"), false, false);
-            var importMetaUrl = new MemberExpression(importMeta, new Identifier("url"), false, false);
-            var urlParse = new MemberExpression(url, new Identifier("parse"), false, false);
-            var relative = new CallExpression(urlParse, NodeList.From<Expression>([MakeString($"./{reference}"), importMetaUrl]), false);
-            return new MemberExpression(relative, new Identifier("href"), false, false);
-        }
-
-        private static Identifier? GetIdentifierOf(Declaration declaration)
-        {
-            if (declaration is VariableDeclaration variable)
-            {
-                return variable.Declarations[0].Id as Identifier;
-            }
-            else if (declaration is ClassDeclaration cls)
-            {
-                return cls.Id;
-            }
-            else if (declaration is FunctionDeclaration func)
-            {
-                return func.Id;
-            }
-
-            return null;
-        }
-
-        private static NonSpecialExpressionStatement WrapBody(string name, IEnumerable<Statement> statements)
-        {
-            var initial = new VariableDeclaration(VariableDeclarationKind.Const, NodeList.From([
-                new VariableDeclarator(_exports, new ObjectExpression([])),
-                new VariableDeclarator(_module, new ObjectExpression(NodeList.From<Node>([
-                    new ObjectProperty(PropertyKind.Property, _exports, _exports, false, true, false)
-                ]))),
-            ]));
-            var final = new ReturnStatement(new CallExpression(___adjModule, NodeList.From<Expression>([_module]), false));
-            var content = statements.Prepend(initial).Append(final);
-            var body = new FunctionBody(NodeList.From(content), false);
-            var callee = new ArrowFunctionExpression([], body, false, false);
-            var call = new CallExpression(new Identifier("addModule"), NodeList.From<Expression>([MakeString(name), callee]), false);
-            return new NonSpecialExpressionStatement(call);
-        }
-
-        private static Expression GetName(JsxName name)
-        {
-            if (name is JsxMemberExpression member)
-            {
-                return GetReference(member);
-            }
-            else if (name is JsxIdentifier ident && !string.IsNullOrEmpty(ident.Name) && char.IsUpper(ident.Name[0]))
-            {
-                return GetReference(name);
-            }
-
-            return MakeString(name.GetQualifiedName());
-        }
-
-        private static Expression GetReference(JsxName name)
-        {
-            if (name is JsxMemberExpression member)
-            {
-                var obj = GetReference(member.Object);
-                var prop = member.Property;
-                var propName = new Identifier(prop.Name);
-                return new MemberExpression(obj, propName, false, false);
-            }
-            else if (name is JsxIdentifier ident)
-            {
-                return new Identifier(ident.Name);
+                attributesArg = new Ast.ObjectExpression(properties);
             }
             else
             {
-                return new Identifier(name.GetQualifiedName());
+                attributesArg = new Ast.NullLiteral();
             }
+
+            var childrenArg = node.OpeningElement.SelfClosing
+                ? (Ast.Expression)new Ast.NullLiteral()
+                : ConvertJsxChildren(node.Children);
+
+            return ReactCreateElement(elementNameArg, attributesArg, childrenArg);
         }
 
-    }
-
-    private static StringLiteral MakeString(string unencodedText)
-    {
-        var rawText = MakeJsonString(unencodedText);
-        return new StringLiteral(unencodedText, rawText);
-    }
-
-    private static string MakeJsonString(string value)
-    {
-        var sb = new StringBuilder();
-        sb.Append('\"');  // Start with a double quote
-
-        foreach (char c in value)
+        protected override Ast.Node VisitJsxFragment(Ast.JsxFragment node)
         {
-            switch (c)
-            {
-                case '\"': sb.Append("\\\""); break;
-                case '\\': sb.Append("\\\\"); break;
-                case '\b': sb.Append("\\b"); break;
-                case '\f': sb.Append("\\f"); break;
-                case '\n': sb.Append("\\n"); break;
-                case '\r': sb.Append("\\r"); break;
-                case '\t': sb.Append("\\t"); break;
-                default:
-                    if (char.IsControl(c))
-                    {
-                        sb.Append("\\u");
-                        sb.Append(((int)c).ToString("x4")); // Unicode escape
-                    }
-                    else
-                    {
-                        sb.Append(c);
-                    }
-                    break;
-            }
+            var fragment = new Ast.MemberExpression(new Ast.Identifier("React"), new Ast.Identifier("Fragment"), false, false);
+            var childrenArg = ConvertJsxChildren(node.Children);
+            return ReactCreateElement(fragment, new Ast.NullLiteral(), childrenArg);
         }
 
-        sb.Append('\"');  // End with a double quote
-        return sb.ToString();
+        private Ast.Node ConvertAttribute(Ast.JsxAttribute node)
+        {
+            var attributeName = MakeString(GetQualifiedName(node.Name));
+            Ast.Expression attributeValue = node.Value is null ? new Ast.BooleanLiteral(true) : ConvertJsxAttributeValue(node.Value);
+            return new Ast.Property(attributeName, attributeValue, Ast.PropertyKind.Init, false, false, false);
+        }
+
+        private Ast.Expression ConvertJsxAttributeValue(Ast.Node value) => value switch
+        {
+            Ast.JsxExpressionContainer c => c.Expression is null ? new Ast.NullLiteral() : (Ast.Expression)Visit(c.Expression)!,
+            Ast.StringLiteral s => s,
+            _ => (Ast.Expression)Visit(value)!,
+        };
+
+        private Ast.Expression ConvertJsxChildren(IList<Ast.Node> children)
+        {
+            if (children.Count == 0)
+            {
+                return new Ast.NullLiteral();
+            }
+
+            var elements = new List<Ast.Expression?>(children.Count);
+            foreach (var child in children)
+            {
+                var element = ConvertJsxChild(child);
+                if (element is not null)
+                {
+                    elements.Add(element);
+                }
+            }
+            return new Ast.ArrayExpression(elements);
+        }
+
+        private Ast.Expression? ConvertJsxChild(Ast.Node child) => child switch
+        {
+            Ast.JsxText t => string.IsNullOrWhiteSpace(t.Value) ? null : MakeString(t.Value),
+            Ast.JsxExpressionContainer c => c.Expression is null ? null : (Ast.Expression)Visit(c.Expression)!,
+            Ast.JsxElement or Ast.JsxFragment => (Ast.Expression)Visit(child)!,
+            _ => null,
+        };
+
+        private static Ast.Expression ReactCreateElement(Ast.Expression name, Ast.Expression attributes, Ast.Expression children)
+        {
+            var createElement = new Ast.MemberExpression(new Ast.Identifier("React"), new Ast.Identifier("createElement"), false, false);
+            return new Ast.CallExpression(createElement, new List<Ast.Expression> { name, attributes, children }, false);
+        }
+
+        private static Ast.Expression GetName(Ast.JsxName name)
+        {
+            if (name is Ast.JsxMemberExpression member)
+            {
+                return GetReference(member);
+            }
+            if (name is Ast.JsxIdentifier ident && !string.IsNullOrEmpty(ident.Name) && char.IsUpper(ident.Name[0]))
+            {
+                return GetReference(name);
+            }
+            return MakeString(GetQualifiedName(name));
+        }
+
+        private static Ast.Expression GetReference(Ast.JsxName name)
+        {
+            if (name is Ast.JsxMemberExpression member)
+            {
+                var obj = GetReference(member.Object);
+                return new Ast.MemberExpression(obj, new Ast.Identifier(member.Property.Name), false, false);
+            }
+            if (name is Ast.JsxIdentifier ident)
+            {
+                return new Ast.Identifier(ident.Name);
+            }
+            return new Ast.Identifier(GetQualifiedName(name));
+        }
+
+        private static string GetQualifiedName(Ast.JsxName name) => name switch
+        {
+            Ast.JsxIdentifier id => id.Name,
+            Ast.JsxMemberExpression m => $"{GetQualifiedName(m.Object)}.{m.Property.Name}",
+            Ast.JsxNamespacedName ns => $"{ns.Namespace.Name}:{ns.Name.Name}",
+            _ => string.Empty,
+        };
     }
 }
