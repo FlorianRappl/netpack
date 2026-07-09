@@ -105,14 +105,27 @@ source ──Tokenizer──▶ tokens ──Parser──▶ AST (SourceFile)
   and a full-reload fallback. The dev server diffs each module's factory source
   between compiles and pushes only the changed factories over SSE; the injected
   client applies them via `globalThis.__netpack.apply`. Non-JS changes and
-  module add/remove fall back to a reload.
+  module add/remove fall back to a reload. Source can use the standard
+  `import.meta.hot` API — the transform shims `import.meta.hot` onto the
+  factory's `module.hot` (undefined in production, so it no-ops there).
+
+- **Tree-shaking** (`TreeShaker` / `ExportUsage` / `TreeShakePass`, optimizing
+  builds only): a whole-program pass that (1) computes which exports each module
+  needs (named imports vs namespace/CJS/dynamic/`export *`/bundle-root → keep
+  all), (2) determines which modules are side-effect-free (package.json
+  `sideEffects`, or a provably-pure module whose dependencies are all
+  side-effect-free), (3) drops dead declarations, unused exports and unused
+  imports of side-effect-free modules, and (4) recomputes reachability from the
+  bundle roots and removes now-unreferenced modules entirely. Importing one
+  helper from a side-effect-free package no longer pulls the rest in. It is
+  conservative throughout — side effects and impure code are always preserved,
+  so it can only shrink output, never change behaviour.
 
 ## Next (opportunities)
 
 1. **Cross-scope name reuse** — the mangler currently assigns globally-unique
    names; reusing names across sibling scopes (as esbuild does) shrinks output
    further.
-2. **Dead-code elimination / tree shaking** — drop unreferenced module exports.
 3. **TS `namespace` with runtime semantics** — currently erased; emit the IIFE
    form where a runtime value is produced.
 4. **Source maps** — the printer tracks node spans; emit mappings.

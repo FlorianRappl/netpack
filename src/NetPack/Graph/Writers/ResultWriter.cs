@@ -11,6 +11,13 @@ abstract class ResultWriter(BundlerContext context)
     {
         Started?.Invoke(this, EventArgs.Empty);
 
+        if (options.IsOptimizing)
+        {
+            // Whole-program tree-shaking: prune dead code and unreferenced,
+            // side-effect-free modules before anything is rendered.
+            TreeShakePass.Run(_context);
+        }
+
         await Parallel.ForEachAsync(_context.Assets.Values, async (asset, ct) =>
         {
             var fn = asset.GetFileName();

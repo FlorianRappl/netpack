@@ -39,6 +39,28 @@ public sealed class BundlerContext(string root, FeatureFlags features, ModuleIdM
 
     private readonly ModuleIdMap _moduleIds = moduleIds ?? new ModuleIdMap();
 
+    private readonly object _usageLock = new();
+    private Dictionary<Node, NetPack.Syntax.Optimizer.UsedExports>? _exportUsage;
+
+    /// <summary>
+    /// Returns which exports of <paramref name="node"/> the program uses, for
+    /// tree-shaking. Computed once for the whole graph and cached. Unknown
+    /// modules fall back to "everything used" (safe).
+    /// </summary>
+    public NetPack.Syntax.Optimizer.UsedExports GetUsedExports(Node node)
+    {
+        if (_exportUsage is null)
+        {
+            lock (_usageLock)
+            {
+                _exportUsage ??= ExportUsage.Compute(this);
+            }
+        }
+        return _exportUsage.TryGetValue(node, out var used)
+            ? used
+            : NetPack.Syntax.Optimizer.UsedExports.Everything();
+    }
+
     /// <summary>
     /// Returns a compact, stable integer id for a module node, keyed by file
     /// name. Shared across every bundle (the context is shared) and — when the

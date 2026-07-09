@@ -6,7 +6,7 @@ using static NetPack.Helpers;
 
 public sealed class Dependency(string location, JsonElement meta)
 {
-    private readonly JsonElement sideEffects = meta.TryGetProperty("sideEffects", out var element) ? default : element;
+    private readonly JsonElement sideEffects = meta.TryGetProperty("sideEffects", out var element) ? element : default;
 
     public string Location => location;
 

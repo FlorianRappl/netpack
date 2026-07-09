@@ -60,6 +60,14 @@ public class PrinterTests
     }
 
     [Fact]
+    public void Prints_import_meta_hot()
+    {
+        // The bundler shims `import.meta.hot` onto the factory's `module` param;
+        // this confirms the syntax parses and prints unchanged beforehand.
+        Assert.Contains("import.meta.hot", Print("import.meta.hot?.accept();"));
+    }
+
+    [Fact]
     public void Minified_output_has_no_newlines()
     {
         var output = Print("const x = 1;\nconst y = 2;\nfunction f() { return x + y; }", minify: true);

@@ -285,6 +285,22 @@ public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags
             return base.VisitImportExpression(node);
         }
 
+        protected override Ast.Node VisitMemberExpression(Ast.MemberExpression node)
+        {
+            // Shim the standard `import.meta.hot` API onto the factory's `module`
+            // parameter: `import.meta.hot` -> `module.hot`. In dev this resolves to
+            // the HMR record; in production `module.hot` is undefined, so
+            // `import.meta.hot?.accept(...)` is a harmless no-op.
+            if (!node.Computed
+                && node.Property is Ast.Identifier { Name: "hot" }
+                && node.Object is Ast.MetaProperty { Meta: "import", Property: "meta" })
+            {
+                return new Ast.MemberExpression(new Ast.Identifier("module"), new Ast.Identifier("hot"), false, false);
+            }
+
+            return base.VisitMemberExpression(node);
+        }
+
         protected override Ast.Node VisitImportDeclaration(Ast.ImportDeclaration node)
         {
             if (_current?.Replacements.TryGetValue(node, out var reference) ?? false)
