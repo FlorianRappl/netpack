@@ -23,11 +23,6 @@ const client = net.createConnection({ port: +process.argv.pop(), host: '127.0.0.
 const rl = readline.createInterface(client);
 
 const commands = {
-  tsc: (content, file) => {
-    const typescript = require('typescript');
-    const opts = { jsx: 1, module: 99, target: 99 };
-    return typescript.transpile(content, opts, file);
-  },
   sass: (content, file) => {
     const sass = require('sass');
     const url = pathToFileURL(file);

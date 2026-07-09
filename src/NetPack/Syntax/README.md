@@ -129,5 +129,3 @@ source ──Tokenizer──▶ tokens ──Parser──▶ AST (SourceFile)
 3. **TS `namespace` with runtime semantics** — currently erased; emit the IIFE
    form where a runtime value is produced.
 4. **Source maps** — the printer tracks node spans; emit mappings.
-5. **Drop the `tsc` path** entirely (the parser already strips types, so the
-   `FeatureFlags.TypeScript` subprocess branch in `Traverse` is redundant).

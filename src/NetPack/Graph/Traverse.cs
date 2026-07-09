@@ -21,12 +21,6 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
     private readonly ConcurrentDictionary<string, Task<Node>> _reserved = [];
     private readonly NodeJs _njs = new(root);
 
-    private async Task<string> TranspileTypeScript(string content, string file)
-    {
-        var result = await _njs.RunCommand("tsc", content, file);
-        return result.Deserialize(SourceGenerationContext.Default.String) ?? "";
-    }
-
     private async Task<string> TranspileSass(string content, string file)
     {
         var result = await _njs.RunCommand("sass", content, file);
@@ -455,16 +449,11 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
         using var stream = new MemoryStream(bytes);
         using var reader = new StreamReader(stream);
         var content = await reader.ReadToEndAsync();
-        var enableTsc = _context.Features.HasFlag(FeatureFlags.TypeScript);
 
-        if (enableTsc && (current.FileName.EndsWith(".ts") || current.FileName.EndsWith(".tsx")))
-        {
-            content = await TranspileTypeScript(content, current.FileName);
-        }
-
-        var newContent = content
-            .Replace(": ChangeEvent<HTMLInputElement>", "") // Remove this line
-            .Replace("process.env.NODE_ENV", "'production'");
+        // TypeScript is stripped natively by the parser (see ParserOptions.ForFile),
+        // so .ts/.tsx no longer need an external `tsc` pass. The one remaining
+        // source transform is the build-time NODE_ENV define.
+        var newContent = content.Replace("process.env.NODE_ENV", "'production'");
         var fragment = await ParseJsModule(bundle, current, newContent);
         _context.JsFragments.TryAdd(current, fragment);
     }
