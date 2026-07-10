@@ -258,7 +258,7 @@ The following items are features or topics that are relevant for bundlers - netp
 - [x] Module Federation support
 - [ ] Native Federation support
 - [ ] React Fast Refresh support
-- [ ] Custom JSX factory
+- [x] Custom JSX factory
 - [ ] Platforms (web, npm, deno)
 - [x] Tree shaking
 - [ ] Other formats (esm, cjs, systemjs, umd)

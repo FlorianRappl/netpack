@@ -174,7 +174,31 @@ public class ServeCommand : ICommand
             return result.Writer;
         });
 
-        Console.WriteLine("[netpack] DevServer running at {0}", address);
+        // Print the real, clickable URL once the server is actually listening —
+        // app.Urls is only populated after the host has bound its addresses.
+        app.Lifetime.ApplicationStarted.Register(() =>
+        {
+            IEnumerable<string> urls = app.Urls.Count > 0 ? app.Urls : new[] { address };
+
+            Console.WriteLine();
+            Console.WriteLine("[netpack] Dev server running:");
+
+            foreach (var url in urls)
+            {
+                // Normalize wildcard binds to a link the user can actually click.
+                var shown = url
+                    .Replace("http://0.0.0.0", "http://localhost")
+                    .Replace("http://[::]", "http://localhost")
+                    .Replace("https://0.0.0.0", "https://localhost")
+                    .Replace("https://[::]", "https://localhost")
+                    .TrimEnd('/');
+                Console.WriteLine("            Local:   {0}/", shown);
+            }
+
+            Console.WriteLine();
+            Console.WriteLine("[netpack] Watching for changes — press Ctrl+C to stop.");
+        });
+
         await Task.Run(() => app.RunAsync());
     }
 

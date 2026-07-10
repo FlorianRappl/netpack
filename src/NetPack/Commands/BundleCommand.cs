@@ -1,5 +1,6 @@
 namespace NetPack.Commands;
 
+using System.Diagnostics;
 using CommandLine;
 using NetPack.Graph;
 using NetPack.Graph.Writers;
@@ -42,6 +43,9 @@ public class BundleCommand : ICommand
 
         var file = Path.Combine(Environment.CurrentDirectory, FilePath);
         var outdir = Path.Combine(Environment.CurrentDirectory, OutDir);
+        var watch = Stopwatch.StartNew();
+
+        Console.WriteLine("[netpack] Bundling '{0}' ...", FilePath);
         using var graph = await Traverse.From(file, Externals, Shared);
         var result = new DiskResultWriter(graph.Context, outdir);
         var options = new OutputOptions
@@ -57,6 +61,43 @@ public class BundleCommand : ICommand
         }
 
         Directory.CreateDirectory(outdir);
-        await result.WriteOut(options);
+        var emitted = await result.WriteOut(options);
+        watch.Stop();
+
+        PrintSummary(emitted, OutDir, watch.ElapsedMilliseconds);
+    }
+
+    private static void PrintSummary(IReadOnlyList<EmittedFile> files, string outDir, long elapsedMs)
+    {
+        if (files.Count == 0)
+        {
+            Console.WriteLine("[netpack] Nothing was emitted.");
+            return;
+        }
+
+        var nameWidth = Math.Max(files.Max(f => f.Name.Length), "total".Length);
+        var sizeStrings = files.ToDictionary(f => f.Name, f => SizeFormatter.Human(f.Size));
+        var totalHuman = SizeFormatter.Human(files.Sum(f => f.Size));
+        var sizeWidth = Math.Max(sizeStrings.Values.Max(s => s.Length), totalHuman.Length);
+
+        Console.WriteLine();
+        Console.WriteLine("[netpack] Emitted {0} file{1} to '{2}' in {3} ms:",
+            files.Count, files.Count == 1 ? "" : "s", outDir, elapsedMs);
+        Console.WriteLine();
+
+        foreach (var f in files)
+        {
+            var modules = f.IsBundle
+                ? $"   {f.Modules} module{(f.Modules == 1 ? "" : "s")}"
+                : "";
+            Console.WriteLine("  {0}   {1}{2}",
+                f.Name.PadRight(nameWidth),
+                sizeStrings[f.Name].PadLeft(sizeWidth),
+                modules);
+        }
+
+        Console.WriteLine("  {0}   {1}", new string('-', nameWidth), new string('-', sizeWidth));
+        Console.WriteLine("  {0}   {1}", "total".PadRight(nameWidth), totalHuman.PadLeft(sizeWidth));
+        Console.WriteLine();
     }
 }
