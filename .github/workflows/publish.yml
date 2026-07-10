@@ -73,8 +73,8 @@ jobs:
           node-version: '24'
           registry-url: 'https://registry.npmjs.org'
 
-      - name: Ensure npm supports trusted publishing
-        run: npm install -g npm@latest
+      - name: Ensure npm supports trusted publishing (avoid package issue; https://github.com/npm/cli/issues/9722)
+        run: npm install -g npm@11
 
       - name: Download binaries
         uses: actions/download-artifact@v4
