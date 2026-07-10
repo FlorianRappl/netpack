@@ -201,7 +201,7 @@ Right now this watches the file system - but it does not incrementally build nor
 
 ### Supported Architectures
 
-- [ ] Windows x64 (`win-x64`)
+- [x] Windows x64 (`win-x64`)
 - [ ] Windows x86 (`win-x86`)
 - [ ] Windows ARM64 (`win-arm64`)
 - [x] Linux x64 (`linux-x64`) [npm package](https://www.npmjs.com/package/@netpack/linux-x64)
@@ -217,7 +217,7 @@ The following items are features or topics that are relevant for bundlers - netp
 
 - [x] Handle JavaScript
 - [x] Handle JSX (right now only `React.createElement`)
-- [ ] Handle TypeScript
+- [x] Handle TypeScript
 - [x] Handle images (optimizes them using SkiaSharp)
 - [x] Handle any asset
 - [x] Handle CSS
@@ -242,14 +242,14 @@ The following items are features or topics that are relevant for bundlers - netp
 
 ### Bundler Basics
 
-- [ ] Sourcemaps
+- [x] Sourcemaps
 - [x] Minification
 - [x] DevServer with reload
 - [x] Bundle analyzer (start with `analyze`)
 - [ ] Image / asset variants (e.g., width/height optimized)
 - [x] Copy public assets ("public" folder below entry-HTML)
 - [x] Externals (`--external react react-dom`; works also automatically if an importmap is present)
-- [ ] True HMR (not just refresh)
+- [x] True HMR (not just refresh)
 
 ### More Advanced Topics
 
@@ -260,7 +260,7 @@ The following items are features or topics that are relevant for bundlers - netp
 - [ ] React Fast Refresh support
 - [ ] Custom JSX factory
 - [ ] Platforms (web, npm, deno)
-- [ ] Tree shaking
+- [x] Tree shaking
 - [ ] Other formats (esm, cjs, systemjs, umd)
 - [ ] Presets / configuration system
 

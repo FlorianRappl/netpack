@@ -1,6 +1,6 @@
 {
   "name": "netpack",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "The blazing fast bundler and optimizer that just works for most web projects.",
   "repository": {
     "type": "git",
@@ -23,9 +23,9 @@
     "netpack": "cli/netpack.js"
   },
   "optionalDependencies": {
-    "@netpack/linux-x64": "0.0.2",
-    "@netpack/osx-arm64": "0.0.2",
-    "@netpack/win-x64": "0.0.2"
+    "@netpack/linux-x64": "0.0.3",
+    "@netpack/osx-arm64": "0.0.3",
+    "@netpack/win-x64": "0.0.3"
   },
   "license": "MIT"
 }
