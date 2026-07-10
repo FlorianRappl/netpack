@@ -295,11 +295,28 @@ public sealed class JsPrinter
         Semicolon();
     }
 
+    // True when the expression's *leftmost* token is `{`, `function` or `class`,
+    // which would make an expression statement be misparsed as a block or a
+    // (nameless) declaration. This must follow the left spine of the expression,
+    // e.g. the callee of an IIFE `(function(){})()` or the object of `{}.foo`.
     private static bool StartsWithProblematicToken(Expression e) => e switch
     {
         ObjectExpression => true,
         FunctionExpression => true,
         ClassExpression => true,
+        // The printer strips parentheses and relies on precedence to re-add them,
+        // so a parenthesized function/object/class is still leftmost here.
+        ParenthesizedExpression p => StartsWithProblematicToken(p.Expression),
+        CallExpression c => StartsWithProblematicToken(c.Callee),
+        NewExpression => false, // begins with the `new` keyword
+        MemberExpression m => StartsWithProblematicToken(m.Object),
+        BinaryExpression b => StartsWithProblematicToken(b.Left),
+        LogicalExpression l => StartsWithProblematicToken(l.Left),
+        AssignmentExpression a => StartsWithProblematicToken(a.Left),
+        ConditionalExpression c => StartsWithProblematicToken(c.Test),
+        SequenceExpression s => s.Expressions.Count > 0 && StartsWithProblematicToken(s.Expressions[0]),
+        TaggedTemplateExpression t => StartsWithProblematicToken(t.Tag),
+        UpdateExpression u => !u.Prefix && StartsWithProblematicToken(u.Argument),
         _ => false,
     };
 

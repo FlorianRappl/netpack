@@ -36,6 +36,15 @@ public class PrinterRoundTripTests
     [InlineData("const h = async (x) => { await x; }; async function* gen() { yield 1; }")]
     // Array holes stay valid.
     [InlineData("const arr = [1, , 3];")]
+    // Expression statements whose leftmost token is `function`/`class`/`{` must be
+    // parenthesized (IIFEs are pervasive in real/UMD bundles).
+    [InlineData("(function () { console.log(1); })();")]
+    [InlineData("(function named() { return 1; })();")]
+    [InlineData("(function () {}).call(this);")]
+    [InlineData("(function () {})().foo;")]
+    [InlineData("(class {}).name;")]
+    [InlineData("({}).toString();")]
+    [InlineData("!function () {}();")]
     public void Prints_valid_javascript(string source)
     {
         var module = Parser.ParseModule(source, "in.js");
@@ -45,6 +54,17 @@ public class PrinterRoundTripTests
         var reparsed = Parser.ParseModule(printed, "out.js");
 
         Assert.Empty(reparsed.Diagnostics);
+    }
+
+    [Fact]
+    public void Iife_statement_is_parenthesized()
+    {
+        var printed = JsPrinter.Print(Parser.ParseModule("(function () { return 1; })();", "in.js")).Trim();
+
+        // Must not begin with a bare `function` (which parses as a nameless
+        // function *statement* and throws "Function statements require a name").
+        Assert.StartsWith("(", printed);
+        Assert.Empty(Parser.ParseModule(printed, "out.js").Diagnostics);
     }
 
     [Fact]
