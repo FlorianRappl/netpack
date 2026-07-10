@@ -139,6 +139,14 @@ public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags
                 }
 
                 var id = GetId(node);
+
+                // React Fast Refresh: instrument user component modules so their
+                // component registrations and accept boundary are in place.
+                if (_reloading && context.ReactRefresh && !node.FileName.Contains("node_modules"))
+                {
+                    body = ReactRefresh.Instrument(body, id);
+                }
+
                 var factory = MakeFactoryArrow(body);
 
                 // Tag the factory body with the module's source so the printer can
@@ -171,6 +179,13 @@ public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags
             }
 
             var runtime = BuildRuntime(sharedNames);
+
+            // Install the Fast Refresh runtime once, right after the require
+            // runtime and before the entry module executes.
+            if (_reloading && !_bundle.IsShared && context.ReactRefresh && context.ReactRefreshRuntime is { } refreshRuntime)
+            {
+                runtime.AddRange(ReactRefresh.BuildSetup(GetId(refreshRuntime)));
+            }
 
             var all = new List<Ast.Statement>(imports.Count + 1 + runtime.Count + trailer.Count);
             all.AddRange(imports);

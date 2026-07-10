@@ -20,6 +20,11 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
     private readonly BrowsingContext _browser = new(Configuration.Default.WithCss());
     private readonly ConcurrentDictionary<string, Task<Node>> _reserved = [];
     private readonly NodeJs _njs = new(root);
+    private bool _devServer;
+
+    // The dev server builds in development mode (React dev warnings, Fast
+    // Refresh); production bundles inline the production NODE_ENV.
+    private string NodeEnvLiteral => _devServer ? "'development'" : "'production'";
 
     private async Task<string> TranspileSass(string content, string file)
     {
@@ -52,12 +57,12 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
 
     public static Task<Traverse> From(string path) => From(path, [], []);
 
-    public static async Task<Traverse> From(string path, IEnumerable<string> externals, IEnumerable<string> shared, ModuleIdMap? moduleIds = null)
+    public static async Task<Traverse> From(string path, IEnumerable<string> externals, IEnumerable<string> shared, ModuleIdMap? moduleIds = null, bool devServer = false)
     {
         var root = Path.GetDirectoryName(path)!;
         var packageRoot = FindRoot(root);
         var features = await FindFeatures(packageRoot);
-        var traverse = new Traverse(packageRoot ?? root, features, moduleIds);
+        var traverse = new Traverse(packageRoot ?? root, features, moduleIds) { _devServer = devServer };
         var (jsxFactory, jsxFragmentFactory) = await FindJsxFactories(packageRoot);
         traverse.Context.JsxFactory = jsxFactory;
         traverse.Context.JsxFragmentFactory = jsxFragmentFactory;
@@ -70,6 +75,7 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
     private async Task Run(params IEnumerable<string> entryPoints)
     {
         var queue = new List<Task>();
+        Node? primaryEntry = null;
 
         foreach (var entryPoint in entryPoints)
         {
@@ -83,14 +89,42 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
                     await AddModuleFederation(entry);
                     break;
                 default:
-                    await AddNewBundle(entry);
+                    var node = await AddNewBundle(entry);
+                    primaryEntry ??= node;
                     break;
             }
         }
 
         await Task.WhenAll(queue);
         await TransformCssModules();
+
+        if (_devServer && primaryEntry is not null)
+        {
+            await SetupReactRefresh(primaryEntry);
+        }
+
         Finish();
+    }
+
+    /// <summary>
+    /// Enables React Fast Refresh when the project has <c>react-refresh</c>
+    /// installed: bundles its runtime and flags the context so the JS bundle
+    /// instruments component modules. A no-op (normal HMR) when the package is
+    /// absent.
+    /// </summary>
+    private async Task SetupReactRefresh(Node entryNode)
+    {
+        var runtimePath = await ResolveFromNodeModules(_context.Root, "react-refresh/runtime");
+
+        if (runtimePath is null || !_context.Bundles.TryGetValue(entryNode, out var bundle) || bundle is not JsBundle)
+        {
+            return;
+        }
+
+        var runtimeNode = await AddToBundle(bundle, runtimePath);
+        entryNode.Children.Add(runtimeNode);
+        _context.ReactRefresh = true;
+        _context.ReactRefreshRuntime = runtimeNode;
     }
 
     private void Finish()
@@ -578,7 +612,7 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
         // TypeScript is stripped natively by the parser (see ParserOptions.ForFile),
         // so .ts/.tsx no longer need an external `tsc` pass. The one remaining
         // source transform is the build-time NODE_ENV define.
-        var newContent = content.Replace("process.env.NODE_ENV", "'production'");
+        var newContent = content.Replace("process.env.NODE_ENV", NodeEnvLiteral);
         var fragment = await ParseJsModule(bundle, current, newContent);
         _context.JsFragments.TryAdd(current, fragment);
     }

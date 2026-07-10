@@ -257,7 +257,7 @@ The following items are features or topics that are relevant for bundlers - netp
 - [x] Shared dependencies (`--shared react react-dom`; automatically adds an importmap if HTML is used)
 - [x] Module Federation support
 - [ ] Native Federation support
-- [ ] React Fast Refresh support
+- [x] React Fast Refresh support (dev server; requires `react-refresh` installed)
 - [x] Custom JSX factory
 - [ ] Platforms (web, npm, deno)
 - [x] Tree shaking

@@ -11,6 +11,16 @@ public sealed class BundlerContext(string root, FeatureFlags features, ModuleIdM
     public FeatureFlags Features => features;
 
     /// <summary>
+    /// True when React Fast Refresh instrumentation is enabled for this build
+    /// (dev server + <c>react-refresh</c> resolvable).
+    /// </summary>
+    public bool ReactRefresh { get; set; }
+
+    /// <summary>The bundled <c>react-refresh/runtime</c> module, when Fast Refresh
+    /// is enabled.</summary>
+    public Node? ReactRefreshRuntime { get; set; }
+
+    /// <summary>
     /// Project-wide JSX factory from <c>tsconfig.json</c>
     /// (<c>compilerOptions.jsxFactory</c>), applied to TypeScript source files
     /// unless a file overrides it with a local <c>@jsx</c> pragma. Null when no
