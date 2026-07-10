@@ -221,7 +221,7 @@ The following items are features or topics that are relevant for bundlers - netp
 - [x] Handle images (optimizes them using SkiaSharp)
 - [x] Handle any asset
 - [x] Handle CSS
-- [ ] Handle CSS modules
+- [x] Handle CSS modules (named/default import of a `.css` file hashes its class names and exports the original→hashed map)
 - [x] Handle PostCSS (incl. Tailwind)
 - [x] Handle SASS
 - [x] Handle LESS

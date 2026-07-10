@@ -45,6 +45,19 @@ public sealed class BundlerContext(string root, FeatureFlags features, ModuleIdM
     public ConcurrentDictionary<Node, CssFragment> CssFragments = [];
 
     /// <summary>
+    /// CSS files imported from a JS/TS module, mapped to the bundle that should
+    /// own the generated virtual module. Such CSS nodes are converted into JS
+    /// modules (runtime style injection + class-name exports) before bundling.
+    /// </summary>
+    public ConcurrentDictionary<Node, Bundle> CssImports = [];
+
+    /// <summary>
+    /// The subset of <see cref="CssImports"/> imported with named/default
+    /// bindings, i.e. treated as CSS modules (class names are hashed).
+    /// </summary>
+    public ConcurrentDictionary<Node, bool> CssModuleNodes = [];
+
+    /// <summary>
     /// The printed (pre-mangle) source of each module's factory, keyed by module
     /// id. Populated during a reloading build so the dev server can diff modules
     /// between compiles and push hot updates. Fresh per compile.

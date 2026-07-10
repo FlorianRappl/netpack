@@ -89,6 +89,7 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
         }
 
         await Task.WhenAll(queue);
+        await TransformCssModules();
         Finish();
     }
 
@@ -495,7 +496,53 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
         var visitor = new JsVisitor(bundle, current, InnerProcess);
         var fragment = await visitor.FindChildren(ast);
         ApplyJsxFactory(current, content, options.TypeScript, fragment);
+        RegisterCssImports(bundle, fragment);
         return fragment;
+    }
+
+    /// <summary>
+    /// Records CSS files this module imports so they can later be turned into
+    /// virtual JS modules. An import that carries named/default bindings marks the
+    /// CSS file as a CSS module (its class names get hashed).
+    /// </summary>
+    private void RegisterCssImports(Bundle bundle, JsFragment fragment)
+    {
+        foreach (var (astNode, graphNode) in fragment.Replacements)
+        {
+            if (astNode is Syntax.Ast.ImportDeclaration import && graphNode.Type == ".css")
+            {
+                _context.CssImports.TryAdd(graphNode, bundle);
+
+                if (import.Specifiers.Count > 0)
+                {
+                    _context.CssModuleNodes[graphNode] = true;
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Converts every CSS file imported from JavaScript into a virtual JS module:
+    /// class selectors are hashed (for CSS modules), the CSS is set up for runtime
+    /// injection, and the original→hashed class map is exported. Runs after the
+    /// graph is built but before bundles are assembled.
+    /// </summary>
+    private async Task TransformCssModules()
+    {
+        foreach (var (node, bundle) in _context.CssImports.ToArray())
+        {
+            if (!_context.CssFragments.TryRemove(node, out var cssFragment))
+            {
+                continue;
+            }
+
+            var relative = Path.GetRelativePath(_context.Root, node.FileName).Replace('\\', '/');
+            var isModule = _context.CssModuleNodes.ContainsKey(node);
+            var (map, css) = CssModules.Rewrite(cssFragment.Stylesheet, relative, isModule);
+            var source = CssModules.GenerateModule(css, map);
+            var fragment = await ParseJsModule(bundle, node, source);
+            _context.JsFragments.TryAdd(node, fragment);
+        }
     }
 
     /// <summary>
