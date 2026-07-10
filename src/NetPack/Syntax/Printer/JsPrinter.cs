@@ -711,10 +711,13 @@ public sealed class JsPrinter
 
     private void PrintSequence(SequenceExpression e)
     {
-        for (var i = 0; i < e.Expressions.Count; i++)
+        var first = true;
+        foreach (var expression in e.Expressions)
         {
-            if (i > 0) { Write(','); Space(); }
-            PrintExpression(e.Expressions[i], Prec.Assignment);
+            if (expression is null) continue; // never emit a stray comma
+            if (!first) { Write(','); Space(); }
+            first = false;
+            PrintExpression(expression, Prec.Assignment);
         }
     }
 
@@ -811,10 +814,13 @@ public sealed class JsPrinter
     private void PrintArguments(IList<Expression> args)
     {
         Write('(');
-        for (var i = 0; i < args.Count; i++)
+        var first = true;
+        foreach (var arg in args)
         {
-            if (i > 0) { Write(','); Space(); }
-            PrintExpression(args[i], Prec.Assignment);
+            if (arg is null) continue; // never emit a stray comma
+            if (!first) { Write(','); Space(); }
+            first = false;
+            PrintExpression(arg, Prec.Assignment);
         }
         Write(')');
     }
@@ -850,10 +856,15 @@ public sealed class JsPrinter
         }
         Write('{');
         Space();
-        for (var i = 0; i < e.Properties.Count; i++)
+        var first = true;
+        foreach (var member in e.Properties)
         {
-            if (i > 0) { Write(','); Space(); }
-            PrintObjectMember(e.Properties[i]);
+            // Only Property / SpreadElement render; skipping anything else keeps
+            // us from emitting a separator with no member after it.
+            if (member is not (SpreadElement or Property)) continue;
+            if (!first) { Write(','); Space(); }
+            first = false;
+            PrintObjectMember(member);
         }
         Space();
         Write('}');
@@ -889,9 +900,20 @@ public sealed class JsPrinter
             return;
         }
 
-        if (p.Shorthand && p.Value is Identifier)
+        if (p.Shorthand)
         {
+            // Plain shorthand (`{ a }`) stores the key identifier as its own
+            // value. A *different* value means a destructuring default such as
+            // `{ a = 1 }` or `{ a = b }`, which must keep the `= value` form —
+            // printing it as `{ a: 1 }` (or dropping it) is invalid pattern syntax.
             PrintPropertyKey(p.Key, p.Computed);
+            if (p.Value is Expression shorthandValue && !IsSameIdentifier(p.Key, shorthandValue))
+            {
+                Space();
+                Write('=');
+                Space();
+                PrintExpression(shorthandValue, Prec.Assignment);
+            }
             return;
         }
 
@@ -900,6 +922,9 @@ public sealed class JsPrinter
         Space();
         if (p.Value is Expression value) PrintExpression(value, Prec.Assignment);
     }
+
+    private static bool IsSameIdentifier(Node key, Expression value)
+        => key is Identifier k && value is Identifier v && k.Name == v.Name;
 
     private void PrintPropertyKey(Node key, bool computed)
     {
@@ -946,10 +971,12 @@ public sealed class JsPrinter
     private void PrintParameters(IList<Parameter> parameters)
     {
         Write('(');
-        for (var i = 0; i < parameters.Count; i++)
+        var first = true;
+        foreach (var p in parameters)
         {
-            if (i > 0) { Write(','); Space(); }
-            var p = parameters[i];
+            if (p is null) continue; // never emit a stray comma
+            if (!first) { Write(','); Space(); }
+            first = false;
             if (p.Rest) Write("...");
             PrintBindingTarget(p.Pattern);
             if (p.Initializer is not null)

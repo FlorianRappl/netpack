@@ -109,8 +109,11 @@ public sealed class HtmlBundle(BundlerContext context, Graph.Node root, BundleFl
 
             if (options.IsReloading)
             {
+                // Inject the full HMR client: it handles `update` events (hot-swap
+                // via globalThis.__netpack) and falls back to a full page reload
+                // for `reload`/`change` events or when no module accepts an update.
                 var child = document.CreateElement("script");
-                child.TextContent = "new EventSource('/netpack').addEventListener('change', () => location.reload())";
+                child.TextContent = HmrClient;
                 document.Body?.AppendChild(child);
             }
 

@@ -1,0 +1,75 @@
+namespace NetPack.Tests;
+
+using NetPack.Syntax;
+using NetPack.Syntax.Printer;
+using Xunit;
+
+/// <summary>
+/// Guards that the printer emits syntactically valid JavaScript: each snippet is
+/// parsed, printed, and re-parsed; the re-parse must be diagnostic-free. This is
+/// the property that keeps generated bundles free of "syntax error" surprises.
+/// </summary>
+public class PrinterRoundTripTests
+{
+    [Theory]
+    // Destructuring defaults — the shorthand `{ a = 1 }` form must be preserved
+    // (printing it as `{ a: 1 }` or `{ a }` is invalid pattern syntax).
+    [InlineData("const { a = 1, b } = obj;")]
+    [InlineData("const { a = 1, b = 2 } = obj;")]
+    [InlineData("const { a = someDefault, b } = obj;")]
+    [InlineData("function f({ a = 1, b } = {}) { return a + b; }")]
+    [InlineData("const [x = 1, , z = 3] = arr;")]
+    [InlineData("function g([a = 1, b] = []) { return a; }")]
+    // Spread across positions.
+    [InlineData("const a = [1, ...rest, 2]; f(...args); const o = { ...base, x: 1 };")]
+    // Optional chaining and nullish coalescing.
+    [InlineData("const v = a?.b?.().c ?? d;")]
+    // Sequence expression.
+    [InlineData("for (let i = 0, j = 10; i < j; i++, j--) {}")]
+    // Object literal shorthand vs. explicit.
+    [InlineData("const o = { a, b, c: 1, [k]: 2, m() {}, get x() { return 1; } };")]
+    // Template literals.
+    [InlineData("const s = `a${x}b${y + 1}c`;")]
+    // Classes.
+    [InlineData("class A extends B { s = 2; get v() { return this.s; } m(a, ...r) { return r; } }")]
+    // Async / generators / arrows.
+    [InlineData("const h = async (x) => { await x; }; async function* gen() { yield 1; }")]
+    // Array holes stay valid.
+    [InlineData("const arr = [1, , 3];")]
+    public void Prints_valid_javascript(string source)
+    {
+        var module = Parser.ParseModule(source, "in.js");
+        Assert.Empty(module.Diagnostics); // sanity: the parser accepts the input
+
+        var printed = JsPrinter.Print(module);
+        var reparsed = Parser.ParseModule(printed, "out.js");
+
+        Assert.Empty(reparsed.Diagnostics);
+    }
+
+    [Fact]
+    public void Preserves_object_destructuring_default()
+    {
+        var printed = JsPrinter.Print(Parser.ParseModule("const { a = 1, b } = obj;", "in.js"));
+        // The default must survive as `a = 1`, not `a: 1` and not a bare `a`.
+        Assert.Contains("a = 1", printed);
+        Assert.DoesNotContain("a: 1", printed);
+    }
+
+    [Fact]
+    public void Preserves_identifier_default_in_destructuring()
+    {
+        // Regression: a default that is itself an identifier must not be mistaken
+        // for plain shorthand and dropped.
+        var printed = JsPrinter.Print(Parser.ParseModule("const { a = fallback } = obj;", "in.js"));
+        Assert.Contains("a = fallback", printed);
+    }
+
+    [Fact]
+    public void Plain_shorthand_stays_shorthand()
+    {
+        var printed = JsPrinter.Print(Parser.ParseModule("const o = { a, b };", "in.js"));
+        Assert.DoesNotContain("a: a", printed);
+        Assert.DoesNotContain("a = a", printed);
+    }
+}
