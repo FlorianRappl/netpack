@@ -17,7 +17,7 @@ const versionFromPackageJSON: string = require(path.join(
   "..",
   "package.json"
 )).version;
-const toPath = path.join(__dirname, "bin", "netpack");
+const toPath = path.join(__dirname, "..", "cli", "netpack");
 let isToPathJS = true;
 
 function validateBinaryVersion(...command: string[]): void {
