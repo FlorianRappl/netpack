@@ -16,7 +16,7 @@ const packageDarwin_x64 = "@netpack/osx-x64";
 export const knownWindowsPackages: Record<string, string> = {
   // "win32 arm64 LE": "@netpack/win-arm64",
   // "win32 ia32 LE": "@netpack/win-x86",
-  // "win32 x64 LE": "@netpack/win-x64",
+  "win32 x64 LE": "@netpack/win-x64",
 };
 
 export const knownUnixlikePackages: Record<string, string> = {
@@ -59,7 +59,7 @@ export function pkgAndSubpathForCurrentPlatform(): {
 
   if (platformKey in knownWindowsPackages) {
     pkg = knownWindowsPackages[platformKey];
-    subpath = "netpack.exe";
+    subpath = "bin/netpack.exe";
   } else if (platformKey in knownUnixlikePackages) {
     pkg = knownUnixlikePackages[platformKey];
     subpath = "bin/netpack";

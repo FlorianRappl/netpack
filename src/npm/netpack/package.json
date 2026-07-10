@@ -10,7 +10,12 @@
     "postinstall": "node dist/install.js"
   },
   "main": "dist/main.js",
-  "types": "dist/main.d.ts",
+  "types": "main.d.ts",
+  "files": [
+    "dist",
+    "cli",
+    "main.d.ts"
+  ],
   "engines": {
     "node": ">=20"
   },
@@ -18,8 +23,9 @@
     "netpack": "cli/netpack.js"
   },
   "optionalDependencies": {
-    "@netpack/linux-x64": "0.0.1",
-    "@netpack/osx-arm64": "0.0.1"
+    "@netpack/linux-x64": "0.0.2",
+    "@netpack/osx-arm64": "0.0.2",
+    "@netpack/win-x64": "0.0.2"
   },
   "license": "MIT"
 }

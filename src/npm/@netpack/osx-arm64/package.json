@@ -8,6 +8,9 @@
   },
   "license": "MIT",
   "preferUnplugged": true,
+  "files": [
+    "bin"
+  ],
   "publishConfig": {
     "access": "public"
   },

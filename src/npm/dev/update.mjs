@@ -3,7 +3,8 @@ import { resolve } from "node:path";
 
 const root = resolve(process.cwd(), "..", "..");
 const npm = resolve(root, "npm");
-const projects = ["@netpack/linux-x64", "@netpack/osx-arm64", "netpack"];
+const natives = ["@netpack/linux-x64", "@netpack/osx-arm64", "@netpack/win-x64"];
+const projects = [...natives, "netpack"];
 const props = resolve(root, "Directory.Build.props");
 
 const xml = await readFile(props, "utf8");
@@ -15,5 +16,16 @@ for (const project of projects) {
   const content = await readFile(path, "utf8");
   const packageJson = JSON.parse(content);
   packageJson.version = version;
-  await writeFile(path, JSON.stringify(packageJson, undefined, 2), "utf8");
+
+  // Keep the central package's references to the native packages pinned to the
+  // exact version being published.
+  if (packageJson.optionalDependencies) {
+    for (const dependency of Object.keys(packageJson.optionalDependencies)) {
+      if (natives.includes(dependency)) {
+        packageJson.optionalDependencies[dependency] = version;
+      }
+    }
+  }
+
+  await writeFile(path, JSON.stringify(packageJson, undefined, 2) + "\n", "utf8");
 }

@@ -1,0 +1,111 @@
+name: Publish
+
+# Two-stage release pipeline:
+#   1. build   — compile the native AOT binary once per platform (Linux x64,
+#                macOS arm64, Windows x64) and upload each as an artifact.
+#   2. publish — assemble the per-platform npm packages from those artifacts and
+#                publish them together with the central wrapper package.
+#
+# Publishing uses npm Trusted Publishing (OIDC): no NPM token / secret is needed.
+# The maintainer must configure trusted publishing on npmjs.com for each of
+# `netpack`, `@netpack/linux-x64`, `@netpack/osx-arm64` and `@netpack/win-x64`,
+# pointing at this repository and this workflow file (.github/workflows/publish.yml).
+#
+# The published version is the <VersionPrefix> in src/Directory.Build.props; bump
+# it (and tag the matching release) before triggering this workflow.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write # required for npm trusted publishing + provenance
+
+jobs:
+  build:
+    name: Build ${{ matrix.rid }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - rid: linux-x64
+            os: ubuntu-latest
+          - rid: osx-arm64
+            os: macos-14 # Apple Silicon runner
+          - rid: win-x64
+            os: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Install AOT prerequisites (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y clang zlib1g-dev
+
+      - name: Publish native binary
+        run: >-
+          dotnet publish src/NetPack/NetPack.csproj
+          -r ${{ matrix.rid }} -c Release
+          -p:DebugType=None -p:DebugSymbols=false
+
+      - name: Upload binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: binary-${{ matrix.rid }}
+          path: src/NetPack/bin/Release/net8.0/${{ matrix.rid }}/publish/
+          if-no-files-found: error
+
+  publish:
+    name: Publish npm packages
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Ensure npm supports trusted publishing
+        run: npm install -g npm@latest
+
+      - name: Download binaries
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Assemble native packages
+        run: |
+          set -euo pipefail
+          for rid in linux-x64 osx-arm64 win-x64; do
+            dest="src/npm/@netpack/$rid/bin"
+            rm -rf "$dest"
+            mkdir -p "$dest"
+            cp -r "artifacts/binary-$rid/." "$dest/"
+          done
+          chmod +x src/npm/@netpack/linux-x64/bin/netpack src/npm/@netpack/osx-arm64/bin/netpack
+
+      - name: Build wrapper and sync versions
+        working-directory: src/npm/dev
+        run: |
+          npm install --no-audit --no-fund
+          npm run build
+          npm run update-version
+
+      - name: Publish native packages
+        run: |
+          set -euo pipefail
+          for rid in linux-x64 osx-arm64 win-x64; do
+            ( cd "src/npm/@netpack/$rid" && npm publish --provenance --access public )
+          done
+
+      - name: Publish central package
+        working-directory: src/npm/netpack
+        run: npm publish --provenance --access public
