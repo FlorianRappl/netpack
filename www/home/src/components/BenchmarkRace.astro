@@ -1,0 +1,189 @@
+---
+import { benchmark } from '../data/content';
+---
+
+<div class="section">
+  <div class="panel">
+    <span class="corner corner-tl"></span>
+    <span class="corner corner-br"></span>
+
+    <div class="panel-head">
+      <div class="panel-head-left">
+        <span class="marker">
+          <span class="marker-dot"></span>
+        </span>
+        <span class="command-line">{benchmark.commandLine}</span>
+      </div>
+      <span class="scenario">{benchmark.scenario}</span>
+    </div>
+
+    <div class="rows">
+      {
+        benchmark.entries.map((entry) => (
+          <div class="row">
+            <span class:list={['name', { 'name-highlight': entry.highlighted }]}>{entry.name}</span>
+            <div class="bar-track">
+              <div
+                class:list={['bar-fill', { 'bar-fill-highlight': entry.highlighted }]}
+                style={`width:${entry.widthPercent}%;`}
+              />
+            </div>
+            <span class:list={['time', { 'time-highlight': entry.highlighted }]}>{entry.time}</span>
+          </div>
+        ))
+      }
+    </div>
+
+    <p class="footnote">{benchmark.footnote}</p>
+  </div>
+</div>
+
+<style>
+  .section {
+    padding: 0 var(--content-padding-x) var(--section-gap);
+    position: relative;
+    z-index: 2;
+  }
+
+  .panel {
+    background: var(--color-panel-bg);
+    border: 1px solid var(--color-panel-border);
+    border-radius: var(--panel-radius);
+    padding: var(--panel-padding-y) var(--panel-padding-x);
+    position: relative;
+  }
+
+  .corner {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+  }
+
+  .corner-tl {
+    top: -1px;
+    left: -1px;
+    border-top: 2px solid var(--color-text-faintest);
+    border-left: 2px solid var(--color-text-faintest);
+    border-radius: 6px 0 0 0;
+  }
+
+  .corner-br {
+    bottom: -1px;
+    right: -1px;
+    border-bottom: 2px solid var(--color-text-faintest);
+    border-right: 2px solid var(--color-text-faintest);
+    border-radius: 0 0 6px 0;
+  }
+
+  .panel-head {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px 16px;
+    margin-bottom: 24px;
+  }
+
+  .panel-head-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  .command-line {
+    overflow-wrap: anywhere;
+  }
+
+  .marker {
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+    border: 2px solid var(--color-accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .marker-dot {
+    width: 5px;
+    height: 5px;
+    background: var(--color-accent);
+    border-radius: 1px;
+  }
+
+  .command-line {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--color-text-faint);
+  }
+
+  .scenario {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--color-text-faintest);
+  }
+
+  .rows {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .row {
+    display: grid;
+    grid-template-columns: minmax(56px, 110px) 1fr minmax(44px, 76px);
+    align-items: center;
+    gap: clamp(8px, 2.5vw, 16px);
+  }
+
+  .name {
+    font-family: var(--font-mono);
+    font-size: clamp(11px, 3vw, 13px);
+    color: var(--color-text-dim);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .name-highlight {
+    color: var(--color-text-heading);
+    font-weight: 700;
+  }
+
+  .bar-track {
+    height: 22px;
+    background: var(--color-tile-bg);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .bar-fill {
+    height: 100%;
+    background: #2a2a2e;
+    border-radius: 3px;
+  }
+
+  .bar-fill-highlight {
+    background: linear-gradient(90deg, var(--color-accent), var(--color-accent-soft));
+    box-shadow: 0 0 14px rgba(124, 58, 237, 0.6);
+  }
+
+  .time {
+    font-family: var(--font-mono);
+    font-size: clamp(11px, 3vw, 13px);
+    color: var(--color-text-faint);
+    text-align: right;
+  }
+
+  .time-highlight {
+    color: var(--color-accent-soft);
+  }
+
+  .footnote {
+    margin: 22px 0 0;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--color-text-faintest);
+  }
+</style>

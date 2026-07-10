@@ -1,0 +1,65 @@
+/**
+ * Design tokens for the netpack landing page.
+ * Change a value here and it propagates everywhere it's used —
+ * this file is the single place to retheme the page.
+ */
+:root {
+  /* Fonts */
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --font-sans: 'IBM Plex Sans', sans-serif;
+
+  /* Accent */
+  --color-accent: #7c3aed;
+  --color-accent-soft: #a78bfa;
+  --color-accent-glow: rgba(124, 58, 237, 0.45);
+  --gradient-accent: linear-gradient(155deg, #8b5cf6, #5b21b6);
+
+  /* Status colors */
+  --color-success: #22c55e;
+  --color-success-text: #c4f7d4;
+  --color-success-bg: rgba(34, 197, 94, 0.08);
+  --color-success-border: rgba(34, 197, 94, 0.3);
+  --color-warning: #eab308;
+  --color-prompt: #3f9142;
+
+  /* Surfaces */
+  --color-page-bg: #050505;
+  --color-card-bg: #000000;
+  --color-card-border: #1e1e1e;
+  --color-panel-bg: #0a0a0a;
+  --color-panel-border: #1e1e1e;
+  --color-panel-border-strong: #26262e;
+  --color-tile-bg: #141414;
+  --color-stat-bg: #111116;
+  --color-stat-border: #26262e;
+  --color-chrome-dot: #27272a;
+
+  /* Text */
+  --color-text-heading: #f4f4f5;
+  --color-text-body: #8a8a92;
+  --color-text-body-strong: #c4c4cc;
+  --color-text-command: #e4e4e7;
+  --color-text-muted: #71717a;
+  --color-text-dim: #6b6b70;
+  --color-text-faint: #52525b;
+  --color-text-faintest: #3f3f46;
+
+  /* Layout */
+  --card-width: 1240px;
+  --card-radius: 8px;
+  --panel-radius: 6px;
+
+  /* Responsive spacing — fluid between a mobile floor and the desktop
+     value, so most components never need their own breakpoints. */
+  --content-padding-x: clamp(18px, 6vw, 64px);
+  --section-gap: clamp(32px, 8vw, 56px);
+  --panel-padding-x: clamp(16px, 4vw, 36px);
+  --panel-padding-y: clamp(16px, 3.5vw, 32px);
+
+  /* Fluid type scale for the few sizes that need to shrink on small
+     screens; everything else in the design is already small enough
+     to stay fixed-size. */
+  --font-size-headline: clamp(21px, 4.6vw, 27px);
+  --font-size-subtext: clamp(14px, 3.2vw, 16px);
+  --font-size-command: clamp(12px, 3vw, 14px);
+}

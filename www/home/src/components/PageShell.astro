@@ -1,0 +1,37 @@
+---
+import BackgroundEffects from './BackgroundEffects.astro';
+
+// The page itself — no bounding card, no window chrome. Ambient
+// background effects sit behind everything; the "header" slot renders
+// full-bleed (e.g. a site header), while the default slot is
+// constrained to the readable content width and centered.
+---
+
+<div class="shell">
+  <BackgroundEffects />
+  <slot name="header" />
+  <main class="content">
+    <slot />
+  </main>
+</div>
+
+<style>
+  .shell {
+    position: relative;
+    overflow: hidden;
+    background: var(--color-page-bg);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    font-family: var(--font-sans);
+  }
+
+  .content {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    max-width: var(--card-width);
+    margin: 0 auto;
+    flex: 1;
+  }
+</style>

@@ -1,0 +1,61 @@
+---
+// Ambient dot grid, glow blobs and scanline texture behind the card content.
+---
+
+<div class="dot-grid" aria-hidden="true"></div>
+<div class="glow glow-a" aria-hidden="true"></div>
+<div class="glow glow-b" aria-hidden="true"></div>
+<div class="scanlines" aria-hidden="true"></div>
+
+<style>
+  .dot-grid,
+  .glow,
+  .scanlines {
+    position: absolute;
+    pointer-events: none;
+  }
+
+  .dot-grid {
+    inset: 0;
+    z-index: 0;
+    background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+    background-size: 28px 28px;
+    opacity: 0.5;
+  }
+
+  .glow {
+    border-radius: 50%;
+    filter: blur(10px);
+    z-index: 0;
+  }
+
+  .glow-a {
+    top: -160px;
+    left: -120px;
+    width: 480px;
+    height: 480px;
+    background: radial-gradient(circle, rgba(124, 58, 237, 0.35), transparent 70%);
+    animation: float-a 14s ease-in-out infinite;
+  }
+
+  .glow-b {
+    top: 120px;
+    right: -160px;
+    width: 420px;
+    height: 420px;
+    background: radial-gradient(circle, rgba(34, 197, 94, 0.14), transparent 70%);
+    animation: float-b 16s ease-in-out infinite;
+  }
+
+  .scanlines {
+    inset: 0;
+    z-index: 1;
+    background: repeating-linear-gradient(
+      0deg,
+      rgba(255, 255, 255, 0.012) 0px,
+      rgba(255, 255, 255, 0.012) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+  }
+</style>

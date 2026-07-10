@@ -1,0 +1,38 @@
+---
+import Icon from './Icon.astro';
+import type { FeatureCard as FeatureCardData } from '../data/content';
+
+export interface Props {
+  feature: FeatureCardData;
+}
+
+const { feature } = Astro.props;
+---
+
+<div class="card">
+  <Icon variant={feature.icon} size={34} />
+  <h3 class="title">{feature.title}</h3>
+  <p class="description">{feature.description}</p>
+</div>
+
+<style>
+  .card {
+    background: var(--color-panel-bg);
+    padding: 28px 26px;
+  }
+
+  .title {
+    margin: 0 0 8px;
+    font-size: 16px;
+    color: var(--color-text-heading);
+    font-family: var(--font-mono);
+    font-weight: 600;
+  }
+
+  .description {
+    margin: 0;
+    font-size: 13.5px;
+    color: var(--color-text-body);
+    line-height: 1.6;
+  }
+</style>

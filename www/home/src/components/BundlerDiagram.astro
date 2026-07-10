@@ -1,0 +1,204 @@
+---
+import { diagram } from '../data/content';
+
+const DIAGRAM_WIDTH = 600;
+const CONNECTOR_HEIGHT = 64;
+const CENTER_X = DIAGRAM_WIDTH / 2;
+
+// Layout + animation delays are derived from the input/output lists so
+// adding or removing an item in content.ts still produces a sane diagram.
+const inputColumnWidth = DIAGRAM_WIDTH / diagram.inputs.length;
+const inputs = diagram.inputs.map((label, i) => {
+  const cx = i * inputColumnWidth + inputColumnWidth / 2;
+  return {
+    label,
+    cx,
+    delay: i * 0.3,
+    path:
+      Math.round(cx) === CENTER_X
+        ? `M${cx},0 L${cx},${CONNECTOR_HEIGHT}`
+        : `M${cx},0 C${cx},32 ${CENTER_X},32 ${CENTER_X},${CONNECTOR_HEIGHT}`,
+  };
+});
+
+const outputColumnWidth = DIAGRAM_WIDTH / diagram.outputs.length;
+const outputs = diagram.outputs.map((label, i) => {
+  const cx = i * outputColumnWidth + outputColumnWidth / 2;
+  return {
+    label,
+    cx,
+    delay: 0.1 + i * 0.4,
+    path:
+      Math.round(cx) === CENTER_X
+        ? `M${CENTER_X},0 L${CENTER_X},${CONNECTOR_HEIGHT}`
+        : `M${CENTER_X},0 C${CENTER_X},32 ${cx},32 ${cx},${CONNECTOR_HEIGHT}`,
+  };
+});
+---
+
+<div class="section">
+  <div class="panel">
+    <div class="diagram">
+      <div class="row inputs-row" style={`grid-template-columns:repeat(${inputs.length}, 1fr);`}>
+        {inputs.map((input) => <span class="chip chip-input">{input.label}</span>)}
+      </div>
+
+      <div class="connector">
+        <svg width={DIAGRAM_WIDTH} height={CONNECTOR_HEIGHT} viewBox={`0 0 ${DIAGRAM_WIDTH} ${CONNECTOR_HEIGHT}`}>
+          {inputs.map((input) => (
+            <path d={input.path} fill="none" stroke="#26262e" stroke-width="2" />
+          ))}
+        </svg>
+        {inputs.map((input) => (
+          <span class="flow-dot flow-dot-in" style={`offset-path:path('${input.path}');animation-delay:${input.delay}s;`} />
+        ))}
+      </div>
+
+      <div class="center-node">
+        <span>n</span>
+      </div>
+
+      <div class="connector">
+        <svg width={DIAGRAM_WIDTH} height={CONNECTOR_HEIGHT} viewBox={`0 0 ${DIAGRAM_WIDTH} ${CONNECTOR_HEIGHT}`}>
+          {outputs.map((output) => (
+            <path d={output.path} fill="none" stroke="#26262e" stroke-width="2" />
+          ))}
+        </svg>
+        {outputs.map((output) => (
+          <span class="flow-dot flow-dot-out" style={`offset-path:path('${output.path}');animation-delay:${output.delay}s;`} />
+        ))}
+      </div>
+
+      <div class="row outputs-row" style={`grid-template-columns:repeat(${outputs.length}, 1fr);`}>
+        {outputs.map((output) => <span class="chip chip-output">{output.label}</span>)}
+      </div>
+    </div>
+    <p class="caption">{diagram.caption}</p>
+  </div>
+</div>
+
+<style define:vars={{ diagramWidth: `${DIAGRAM_WIDTH}px` }}>
+  .section {
+    padding: 0 var(--content-padding-x) 44px;
+    position: relative;
+    z-index: 2;
+  }
+
+  .panel {
+    background: var(--color-panel-bg);
+    border: 1px solid var(--color-panel-border);
+    border-radius: var(--panel-radius);
+    padding: var(--panel-padding-y) var(--panel-padding-x);
+  }
+
+  .diagram {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: var(--diagramWidth);
+    margin: 0 auto;
+  }
+
+  .row {
+    display: grid;
+    width: 100%;
+  }
+
+  .chip {
+    font-family: var(--font-mono);
+    font-size: clamp(9.5px, 2.8vw, 12px);
+    border-radius: 4px;
+    padding: 6px 4px;
+    text-align: center;
+    justify-self: center;
+    box-sizing: border-box;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .chip-input {
+    color: var(--color-text-command);
+    background: var(--color-tile-bg);
+    border: 1px solid var(--color-panel-border-strong);
+    width: min(56px, 100%);
+  }
+
+  .chip-output {
+    color: var(--color-success-text);
+    background: var(--color-success-bg);
+    border: 1px solid var(--color-success-border);
+    width: min(96px, 100%);
+  }
+
+  .connector {
+    position: relative;
+    width: 100%;
+    max-width: var(--diagramWidth);
+    height: 64px;
+  }
+
+  .connector svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+  }
+
+  .flow-dot {
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    animation: flow-path 2.4s linear infinite;
+  }
+
+  /* offset-path coordinates are authored for the diagram's native
+     600px width, so once the connector scales down below that the
+     flow dots would drift off their lines — hide the decorative
+     motion at that point rather than let it misalign. */
+  @media (max-width: 740px) {
+    .flow-dot {
+      display: none;
+    }
+  }
+
+  .flow-dot-in {
+    background: var(--color-accent);
+  }
+
+  .flow-dot-out {
+    background: var(--color-success);
+  }
+
+  .center-node {
+    flex-shrink: 0;
+    width: clamp(48px, 10vw, 64px);
+    height: clamp(48px, 10vw, 64px);
+    border-radius: 16px;
+    background: var(--gradient-accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 0 6px rgba(124, 58, 237, 0.12), 0 8px 28px var(--color-accent-glow);
+    position: relative;
+    z-index: 1;
+  }
+
+  .center-node span {
+    font-family: var(--font-mono);
+    font-weight: 800;
+    font-size: clamp(22px, 5.5vw, 30px);
+    color: #fff;
+  }
+
+  .caption {
+    margin: 24px 0 0;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--color-text-faintest);
+    text-align: center;
+  }
+</style>

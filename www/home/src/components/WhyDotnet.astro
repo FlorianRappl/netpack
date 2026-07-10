@@ -1,0 +1,71 @@
+---
+import SectionLabel from './SectionLabel.astro';
+import StatCard from './StatCard.astro';
+import { whyDotnet } from '../data/content';
+---
+
+<div class="section">
+  <SectionLabel commandLine={whyDotnet.commandLine} marker="diamond" />
+  <div class="panel">
+    <div class="copy">
+      {whyDotnet.paragraphs.map((paragraph) => <p>{paragraph}</p>)}
+    </div>
+    <div class="stats">
+      {whyDotnet.stats.map((stat) => <StatCard stat={stat} />)}
+    </div>
+  </div>
+</div>
+
+<style>
+  .section {
+    padding: 0 var(--content-padding-x) var(--section-gap);
+    position: relative;
+    z-index: 2;
+  }
+
+  .panel {
+    background: var(--color-panel-bg);
+    border: 1px solid var(--color-panel-border);
+    border-radius: var(--panel-radius);
+    padding: var(--panel-padding-y) var(--panel-padding-x);
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 32px;
+    align-items: center;
+  }
+
+  .copy p {
+    margin: 0 0 16px;
+    font-size: clamp(13.5px, 3vw, 15px);
+    color: var(--color-text-body-strong);
+    line-height: 1.75;
+  }
+
+  .copy p:last-child {
+    margin-bottom: 0;
+  }
+
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    min-width: 280px;
+  }
+
+  @media (max-width: 780px) {
+    .panel {
+      grid-template-columns: 1fr;
+    }
+
+    .stats {
+      min-width: 0;
+      width: 100%;
+    }
+  }
+
+  @media (max-width: 380px) {
+    .stats {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

@@ -1,0 +1,40 @@
+---
+export interface Props {
+  commandLine: string;
+  marker?: 'circle' | 'diamond';
+}
+
+const { commandLine, marker = 'circle' } = Astro.props;
+---
+
+<div class="label">
+  <span class:list={['marker', marker === 'diamond' && 'marker-diamond']}></span>
+  <span class="text">{commandLine}</span>
+</div>
+
+<style>
+  .label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  .marker {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 2px solid var(--color-prompt);
+  }
+
+  .marker-diamond {
+    border-radius: 3px;
+    transform: rotate(45deg);
+  }
+
+  .text {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--color-prompt);
+  }
+</style>

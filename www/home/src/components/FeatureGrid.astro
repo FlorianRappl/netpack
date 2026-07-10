@@ -1,0 +1,42 @@
+---
+import SectionLabel from './SectionLabel.astro';
+import FeatureCard from './FeatureCard.astro';
+import { featuresSection } from '../data/content';
+---
+
+<div class="section">
+  <SectionLabel commandLine={featuresSection.commandLine} marker="circle" />
+  <div class="grid">
+    {featuresSection.cards.map((feature) => <FeatureCard feature={feature} />)}
+  </div>
+</div>
+
+<style>
+  .section {
+    padding: 0 var(--content-padding-x) var(--section-gap);
+    position: relative;
+    z-index: 2;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--color-panel-border);
+    border: 1px solid var(--color-panel-border);
+    border-radius: var(--panel-radius);
+    overflow: hidden;
+  }
+
+  @media (max-width: 760px) {
+    .grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (max-width: 460px) {
+    .grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

@@ -1,0 +1,146 @@
+---
+/**
+ * Small decorative glyphs used by feature cards and stat cards.
+ * Two sizes are used pixel-exact by the design (34px in the feature
+ * grid, 26px in the "why .NET" stat cards); any other size falls back
+ * to proportional scaling.
+ */
+import type { IconVariant } from '../data/content';
+
+export interface Props {
+  variant: IconVariant;
+  size?: 26 | 34 | number;
+}
+
+const { variant, size = 34 } = Astro.props;
+
+// Pixel-exact presets lifted straight from the source design.
+const presets: Record<number, { circle: number; offset: number; dot: number; dash: number; ring: number }> = {
+  34: { circle: 22, offset: 12, dot: 10, dash: 12, ring: 14 },
+  26: { circle: 17, offset: 9, dot: 8, dash: 9, ring: 11 },
+};
+const p =
+  presets[size] ??
+  (() => {
+    const scale = size / 34;
+    return {
+      circle: Math.round(22 * scale),
+      offset: Math.round(12 * scale),
+      dot: Math.round(10 * scale),
+      dash: Math.round(12 * scale),
+      ring: Math.round(14 * scale),
+    };
+  })();
+---
+
+{
+  variant === 'square' && (
+    <div class="icon icon-square" style={`width:${size}px;height:${size}px;`} />
+  )
+}
+
+{
+  variant === 'circle-dot' && (
+    <div class="icon icon-circle" style={`width:${size}px;height:${size}px;`}>
+      <span class="icon-dot" style={`width:${p.dot}px;height:${p.dot}px;`} />
+    </div>
+  )
+}
+
+{
+  variant === 'overlap-circles' && (
+    <div class="icon icon-overlap" style={`width:${size}px;height:${Math.round(size * 0.7)}px;`}>
+      <span class="icon-circle-a" style={`width:${p.circle}px;height:${p.circle}px;`} />
+      <span
+        class="icon-circle-b"
+        style={`width:${p.circle}px;height:${p.circle}px;left:${p.offset}px;`}
+      />
+    </div>
+  )
+}
+
+{
+  variant === 'diamond' && (
+    <div class="icon icon-diamond" style={`width:${size}px;height:${size}px;`} />
+  )
+}
+
+{
+  variant === 'gradient-dash' && (
+    <div class="icon icon-gradient" style={`width:${size}px;height:${size}px;`}>
+      <span class="icon-dash" style={`width:${p.dash}px;`} />
+    </div>
+  )
+}
+
+{
+  variant === 'ring-square' && (
+    <div class="icon icon-square" style={`width:${size}px;height:${size}px;`}>
+      <span class="icon-ring" style={`width:${p.ring}px;height:${p.ring}px;`} />
+    </div>
+  )
+}
+
+<style>
+  .icon {
+    margin-bottom: 16px;
+    flex-shrink: 0;
+    box-sizing: border-box;
+  }
+  .icon-square {
+    border: 2px solid var(--color-accent);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .icon-circle {
+    border: 2px solid var(--color-accent);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .icon-dot {
+    background: var(--color-accent);
+    border-radius: 50%;
+  }
+  .icon-overlap {
+    position: relative;
+  }
+  .icon-circle-a,
+  .icon-circle-b {
+    position: absolute;
+    left: 0;
+    top: 0;
+    border: 2px solid var(--color-accent);
+    border-radius: 50%;
+  }
+  .icon-circle-a {
+    opacity: 0.9;
+  }
+  .icon-circle-b {
+    opacity: 0.55;
+  }
+  .icon-diamond {
+    border: 2px solid var(--color-accent);
+    border-radius: 4px;
+    transform: rotate(45deg);
+  }
+  .icon-gradient {
+    border-radius: 8px;
+    background: linear-gradient(155deg, rgba(124, 58, 237, 0.25), rgba(124, 58, 237, 0.05));
+    border: 2px solid var(--color-accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .icon-dash {
+    height: 2px;
+    background: var(--color-accent);
+  }
+  .icon-ring {
+    border: 2px solid var(--color-accent);
+    border-radius: 50%;
+  }
+</style>

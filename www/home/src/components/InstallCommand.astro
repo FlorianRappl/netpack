@@ -1,0 +1,104 @@
+---
+import { hero } from '../data/content';
+
+const parts = hero.installCommand.split(hero.installCommandJoiner);
+---
+
+<div class="install">
+  <span class="command">
+    <span class="prompt">{hero.installCommandPrompt}</span>
+    {' '}
+    {parts[0]}
+    <span class="joiner">{hero.installCommandJoiner}</span>
+    {parts[1]}
+  </span>
+  <button type="button" class="copy-btn" data-copy-text={hero.installCommand}>
+    <span class="copy-label" data-state="idle">copy</span>
+    <span class="copy-label" data-state="copied" hidden>copied ✓</span>
+  </button>
+</div>
+
+<style>
+  .install {
+    display: flex;
+    align-items: stretch;
+    background: var(--color-panel-bg);
+    border: 1px solid var(--color-panel-border-strong);
+    border-radius: 6px;
+    max-width: 100%;
+    overflow-x: auto;
+  }
+
+  .command {
+    padding: 14px 20px;
+    font-family: var(--font-mono);
+    font-size: var(--font-size-command);
+    color: var(--color-text-command);
+    white-space: pre;
+    display: flex;
+    align-items: center;
+  }
+
+  .prompt {
+    color: var(--color-prompt);
+  }
+
+  .joiner {
+    color: var(--color-text-faintest);
+  }
+
+  .copy-btn {
+    border: none;
+    border-left: 1px solid var(--color-panel-border);
+    background: #111;
+    color: var(--color-text-body);
+    padding: 14px 18px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    cursor: pointer;
+    transition: color 0.15s ease;
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+
+  .copy-btn:hover {
+    color: var(--color-text-command);
+  }
+</style>
+
+<script>
+  const RESET_DELAY_MS = 1600;
+
+  function initCopyButtons() {
+    document.querySelectorAll<HTMLButtonElement>('.copy-btn[data-copy-text]').forEach((btn) => {
+      if (btn.dataset.wired) return;
+      btn.dataset.wired = 'true';
+
+      const idleLabel = btn.querySelector<HTMLElement>('[data-state="idle"]');
+      const copiedLabel = btn.querySelector<HTMLElement>('[data-state="copied"]');
+      let resetTimer: ReturnType<typeof setTimeout> | undefined;
+
+      btn.addEventListener('click', async () => {
+        const text = btn.dataset.copyText ?? '';
+        try {
+          await navigator.clipboard?.writeText(text);
+        } catch {
+          // Clipboard API unavailable or denied — the label still flips
+          // so the click doesn't feel like a no-op.
+        }
+
+        idleLabel?.setAttribute('hidden', '');
+        copiedLabel?.removeAttribute('hidden');
+
+        clearTimeout(resetTimer);
+        resetTimer = setTimeout(() => {
+          copiedLabel?.setAttribute('hidden', '');
+          idleLabel?.removeAttribute('hidden');
+        }, RESET_DELAY_MS);
+      });
+    });
+  }
+
+  initCopyButtons();
+  document.addEventListener('astro:page-load', initCopyButtons);
+</script>

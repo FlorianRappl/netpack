@@ -1,0 +1,23 @@
+---
+import Layout from '../layouts/Layout.astro';
+import PageShell from '../components/PageShell.astro';
+import SiteHeader from '../components/SiteHeader.astro';
+import Hero from '../components/Hero.astro';
+import BenchmarkRace from '../components/BenchmarkRace.astro';
+import BundlerDiagram from '../components/BundlerDiagram.astro';
+import FeatureGrid from '../components/FeatureGrid.astro';
+import WhyDotnet from '../components/WhyDotnet.astro';
+import Footer from '../components/Footer.astro';
+---
+
+<Layout>
+  <PageShell>
+    <SiteHeader slot="header" />
+    <Hero />
+    <BenchmarkRace />
+    <BundlerDiagram />
+    <FeatureGrid />
+    <WhyDotnet />
+    <Footer />
+  </PageShell>
+</Layout>
