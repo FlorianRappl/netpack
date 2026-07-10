@@ -10,6 +10,20 @@ public sealed class BundlerContext(string root, FeatureFlags features, ModuleIdM
 
     public FeatureFlags Features => features;
 
+    /// <summary>
+    /// Project-wide JSX factory from <c>tsconfig.json</c>
+    /// (<c>compilerOptions.jsxFactory</c>), applied to TypeScript source files
+    /// unless a file overrides it with a local <c>@jsx</c> pragma. Null when no
+    /// tsconfig is found or the option is unset.
+    /// </summary>
+    public string? JsxFactory { get; set; }
+
+    /// <summary>
+    /// Project-wide JSX fragment factory from <c>tsconfig.json</c>
+    /// (<c>compilerOptions.jsxFragmentFactory</c>). See <see cref="JsxFactory"/>.
+    /// </summary>
+    public string? JsxFragmentFactory { get; set; }
+
     public ConcurrentDictionary<Node, Asset> Assets = [];
 
     public ConcurrentDictionary<Node, Bundle> Bundles = [];

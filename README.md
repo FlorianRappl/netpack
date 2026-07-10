@@ -216,7 +216,7 @@ The following items are features or topics that are relevant for bundlers - netp
 ### General Features
 
 - [x] Handle JavaScript
-- [x] Handle JSX (right now only `React.createElement`)
+- [x] Handle JSX (configurable factory via `tsconfig.json` `jsxFactory` or a `@jsx` pragma; defaults to `React.createElement`)
 - [x] Handle TypeScript
 - [x] Handle images (optimizes them using SkiaSharp)
 - [x] Handle any asset

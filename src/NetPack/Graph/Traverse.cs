@@ -58,6 +58,9 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
         var packageRoot = FindRoot(root);
         var features = await FindFeatures(packageRoot);
         var traverse = new Traverse(packageRoot ?? root, features, moduleIds);
+        var (jsxFactory, jsxFragmentFactory) = await FindJsxFactories(packageRoot);
+        traverse.Context.JsxFactory = jsxFactory;
+        traverse.Context.JsxFragmentFactory = jsxFragmentFactory;
         traverse.Context.Externals = [.. externals, .. shared];
         traverse.Context.Shared = [.. shared];
         await traverse.Run([path, .. shared]);
@@ -200,6 +203,55 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
         }
 
         return features;
+    }
+
+    /// <summary>
+    /// Reads the JSX factory options from a <c>tsconfig.json</c> at the project
+    /// root, if present. Returns the <c>compilerOptions.jsxFactory</c> and
+    /// <c>compilerOptions.jsxFragmentFactory</c> values (or null when unset). The
+    /// file is parsed leniently (comments and trailing commas allowed, as
+    /// tsconfig files commonly contain them).
+    /// </summary>
+    private static async Task<(string? Factory, string? FragmentFactory)> FindJsxFactories(string? root)
+    {
+        if (root is null)
+        {
+            return default;
+        }
+
+        var path = Path.Combine(root, "tsconfig.json");
+
+        if (!File.Exists(path))
+        {
+            return default;
+        }
+
+        try
+        {
+            using var stream = File.OpenRead(path);
+            var options = new JsonDocumentOptions
+            {
+                CommentHandling = JsonCommentHandling.Skip,
+                AllowTrailingCommas = true,
+            };
+            using var doc = await JsonDocument.ParseAsync(stream, options);
+
+            if (doc.RootElement.TryGetProperty("compilerOptions", out var compilerOptions))
+            {
+                return (ReadString(compilerOptions, "jsxFactory"), ReadString(compilerOptions, "jsxFragmentFactory"));
+            }
+        }
+        catch
+        {
+            // A malformed tsconfig shouldn't break the build; fall back to defaults.
+        }
+
+        return default;
+
+        static string? ReadString(JsonElement element, string name)
+            => element.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String
+                ? value.GetString()
+                : null;
     }
 
     private async Task<string> Resolve(string dir, string name)
@@ -436,12 +488,38 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
         _context.CssFragments.TryAdd(current, fragment);
     }
 
-    private Task<JsFragment> ParseJsModule(Bundle bundle, Node current, string content)
+    private async Task<JsFragment> ParseJsModule(Bundle bundle, Node current, string content)
     {
         var options = ParserOptions.ForFile(current.FileName);
         var ast = Parser.ParseModule(content, current.FileName, options);
         var visitor = new JsVisitor(bundle, current, InnerProcess);
-        return visitor.FindChildren(ast);
+        var fragment = await visitor.FindChildren(ast);
+        ApplyJsxFactory(current, content, options.TypeScript, fragment);
+        return fragment;
+    }
+
+    /// <summary>
+    /// Resolves the JSX factory (and fragment factory) for a single module. A
+    /// local <c>@jsx</c> / <c>@jsxFrag</c> pragma wins over the project-wide
+    /// <c>tsconfig.json</c> setting (which only applies to TypeScript files),
+    /// which in turn wins over the <c>React.createElement</c> default baked into
+    /// <see cref="JsFragment"/>.
+    /// </summary>
+    private void ApplyJsxFactory(Node current, string content, bool isTypeScript, JsFragment fragment)
+    {
+        var pragma = JsxPragma.Scan(content);
+
+        var factory = pragma.Factory ?? (isTypeScript ? _context.JsxFactory : null);
+        if (!string.IsNullOrEmpty(factory))
+        {
+            fragment.JsxFactory = factory;
+        }
+
+        var fragmentFactory = pragma.FragmentFactory ?? (isTypeScript ? _context.JsxFragmentFactory : null);
+        if (!string.IsNullOrEmpty(fragmentFactory))
+        {
+            fragment.JsxFragmentFactory = fragmentFactory;
+        }
     }
 
     private async Task ProcessJavaScript(Node current, byte[] bytes, Bundle bundle)

@@ -401,6 +401,10 @@ public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags
                 return new Ast.ExpressionStatement(new Ast.SequenceExpression(seq));
             }
 
+            // Recurse into the exported declaration so nested lowering (JSX,
+            // enums, dynamic imports, …) still applies; the Transpile loop then
+            // splits it into the declaration plus an `exports.x = x` assignment.
+            node.Declaration = (Ast.Statement)Visit(node.Declaration)!;
             return node;
         }
 
@@ -512,7 +516,8 @@ public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags
 
         protected override Ast.Node VisitJsxFragment(Ast.JsxFragment node)
         {
-            var fragment = new Ast.MemberExpression(new Ast.Identifier("React"), new Ast.Identifier("Fragment"), false, false);
+            var factory = _current?.JsxFragmentFactory ?? "React.Fragment";
+            var fragment = BuildQualifiedName(factory);
             var childrenArg = ConvertJsxChildren(node.Children);
             return ReactCreateElement(fragment, new Ast.NullLiteral(), childrenArg);
         }
@@ -558,10 +563,33 @@ public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags
             _ => null,
         };
 
-        private static Ast.Expression ReactCreateElement(Ast.Expression name, Ast.Expression attributes, Ast.Expression children)
+        private Ast.Expression ReactCreateElement(Ast.Expression name, Ast.Expression attributes, Ast.Expression children)
         {
-            var createElement = new Ast.MemberExpression(new Ast.Identifier("React"), new Ast.Identifier("createElement"), false, false);
-            return new Ast.CallExpression(createElement, new List<Ast.Expression> { name, attributes, children }, false);
+            var factory = _current?.JsxFactory ?? "React.createElement";
+            var callee = BuildQualifiedName(factory);
+            return new Ast.CallExpression(callee, new List<Ast.Expression> { name, attributes, children }, false);
+        }
+
+        /// <summary>
+        /// Builds a (possibly dotted) reference expression from a factory name
+        /// such as <c>h</c>, <c>React.createElement</c> or <c>preact.h</c>.
+        /// </summary>
+        private static Ast.Expression BuildQualifiedName(string dotted)
+        {
+            if (string.IsNullOrEmpty(dotted))
+            {
+                dotted = "React.createElement";
+            }
+
+            var parts = dotted.Split('.');
+            Ast.Expression expression = new Ast.Identifier(parts[0]);
+
+            for (var i = 1; i < parts.Length; i++)
+            {
+                expression = new Ast.MemberExpression(expression, new Ast.Identifier(parts[i]), false, false);
+            }
+
+            return expression;
         }
 
         private static Ast.Expression GetName(Ast.JsxName name)
