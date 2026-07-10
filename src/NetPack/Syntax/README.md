@@ -92,6 +92,12 @@ source ──Tokenizer──▶ tokens ──Parser──▶ AST (SourceFile)
 - **TypeScript `enum` lowering** — enums are emitted as the runtime IIFE form
   (numeric reverse-mapping + string members), including `const enum` and
   `export enum`.
+- **Source maps** (`SourceMapBuilder` / `Base64Vlq`): the printer tracks the
+  generated line/column and, using each module factory's tagged source
+  (`BlockStatement.Source`) plus the node `Start` offsets, emits a Source Map v3
+  (with inlined `sourcesContent`) alongside each JS bundle. Positions survive
+  minification and mangling (only names change, not offsets). Enabled via
+  `bundle --sourcemap` and always on for `serve`.
 - **Acornima removed**: `Traverse`, `JsVisitor`, `JsBundle`, `JsFragment` and
   `JsExternalFragment` all run on this module; the package references are gone.
 - **Optimized bundle runtime** (`JsBundle` / `JsRuntime`): modules become

@@ -16,6 +16,9 @@ public class BundleCommand : ICommand
     [Option("minify", Default = false, HelpText = "Indicates if the generated files should be optimized for file size.")]
     public bool Minify { get; set; } = false;
 
+    [Option("sourcemap", Default = false, HelpText = "Emit a source map (.js.map) next to each JavaScript bundle.")]
+    public bool SourceMap { get; set; } = false;
+
     [Option("clean", Default = false, HelpText = "Indicates if the output directory should be cleaned first.")]
     public bool Clean { get; set; } = false;
 
@@ -45,6 +48,7 @@ public class BundleCommand : ICommand
         {
             IsOptimizing = Minify,
             IsReloading = false,
+            WithSourceMaps = SourceMap,
         };
 
         if (Clean && Directory.Exists(outdir))

@@ -51,6 +51,7 @@ public class ServeCommand : ICommand
         {
             IsOptimizing = Minify,
             IsReloading = true,
+            WithSourceMaps = true,
         };
         await compilation.WriteOut(options);
         var factories = new Dictionary<int, string>(graph.Context.ModuleFactories);
@@ -179,6 +180,11 @@ public class ServeCommand : ICommand
 
     private string GetMimeType(string name)
     {
+        if (name.EndsWith(".map", StringComparison.OrdinalIgnoreCase))
+        {
+            return "application/json";
+        }
+
         if (provider.TryGetContentType(name, out var contentType))
         {
             return contentType;

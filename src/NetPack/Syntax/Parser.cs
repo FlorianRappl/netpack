@@ -71,7 +71,7 @@ public sealed partial class Parser
 
         var diagnostics = new List<Diagnostic>(_tokenizer.Diagnostics);
         diagnostics.AddRange(_diagnostics);
-        return new SourceFile(_fileName, body, diagnostics)
+        return new SourceFile(_fileName, body, diagnostics, _source)
         {
             Start = 0,
             End = _source.Length,

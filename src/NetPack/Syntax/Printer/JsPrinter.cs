@@ -28,14 +28,30 @@ public sealed class JsPrinter
     private readonly bool _min;
     private int _indent;
 
-    public JsPrinter(PrinterOptions options = default)
+    // Source-map state (only tracked when a builder is attached).
+    private readonly SourceMapBuilder? _map;
+    private readonly Stack<SourceFile> _sources = new();
+    private int _genLine;
+    private int _genColumn;
+
+    public JsPrinter(PrinterOptions options = default, SourceMapBuilder? map = null)
     {
         _min = options.Minify;
+        _map = map;
     }
 
     public static string Print(Node node, PrinterOptions options = default)
     {
         var printer = new JsPrinter(options);
+        printer.Emit(node);
+        return printer._sb.ToString();
+    }
+
+    /// <summary>Prints and simultaneously fills <paramref name="map"/> with a
+    /// source map for the generated output.</summary>
+    public static string Print(Node node, PrinterOptions options, SourceMapBuilder map)
+    {
+        var printer = new JsPrinter(options, map);
         printer.Emit(node);
         return printer._sb.ToString();
     }
@@ -63,12 +79,34 @@ public sealed class JsPrinter
 
     // -- output primitives -------------------------------------------------
 
-    private void Write(string text) => _sb.Append(text);
-    private void Write(char c) => _sb.Append(c);
+    private void Write(string text)
+    {
+        _sb.Append(text);
+        if (_map is not null) Advance(text);
+    }
+
+    private void Write(char c)
+    {
+        _sb.Append(c);
+        if (_map is not null)
+        {
+            if (c == '\n') { _genLine++; _genColumn = 0; }
+            else _genColumn++;
+        }
+    }
+
+    private void Advance(string text)
+    {
+        foreach (var c in text)
+        {
+            if (c == '\n') { _genLine++; _genColumn = 0; }
+            else _genColumn++;
+        }
+    }
 
     private void Space()
     {
-        if (!_min) _sb.Append(' ');
+        if (!_min) Write(' ');
     }
 
     private void SpaceOrNewLine()
@@ -83,16 +121,34 @@ public sealed class JsPrinter
         {
             return;
         }
-        _sb.Append('\n');
+        Write('\n');
         for (var i = 0; i < _indent; i++)
         {
-            _sb.Append("  ");
+            Write("  ");
         }
     }
 
     private void Semicolon()
     {
-        _sb.Append(';');
+        Write(';');
+    }
+
+    /// <summary>Records a source-map segment for <paramref name="node"/> at the
+    /// current generated position, attributing it to the source currently on the
+    /// stack (a module factory body). Skips synthetic nodes (empty span).</summary>
+    private void Mark(Node node)
+    {
+        if (_map is null || _sources.Count == 0 || node.End <= node.Start)
+        {
+            return;
+        }
+        var source = _sources.Peek();
+        if (source.Source.Length == 0 || node.Start >= source.Source.Length)
+        {
+            return;
+        }
+        var (line, column) = source.GetLineColumn(node.Start);
+        _map.AddMapping(_genLine, _genColumn, source, line, column);
     }
 
     // -- statements --------------------------------------------------------
@@ -115,6 +171,7 @@ public sealed class JsPrinter
 
     private void PrintStatement(Statement statement)
     {
+        Mark(statement);
         switch (statement)
         {
             case EmptyStatement:
@@ -248,10 +305,16 @@ public sealed class JsPrinter
 
     private void PrintBlock(BlockStatement block)
     {
+        // A factory body carries its module's source; make it the current source
+        // for mappings emitted while the block is printed.
+        var pushed = _map is not null && block.Source is not null;
+        if (pushed) _sources.Push(block.Source!);
+
         Write('{');
         if (block.Body.Count == 0)
         {
             Write('}');
+            if (pushed) _sources.Pop();
             return;
         }
         _indent++;
@@ -264,6 +327,8 @@ public sealed class JsPrinter
         _indent--;
         NewLine();
         Write('}');
+
+        if (pushed) _sources.Pop();
     }
 
     /// <summary>Prints a statement as the body of a control-flow construct.</summary>
@@ -592,6 +657,7 @@ public sealed class JsPrinter
         {
             expression = paren.Expression;
         }
+        Mark(expression);
         var precedence = ExpressionPrecedence(expression);
         var wrap = precedence < minPrecedence;
         if (wrap) Write('(');
@@ -1056,32 +1122,33 @@ public sealed class JsPrinter
 
     private void PrintString(string value)
     {
-        _sb.Append('"');
+        var sb = new StringBuilder(value.Length + 2);
+        sb.Append('"');
         foreach (var c in value)
         {
             switch (c)
             {
-                case '"': _sb.Append("\\\""); break;
-                case '\\': _sb.Append("\\\\"); break;
-                case '\n': _sb.Append("\\n"); break;
-                case '\r': _sb.Append("\\r"); break;
-                case '\t': _sb.Append("\\t"); break;
-                case '\b': _sb.Append("\\b"); break;
-                case '\f': _sb.Append("\\f"); break;
+                case '"': sb.Append("\\\""); break;
+                case '\\': sb.Append("\\\\"); break;
+                case '\n': sb.Append("\\n"); break;
+                case '\r': sb.Append("\\r"); break;
+                case '\t': sb.Append("\\t"); break;
+                case '\b': sb.Append("\\b"); break;
+                case '\f': sb.Append("\\f"); break;
                 default:
                     if (c < 0x20)
                     {
-                        _sb.Append("\\u");
-                        _sb.Append(((int)c).ToString("x4"));
+                        sb.Append("\\u").Append(((int)c).ToString("x4"));
                     }
                     else
                     {
-                        _sb.Append(c);
+                        sb.Append(c);
                     }
                     break;
             }
         }
-        _sb.Append('"');
+        sb.Append('"');
+        Write(sb.ToString());
     }
 
     // -- jsx (rarely reached: the bundler lowers JSX before printing) ------

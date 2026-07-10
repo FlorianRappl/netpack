@@ -6,6 +6,14 @@ public sealed class BlockStatement : Statement
 {
     public BlockStatement(IList<Statement> body) => Body = body;
     public IList<Statement> Body { get; set; }
+
+    /// <summary>
+    /// When set, marks this block as the body of a module factory: while the
+    /// printer emits the block it attributes node positions to this source for
+    /// source-map generation.
+    /// </summary>
+    public SourceFile? Source { get; set; }
+
     public override NodeKind Kind => NodeKind.BlockStatement;
 }
 

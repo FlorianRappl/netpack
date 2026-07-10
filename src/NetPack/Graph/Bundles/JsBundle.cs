@@ -43,6 +43,8 @@ public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags
 
     public string Stringify(OutputOptions options)
     {
+        SourceMap = null;
+
         var transpiler = new JsxToJavaScriptTranspiler(this, options.IsReloading);
         var ast = transpiler.Transpile();
 
@@ -52,7 +54,17 @@ public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags
         }
 
         var printerOptions = options.IsOptimizing ? PrinterOptions.Compact : PrinterOptions.Pretty;
-        return JsPrinter.Print(ast, printerOptions);
+
+        if (!options.WithSourceMaps)
+        {
+            return JsPrinter.Print(ast, printerOptions);
+        }
+
+        var mapFile = $"{GetFileName()}.map";
+        var builder = new SourceMapBuilder(GetFileName(), _context.Root);
+        var code = JsPrinter.Print(ast, printerOptions, builder);
+        SourceMap = Encoding.UTF8.GetBytes(builder.ToJson());
+        return $"{code}\n//# sourceMappingURL={mapFile}\n";
     }
 
     private static Ast.StringLiteral MakeString(string text) => new(text, text);
@@ -128,6 +140,10 @@ public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags
 
                 var id = GetId(node);
                 var factory = MakeFactoryArrow(body);
+
+                // Tag the factory body with the module's source so the printer can
+                // attribute generated positions back to the original file.
+                ((Ast.BlockStatement)factory.Body).Source = fragment.Ast;
 
                 if (_reloading)
                 {

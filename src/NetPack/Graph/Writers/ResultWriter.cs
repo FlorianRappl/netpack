@@ -30,10 +30,21 @@ abstract class ResultWriter(BundlerContext context)
         await Parallel.ForEachAsync(_context.Bundles.Values, async (bundle, ct) =>
         {
             var fn = bundle.GetFileName();
-            using var dst = OpenWrite(fn);
-            using var src = await bundle.CreateStream(options);
-            await src.CopyToAsync(dst, ct);
-            CloseWrite(fn, dst);
+            using (var dst = OpenWrite(fn))
+            {
+                using var src = await bundle.CreateStream(options);
+                await src.CopyToAsync(dst, ct);
+                CloseWrite(fn, dst);
+            }
+
+            // A JS bundle may have produced a companion source map.
+            if (bundle.SourceMap is { } map)
+            {
+                var mapName = $"{fn}.map";
+                using var mapDst = OpenWrite(mapName);
+                await mapDst.WriteAsync(map, ct);
+                CloseWrite(mapName, mapDst);
+            }
         });
         
         Finished?.Invoke(this, EventArgs.Empty);

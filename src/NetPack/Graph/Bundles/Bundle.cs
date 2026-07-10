@@ -16,6 +16,10 @@ public abstract class Bundle(BundlerContext context, Node root, BundleFlags flag
 
     public Node[] Items = [];
 
+    /// <summary>The source map produced by the last <see cref="CreateStream"/>
+    /// (when source maps are enabled), to be written alongside the bundle.</summary>
+    public byte[]? SourceMap { get; protected set; }
+
     public string GetFileName()
     {
         var entry = Name;
