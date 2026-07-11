@@ -22,15 +22,18 @@ export function run(command: string, args: Record<string, string | boolean>): ch
 
 export function run(command: string | Array<string>, args?: Record<string, string | boolean>): child_process.ChildProcess {
   if (typeof command === 'string') {
-    const argv = Object.entries(args)
+    const argv = Object.entries(args ?? {})
       .map(([name, value]) => argToString(name, value))
-      .join(" ");
+      .filter((arg) => arg.length > 0);
     return run([command, ...argv]);
   }
 
   return child_process.spawn(binPath, command, {
     windowsHide: true,
-    stdio: ["pipe", "pipe", "inherit"],
+    // Inherit all streams so the bundler's console output (build summary, dev
+    // server URL, errors) reaches the user's terminal. Previously stdout was
+    // piped, which silently swallowed everything the binary wrote to stdout.
+    stdio: "inherit",
     cwd: process.cwd(),
   });
 }
