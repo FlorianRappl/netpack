@@ -227,7 +227,7 @@ public sealed class JsPrinter
                 break;
             case DoWhileStatement s:
                 Write("do");
-                PrintBody(s.Body);
+                PrintBody(s.Body, afterKeyword: true);
                 SpaceOrNewLine();
                 Write("while");
                 Space();
@@ -348,8 +348,12 @@ public sealed class JsPrinter
         if (pushed) _sources.Pop();
     }
 
-    /// <summary>Prints a statement as the body of a control-flow construct.</summary>
-    private void PrintBody(Statement body)
+    /// <summary>Prints a statement as the body of a control-flow construct.
+    /// <paramref name="afterKeyword"/> must be set when the body directly follows a
+    /// word keyword (<c>else</c>, <c>do</c>) rather than a <c>)</c>, so compact
+    /// output inserts the space that keeps <c>else throw</c> from becoming
+    /// <c>elsethrow</c>.</summary>
+    private void PrintBody(Statement body, bool afterKeyword = false)
     {
         if (body is BlockStatement block)
         {
@@ -362,6 +366,10 @@ public sealed class JsPrinter
         }
         else
         {
+            if (afterKeyword && _min)
+            {
+                Write(' ');
+            }
             _indent++;
             NewLine();
             PrintStatement(body);
@@ -416,7 +424,7 @@ public sealed class JsPrinter
             }
             else
             {
-                PrintBody(s.Alternate);
+                PrintBody(s.Alternate, afterKeyword: true);
             }
         }
     }

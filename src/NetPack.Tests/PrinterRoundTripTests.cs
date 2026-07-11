@@ -56,6 +56,45 @@ public class PrinterRoundTripTests
         Assert.Empty(reparsed.Diagnostics);
     }
 
+    [Theory]
+    // Compact output must not merge word keywords with a following statement
+    // (`else`/`do` + `throw`/`switch`/identifier → `elsethrow` / `dox`).
+    [InlineData("if (a) { b(); } else throw c;")]
+    [InlineData("if (a) b(); else switch (c) { case 1: d(); break; }")]
+    [InlineData("if (a) b(); else return d;")]
+    [InlineData("do x(); while (y);")]
+    [InlineData("if (a) b(); else if (c) d(); else e();")]
+    // Parenthesized ternary consequents must not be mistaken for arrow params.
+    [InlineData("var x = a ? (b) : c;")]
+    [InlineData("var y = cond ? (f.name, g, h) : other;")]
+    [InlineData("f.registrationName ? (ua) : (g, h);")]
+    public void Prints_valid_compact_javascript(string source)
+    {
+        var module = Parser.ParseModule(source, "in.js");
+        Assert.Empty(module.Diagnostics);
+
+        var printed = JsPrinter.Print(module, PrinterOptions.Compact);
+        Assert.Empty(Parser.ParseModule(printed, "out.js").Diagnostics);
+    }
+
+    [Fact]
+    public void Parenthesized_ternary_consequent_is_not_an_arrow()
+    {
+        // `a ? (b) : c` is a conditional, not `(b) => ...`.
+        var printed = JsPrinter.Print(Parser.ParseModule("var x = a ? (b) : c;", "in.js"));
+        Assert.Contains("?", printed);
+        Assert.DoesNotContain("=>", printed);
+    }
+
+    [Fact]
+    public void Typescript_arrow_return_type_still_detected()
+    {
+        // The `:` return-type heuristic must still recognise real arrows in TS.
+        var module = Parser.ParseModule("const f = (x): number => x + 1;", "in.ts", ParserOptions.Default);
+        Assert.Empty(module.Diagnostics);
+        Assert.Contains("=>", JsPrinter.Print(module));
+    }
+
     [Fact]
     public void Iife_statement_is_parenthesized()
     {

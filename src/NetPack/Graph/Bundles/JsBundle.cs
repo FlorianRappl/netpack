@@ -55,16 +55,55 @@ public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags
 
         var printerOptions = options.IsOptimizing ? PrinterOptions.Compact : PrinterOptions.Pretty;
 
+        string code;
+
         if (!options.WithSourceMaps)
         {
-            return JsPrinter.Print(ast, printerOptions);
+            code = JsPrinter.Print(ast, printerOptions);
+        }
+        else
+        {
+            var mapFile = $"{GetFileName()}.map";
+            var builder = new SourceMapBuilder(GetFileName(), _context.Root);
+            var printed = JsPrinter.Print(ast, printerOptions, builder);
+            SourceMap = Encoding.UTF8.GetBytes(builder.ToJson());
+            code = $"{printed}\n//# sourceMappingURL={mapFile}\n";
         }
 
-        var mapFile = $"{GetFileName()}.map";
-        var builder = new SourceMapBuilder(GetFileName(), _context.Root);
-        var code = JsPrinter.Print(ast, printerOptions, builder);
-        SourceMap = Encoding.UTF8.GetBytes(builder.ToJson());
-        return $"{code}\n//# sourceMappingURL={mapFile}\n";
+        VerifyOutput(code);
+        return code;
+    }
+
+    /// <summary>
+    /// Opt-in self-check (set <c>NETPACK_VERIFY=1</c>): re-parses the generated
+    /// bundle and reports the first location where it is not valid JavaScript.
+    /// This turns a silently broken bundle into an actionable message pointing at
+    /// the exact construct the printer mis-emitted.
+    /// </summary>
+    private void VerifyOutput(string code)
+    {
+        if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("NETPACK_VERIFY")))
+        {
+            return;
+        }
+
+        var options = new ParserOptions { Tolerant = true, Jsx = false, TypeScript = false };
+        var reparsed = Parser.ParseModule(code, GetFileName(), options);
+
+        if (reparsed.Diagnostics.Count == 0)
+        {
+            return;
+        }
+
+        var first = reparsed.Diagnostics[0];
+        var start = System.Math.Max(0, first.Position - 50);
+        var length = System.Math.Min(120, code.Length - start);
+        var snippet = code.Substring(start, length).Replace("\n", " ");
+
+        Console.Error.WriteLine(
+            "[netpack] WARNING: generated bundle '{0}' is not valid JS ({1} issue(s)); first at {2}:{3}: {4}",
+            GetFileName(), reparsed.Diagnostics.Count, first.Line, first.Column, first.Message);
+        Console.Error.WriteLine("[netpack]   …{0}…", snippet);
     }
 
     private static Ast.StringLiteral MakeString(string text) => new(text, text);

@@ -64,10 +64,10 @@ public class BundleCommand : ICommand
         var emitted = await result.WriteOut(options);
         watch.Stop();
 
-        PrintSummary(emitted, OutDir, watch.ElapsedMilliseconds);
+        PrintSummary(emitted, OutDir, watch.ElapsedMilliseconds, Minify, SourceMap);
     }
 
-    private static void PrintSummary(IReadOnlyList<EmittedFile> files, string outDir, long elapsedMs)
+    private void PrintSummary(IReadOnlyList<EmittedFile> files, string outDir, long elapsedMs, bool minified, bool sourceMaps)
     {
         if (files.Count == 0)
         {
@@ -81,8 +81,9 @@ public class BundleCommand : ICommand
         var sizeWidth = Math.Max(sizeStrings.Values.Max(s => s.Length), totalHuman.Length);
 
         Console.WriteLine();
-        Console.WriteLine("[netpack] Emitted {0} file{1} to '{2}' in {3} ms:",
-            files.Count, files.Count == 1 ? "" : "s", outDir, elapsedMs);
+        Console.WriteLine("[netpack] Emitted {0} file{1} to '{2}' in {3} ms (minify: {4}, sourcemap: {5}):",
+            files.Count, files.Count == 1 ? "" : "s", outDir, elapsedMs,
+            minified ? "on" : "off", sourceMaps ? "on" : "off");
         Console.WriteLine();
 
         foreach (var f in files)

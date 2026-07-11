@@ -875,14 +875,72 @@ public sealed partial class Parser
             }
             while (depth > 0);
 
-            // After ')', an arrow (optionally preceded by a `: ReturnType`) marks
-            // the parenthesized list as arrow-function parameters.
-            result = _current.Kind == TokenKind.Arrow || _current.Kind == TokenKind.Colon;
+            // After ')', a `=>` marks the parenthesized list as arrow parameters.
+            // A `:` can introduce a TypeScript return type (`(x): T => y`) — but
+            // ONLY when a `=>` actually follows the type. Otherwise the `:` belongs
+            // to an enclosing ternary (`cond ? (x) : y`), which must not be treated
+            // as an arrow.
+            if (_current.Kind == TokenKind.Arrow)
+            {
+                result = true;
+            }
+            else if (_current.Kind == TokenKind.Colon && _options.TypeScript)
+            {
+                result = ScanReturnTypeArrow();
+            }
         }
 
         _tokenizer.Reset(snapshot.Position, snapshot.Line, snapshot.LineStart, snapshot.PreviousKind);
         _current = current;
         return result;
+    }
+
+    /// <summary>
+    /// With <c>_current</c> at the <c>:</c> following an arrow's parameter list,
+    /// scans the (TypeScript) return type and reports whether a depth-0 <c>=&gt;</c>
+    /// follows it. This disambiguates <c>(x): T =&gt; y</c> (arrow) from
+    /// <c>cond ? (x) : y</c> (ternary). Runs inside the caller's tokenizer
+    /// snapshot, so its scanning is rolled back afterwards.
+    /// </summary>
+    private bool ScanReturnTypeArrow()
+    {
+        Advance(); // consume ':'
+        var depth = 0;
+
+        for (var guard = 0; guard < 2048; guard++)
+        {
+            switch (_current.Kind)
+            {
+                case TokenKind.EndOfFile:
+                    return false;
+                case TokenKind.OpenParen:
+                case TokenKind.OpenBracket:
+                case TokenKind.OpenBrace:
+                case TokenKind.LessThan:
+                    depth++;
+                    break;
+                case TokenKind.CloseParen:
+                case TokenKind.CloseBracket:
+                case TokenKind.CloseBrace:
+                case TokenKind.GreaterThan:
+                    if (depth == 0) return false; // exited the enclosing context
+                    depth--;
+                    break;
+                case TokenKind.Arrow:
+                    if (depth == 0) return true;
+                    break;
+                case TokenKind.Semicolon:
+                case TokenKind.Comma:
+                case TokenKind.Colon:
+                case TokenKind.Question:
+                    if (depth == 0) return false; // ternary / statement terminator
+                    break;
+            }
+
+            Advance();
+        }
+
+        return false;
     }
 
     private Expression ParseArrowFunction(bool async)
