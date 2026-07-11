@@ -1,10 +1,13 @@
 name: Publish
 
-# Two-stage release pipeline:
+# Release pipeline, three jobs:
 #   1. build   — compile the native AOT binary once per platform (Linux x64,
 #                macOS arm64, Windows x64) and upload each as an artifact.
 #   2. publish — assemble the per-platform npm packages from those artifacts and
 #                publish them together with the central wrapper package.
+#   3. pages   — build the Astro landing page (www/home) and push the static
+#                output to the `gh-pages` branch, which GitHub Pages serves from.
+#                Independent of 1/2, so it runs in parallel with the npm release.
 #
 # Publishing uses npm Trusted Publishing (OIDC): no NPM token / secret is needed.
 # The maintainer must configure trusted publishing on npmjs.com for each of
@@ -13,6 +16,10 @@ name: Publish
 #
 # The published version is the <VersionPrefix> in src/Directory.Build.props; bump
 # it (and tag the matching release) before triggering this workflow.
+#
+# For the `pages` job, GitHub Pages must be configured (Settings > Pages) to
+# deploy from the `gh-pages` branch; the branch is created automatically on
+# first run.
 
 on:
   release:
@@ -109,3 +116,30 @@ jobs:
       - name: Publish central package
         working-directory: src/npm/netpack
         run: npm publish --provenance --access public
+
+  pages:
+    name: Publish GitHub Pages
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # required to push the built site to gh-pages
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Install dependencies
+        working-directory: www/home
+        run: npm install --no-audit --no-fund
+
+      - name: Build site
+        working-directory: www/home
+        run: npm run build
+
+      - name: Deploy to gh-pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: www/home/dist
+          publish_branch: gh-pages
