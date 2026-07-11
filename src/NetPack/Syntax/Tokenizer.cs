@@ -844,6 +844,12 @@ public sealed class Tokenizer
             case TokenKind.PlusPlus:
             case TokenKind.MinusMinus:
                 return false;
+            case TokenKind.LessThan:
+                // In JSX, a `/` immediately after `<` opens a closing tag
+                // (`</name>`), not a regex literal. Only a *contiguous* `</`
+                // qualifies; `a < /re/` (with a space) keeps regex semantics.
+                return !(_options.Variant == LanguageVariant.Jsx
+                    && _tokenStart > 0 && _source[_tokenStart - 1] == '<');
             default:
                 // A contextual (non-reserved) keyword used as an identifier
                 // acts like a value, so division follows it.
