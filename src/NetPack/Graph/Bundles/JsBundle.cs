@@ -110,8 +110,6 @@ public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags
 
     internal sealed class JsxToJavaScriptTranspiler(JsBundle bundle, bool reloading) : Ast.AstRewriter
     {
-        private static readonly Ast.Identifier __default = new("_default");
-
         private readonly JsBundle _bundle = bundle;
         private readonly bool _reloading = reloading;
         private JsFragment? _current;
@@ -282,11 +280,14 @@ public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags
             }
 
             var offset = 0;
+            // A fresh node per bundle (bundles are stringified/mangled in parallel,
+            // so a shared mutable Identifier would be raced across them).
+            var defaultLocal = new Ast.Identifier("_default");
             var properties = new List<Ast.Node>();
             foreach (var m in exportNames)
             {
                 properties.Add(m == "default"
-                    ? new Ast.Property(new Ast.Identifier(m), __default, Ast.PropertyKind.Init, false, false, false)
+                    ? new Ast.Property(new Ast.Identifier(m), defaultLocal, Ast.PropertyKind.Init, false, false, false)
                     : new Ast.Property(new Ast.Identifier(m), new Ast.Identifier(m), Ast.PropertyKind.Init, false, true, false));
             }
 
@@ -298,7 +299,7 @@ public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags
             if (exportNames.Contains("default"))
             {
                 offset = 1;
-                trailer.Add(new Ast.ExportDefaultDeclaration(__default));
+                trailer.Add(new Ast.ExportDefaultDeclaration(defaultLocal));
             }
 
             if (exportNames.Length > offset)
@@ -420,6 +421,11 @@ public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags
 
         private static Ast.Node GetImportName(Ast.ImportSpecifierBase m) => m switch
         {
+            // A fresh node: for `import { render }` the parser shares one Identifier
+            // for both the imported name and the local binding, so reusing it as the
+            // destructuring key would let the mangler rename the property key too
+            // (`{ render: render }` → `{ ga: ga }`), breaking the lookup.
+            Ast.ImportSpecifier { Imported: Ast.Identifier id } => new Ast.Identifier(id.Name),
             Ast.ImportSpecifier spec => spec.Imported,
             Ast.ImportDefaultSpecifier => new Ast.Identifier("default"),
             _ => m.Local,
@@ -444,14 +450,14 @@ public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags
             {
                 var require = RequireCall(GetId(reference));
                 var specs = node.Specifiers.Select(m => (Ast.Expression)SetExport(
-                    AsExpression(m.Exported),
+                    ExportKey(m.Exported),
                     new Ast.MemberExpression(require, m.Local, m.Local is Ast.StringLiteral, false))).ToList();
                 return new Ast.ExpressionStatement(new Ast.SequenceExpression(specs));
             }
 
             if (node.Declaration is null)
             {
-                var seq = node.Specifiers.Select(m => (Ast.Expression)SetExport(AsExpression(m.Exported), AsExpression(m.Local))).ToList();
+                var seq = node.Specifiers.Select(m => (Ast.Expression)SetExport(ExportKey(m.Exported), AsExpression(m.Local))).ToList();
                 return new Ast.ExpressionStatement(new Ast.SequenceExpression(seq));
             }
 
@@ -470,6 +476,17 @@ public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags
 
         private static Ast.Expression AsExpression(Ast.Node node)
             => node as Ast.Expression ?? new Ast.Identifier((node as Ast.Identifier)?.Name ?? string.Empty);
+
+        // A fresh key node for `exports.<name>`. The parser shares a single
+        // Identifier for a specifier's local and exported names (`export { foo }`),
+        // so reusing it as the property key would let the mangler rename the
+        // exported name along with the local reference.
+        private static Ast.Expression ExportKey(Ast.Node node) => node switch
+        {
+            Ast.Identifier id => new Ast.Identifier(id.Name),
+            Ast.StringLiteral s => s,
+            _ => AsExpression(node),
+        };
 
         private static Ast.AssignmentExpression SetExport(Ast.Expression name, Ast.Expression expr)
         {

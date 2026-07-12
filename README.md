@@ -2,7 +2,7 @@
 
 # netpack
 
-🍭 netpack is an experiment to see if .NET written tooling can perform on an equal level to tools written in Rust or Go.
+🍭 netpack is an experiment to see if .NET written tooling can perform on an equal level to tools written in Rust or Go. Get more information at [netpack.anglevisions.com](https://netpack.anglevisions.com).
 
 Right now netpack is not production ready and the likelihood that it works for your project is low.
 
