@@ -382,12 +382,27 @@ internal sealed class ReferenceCollector
 
     private void VisitJsx(JsxElement jsx)
     {
+        // The element name is a reference: `<App/>` and `<React.Suspense/>` use
+        // the `App` / `React` bindings. Without this, tree-shaking would delete a
+        // component that is only ever used from JSX.
+        VisitJsxName(jsx.OpeningElement.Name);
+
         foreach (var attribute in jsx.OpeningElement.Attributes)
         {
             if (attribute is JsxSpreadAttribute spread) Visit(spread.Argument);
             else if (attribute is JsxAttribute { Value: JsxExpressionContainer { Expression: { } e } }) Visit(e);
         }
         foreach (var child in jsx.Children) VisitJsxChild(child);
+    }
+
+    private void VisitJsxName(JsxName name)
+    {
+        switch (name)
+        {
+            case JsxIdentifier id: Use(id.Name); break;
+            case JsxMemberExpression member: VisitJsxName(member.Object); break;
+            case JsxNamespacedName ns: Use(ns.Namespace.Name); break;
+        }
     }
 
     private void VisitJsxChild(Node child)

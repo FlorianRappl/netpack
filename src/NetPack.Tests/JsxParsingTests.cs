@@ -1,6 +1,7 @@
 namespace NetPack.Tests;
 
 using NetPack.Syntax;
+using NetPack.Syntax.Ast;
 using Xunit;
 
 /// <summary>

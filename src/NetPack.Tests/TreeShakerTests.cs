@@ -24,6 +24,40 @@ public class TreeShakerTests
     }
 
     [Fact]
+    public void Keeps_component_referenced_only_via_jsx()
+    {
+        // `Page` is used solely through `<Page />`; the reference collector must
+        // count the JSX element name so the shaker does not drop the component.
+        var module = Parser.ParseModule(
+            "function Page() { return null; }\nexport const el = <Page />;",
+            "mod.jsx",
+            new ParserOptions { Jsx = true, Tolerant = true });
+        var used = new UsedExports();
+        used.Add("el");
+        TreeShaker.Shake(module, used);
+        var output = JsPrinter.Print(module);
+
+        Assert.Contains("function Page", output);
+    }
+
+    [Fact]
+    public void Keeps_member_named_component_used_only_via_jsx()
+    {
+        var module = Parser.ParseModule(
+            "const Lib = { Card: () => null };\nexport const el = <Lib.Card />;",
+            "mod.jsx",
+            new ParserOptions { Jsx = true, Tolerant = true });
+        var used = new UsedExports();
+        used.Add("el");
+        TreeShaker.Shake(module, used);
+        var output = JsPrinter.Print(module);
+
+        // The `const Lib = {…}` declaration must survive (the raw `<Lib.Card/>`
+        // JSX also contains "Lib", so assert on the declaration specifically).
+        Assert.Contains("const Lib", output);
+    }
+
+    [Fact]
     public void Removes_unused_exported_function()
     {
         var output = Shake("export function used() {}\nexport function unused() {}", "used");
