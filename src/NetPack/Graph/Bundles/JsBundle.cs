@@ -561,19 +561,19 @@ public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags
                 attributesArg = new Ast.NullLiteral();
             }
 
-            var childrenArg = node.OpeningElement.SelfClosing
-                ? (Ast.Expression)new Ast.NullLiteral()
+            var children = node.OpeningElement.SelfClosing
+                ? new List<Ast.Expression>()
                 : ConvertJsxChildren(node.Children);
 
-            return ReactCreateElement(elementNameArg, attributesArg, childrenArg);
+            return ReactCreateElement(elementNameArg, attributesArg, children);
         }
 
         protected override Ast.Node VisitJsxFragment(Ast.JsxFragment node)
         {
             var factory = _current?.JsxFragmentFactory ?? "React.Fragment";
             var fragment = BuildQualifiedName(factory);
-            var childrenArg = ConvertJsxChildren(node.Children);
-            return ReactCreateElement(fragment, new Ast.NullLiteral(), childrenArg);
+            var children = ConvertJsxChildren(node.Children);
+            return ReactCreateElement(fragment, new Ast.NullLiteral(), children);
         }
 
         private Ast.Node ConvertAttribute(Ast.JsxAttribute node)
@@ -590,14 +590,13 @@ public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags
             _ => (Ast.Expression)Visit(value)!,
         };
 
-        private Ast.Expression ConvertJsxChildren(IList<Ast.Node> children)
+        // Returns each rendered child as a separate expression. They are passed as
+        // individual trailing arguments to the factory (variadic children) rather
+        // than as one array — an array child makes React expect `key` props and
+        // warn, whereas static children passed positionally do not.
+        private List<Ast.Expression> ConvertJsxChildren(IList<Ast.Node> children)
         {
-            if (children.Count == 0)
-            {
-                return new Ast.NullLiteral();
-            }
-
-            var elements = new List<Ast.Expression?>(children.Count);
+            var elements = new List<Ast.Expression>(children.Count);
             foreach (var child in children)
             {
                 var element = ConvertJsxChild(child);
@@ -606,7 +605,7 @@ public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags
                     elements.Add(element);
                 }
             }
-            return new Ast.ArrayExpression(elements);
+            return elements;
         }
 
         private Ast.Expression? ConvertJsxChild(Ast.Node child) => child switch
@@ -617,11 +616,13 @@ public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags
             _ => null,
         };
 
-        private Ast.Expression ReactCreateElement(Ast.Expression name, Ast.Expression attributes, Ast.Expression children)
+        private Ast.Expression ReactCreateElement(Ast.Expression name, Ast.Expression attributes, IReadOnlyList<Ast.Expression> children)
         {
             var factory = _current?.JsxFactory ?? "React.createElement";
             var callee = BuildQualifiedName(factory);
-            return new Ast.CallExpression(callee, new List<Ast.Expression> { name, attributes, children }, false);
+            var args = new List<Ast.Expression>(children.Count + 2) { name, attributes };
+            args.AddRange(children);
+            return new Ast.CallExpression(callee, args, false);
         }
 
         /// <summary>

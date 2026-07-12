@@ -77,6 +77,19 @@ public class JsxFactoryTests
     }
 
     [Fact]
+    public async Task Static_children_are_passed_variadically_not_as_an_array()
+    {
+        var output = await Bundle("app.jsx",
+            ("app.jsx", "export const a = <ul><li>one</li><li>two</li></ul>;"));
+
+        Assert.Contains("React.createElement(\"ul\"", output);
+        // Children must be separate trailing args, not a single array argument
+        // (an array child makes React demand `key` props and warn).
+        Assert.DoesNotContain("React.createElement(\"ul\", null, [", output);
+        Assert.DoesNotContain("[React.createElement", output);
+    }
+
+    [Fact]
     public async Task Local_jsx_pragma_overrides_factory()
     {
         var output = await Bundle("app.jsx", ("app.jsx", "/** @jsx h */\nexport const a = <div />;"));
