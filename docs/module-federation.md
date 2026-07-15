@@ -69,55 +69,9 @@ consuming side beyond pointing a host's `remotes` config (or another
 
 ## Native federation
 
-Set `"kind": "native"` to emit a **native-federation** remote instead of a
-Module Federation container. It uses the exact same `federation.json` entry —
-only the output shape differs.
-
-```json
-{
-  "name": "checkout",
-  "kind": "native",
-  "filename": "remoteEntry.js",
-  "exposes": {
-    "./CheckoutForm": "./src/CheckoutForm.tsx"
-  },
-  "shared": {
-    "react": { "singleton": true },
-    "react-dom": { "singleton": true }
-  }
-}
-```
-
-Where a Module Federation container ships the federation runtime and negotiates
-shared dependencies through it, a native-federation remote is **just an ES
-module**. Shared dependencies are imported directly, so the host resolves them
-through a standard [import map](./importmaps-and-externals.md):
-
-```js
-// remoteEntry.js (native)
-import * as __shared_0 from "react";
-import * as __shared_1 from "react-dom";
-
-export const shared = { "react": __shared_0, "react-dom": __shared_1 };
-export const exposes = {
-  "./CheckoutForm": () => import("./CheckoutForm.<hash>.js"),
-};
-export default { name: "checkout", exposes, shared };
-```
-
-netpack:
-
-1. treats every `shared` dependency as an **external**, so each
-   `import … from "react"` stays a bare specifier the host's import map
-   resolves — no copy is inlined into the remote;
-2. still emits each shared dependency as its **own standalone ES module**
-   (`react.js`, `react-dom.js`, …), so the host can serve them and point its
-   import map at them;
-3. emits each `exposes` entry as its own ESM chunk, loaded on demand.
-
-Everything stays ESM — there is no runtime container to load. The consuming host
-provides an import map mapping the bare specifiers (`"react"`, the remote's own
-name, …) to the emitted files.
+Set `"kind": "native"` to emit a plain-ESM **native-federation** remote from the
+exact same `federation.json` entry, instead of a Module Federation container.
+See [Native Federation](./native-federation.md) for the details.
 
 ## Combining with shared React etc.
 

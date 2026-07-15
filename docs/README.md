@@ -10,6 +10,9 @@ Usage docs for netpack, in addition to the feature overview in the
   and wire it up itself with `--shared`.
 - **[Module Federation](./module-federation.md)** — exposing and consuming
   federated modules via a `federation.json` entry point.
+- **[Native Federation](./native-federation.md)** — the same `federation.json`
+  with `"kind": "native"`, emitting a plain-ESM remote whose shared deps are
+  wired up through an import map.
 - **[React & JSX](./react-and-jsx.md)** — the default `React.createElement`
   factory, retargeting it project-wide or per file, and React Fast Refresh
   in the dev server.
