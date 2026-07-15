@@ -1,6 +1,6 @@
 {
   "name": "@netpack/win-arm64",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "The Windows ARM 64-bit binary for netpack, a web project bundler.",
   "repository": {
     "type": "git",
