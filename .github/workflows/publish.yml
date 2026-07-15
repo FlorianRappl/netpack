@@ -5,9 +5,11 @@ name: Publish
 #                macOS arm64, Windows x64) and upload each as an artifact.
 #   2. publish — assemble the per-platform npm packages from those artifacts and
 #                publish them together with the central wrapper package.
-#   3. pages   — build the Astro landing page (www/home) and push the static
-#                output to the `gh-pages` branch, which GitHub Pages serves from.
-#                Independent of 1/2, so it runs in parallel with the npm release.
+#   3. pages   — build both Astro sites (www/home, the landing page, and
+#                www/docs, which renders the repo-root docs/*.md) and push
+#                them together to the `gh-pages` branch: the landing page at
+#                the root, the docs site under /docs/. Independent of 1/2,
+#                so it runs in parallel with the npm release.
 #
 # Publishing uses npm Trusted Publishing (OIDC): no NPM token / secret is needed.
 # The maintainer must configure trusted publishing on npmjs.com for each of
@@ -19,7 +21,8 @@ name: Publish
 #
 # For the `pages` job, GitHub Pages must be configured (Settings > Pages) to
 # deploy from the `gh-pages` branch; the branch is created automatically on
-# first run.
+# first run. Both sites use only relative links, so this also works unchanged
+# if they're ever moved to a different path or domain.
 
 on:
   release:
@@ -121,7 +124,7 @@ jobs:
     name: Publish GitHub Pages
     runs-on: ubuntu-latest
     permissions:
-      contents: write # required to push the built site to gh-pages
+      contents: write # required to push the built sites to gh-pages
     steps:
       - uses: actions/checkout@v4
 
@@ -129,17 +132,42 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Install dependencies
+      - name: Install dependencies (landing page)
         working-directory: www/home
         run: npm install --no-audit --no-fund
 
-      - name: Build site
+      - name: Install dependencies (documentation page)
+        working-directory: www/docs
+        run: npm install --no-audit --no-fund
+
+      - name: Build landing page
         working-directory: www/home
         run: npm run build
+
+      - name: Build documentation page
+        working-directory: www/docs
+        run: npm run build
+
+      - name: Install dependencies (docs)
+        working-directory: www/docs
+        run: npm install --no-audit --no-fund
+
+      - name: Build docs site
+        working-directory: www/docs
+        run: npm run build
+
+      - name: Assemble combined site
+        run: |
+          set -euo pipefail
+          rm -rf deploy
+          mkdir -p deploy
+          cp -r www/home/dist/. deploy/
+          mkdir -p deploy/docs
+          cp -r www/docs/dist/. deploy/docs/
 
       - name: Deploy to gh-pages
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: www/home/dist
+          publish_dir: deploy
           publish_branch: gh-pages

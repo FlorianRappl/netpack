@@ -1,0 +1,43 @@
+---
+import BackgroundEffects from './BackgroundEffects.astro';
+
+// The page itself — no bounding card, no window chrome, matching
+// www/home's shell. Ambient background effects sit behind everything; the
+// "header" slot renders full-bleed, the default slot is constrained to
+// the readable content width and centered.
+---
+
+<div class="shell">
+  <BackgroundEffects />
+  <slot name="header" />
+  <main class="content">
+    <slot />
+  </main>
+</div>
+
+<style>
+  .shell {
+    position: relative;
+    /* No overflow:hidden here (unlike other cards elsewhere) — the docs
+       site has a fixed-position mobile nav drawer nested inside, and an
+       ancestor's overflow:hidden can clip position:fixed descendants in
+       some browsers. The ambient background glow's negative offsets are
+       still kept off the horizontal scrollbar by `html { overflow-x:
+       hidden }` in global.css, so nothing depends on this element for
+       that. */
+    background: var(--color-page-bg);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    font-family: var(--font-sans);
+  }
+
+  .content {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    max-width: var(--card-width);
+    margin: 0 auto;
+    flex: 1;
+  }
+</style>

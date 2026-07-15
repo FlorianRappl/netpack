@@ -1,0 +1,121 @@
+---
+import Layout from './Layout.astro';
+import PageShell from '../components/PageShell.astro';
+import DocsHeader from '../components/DocsHeader.astro';
+import Sidebar from '../components/Sidebar.astro';
+import TableOfContents, { type Heading } from '../components/TableOfContents.astro';
+import { getAllDocs } from '../lib/docs';
+import '../styles/docs-layout.css';
+
+export interface Props {
+  /** Doc id of the page being rendered, e.g. "README" or "getting-started". */
+  current: string;
+  headings?: Heading[];
+  title?: string;
+  description?: string;
+}
+
+const { current, headings = [], title, description } = Astro.props;
+
+const docs = await getAllDocs();
+
+// Every doc page except the index (docs/README.md, served at "/") lives one
+// level deep at "/<id>/". These two facts are all that's needed to compute
+// correct *relative* links regardless of where this site is actually
+// deployed (root domain, a "/docs" subpath, its own subdomain, ...) — see
+// src/lib/docs.ts for the same idea applied to in-content Markdown links.
+const path = Astro.url.pathname.replace(/\/+$/, '');
+const segments = path.split('/').filter(Boolean);
+const basePrefix = '../'.repeat(segments.length);
+
+// One level further up exits this site entirely, back to the landing page
+// — see the CI workflow, which deploys the docs build one directory below
+// the landing page's.
+const homeHref = `${basePrefix}../`;
+const indexHref = basePrefix || '.';
+
+const tocHeadings = headings.filter((h) => h.depth === 2 || h.depth === 3);
+---
+
+<Layout title={title} description={description}>
+  <PageShell>
+    <DocsHeader slot="header" indexHref={indexHref} homeHref={homeHref} />
+
+    <div class="docs-scrim" id="docs-scrim"></div>
+
+    <div class="docs-grid">
+      <Sidebar docs={docs} current={current} basePrefix={basePrefix} />
+      <article class="prose docs-main">
+        <slot />
+      </article>
+      <TableOfContents headings={tocHeadings} />
+    </div>
+  </PageShell>
+</Layout>
+
+<script>
+  // Mobile nav drawer: toggle button, scrim/Escape/link-click to close.
+  function initNavToggle() {
+    const toggle = document.getElementById('docs-nav-toggle');
+    const scrim = document.getElementById('docs-scrim');
+    const sidebar = document.getElementById('docs-sidebar');
+
+    const setOpen = (open: boolean) => {
+      document.body.classList.toggle('docs-nav-open', open);
+      toggle?.setAttribute('aria-expanded', String(open));
+    };
+
+    toggle?.addEventListener('click', () => {
+      setOpen(!document.body.classList.contains('docs-nav-open'));
+    });
+
+    scrim?.addEventListener('click', () => setOpen(false));
+
+    sidebar?.addEventListener('click', (event) => {
+      if ((event.target as HTMLElement).closest('a')) {
+        setOpen(false);
+      }
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') {
+        setOpen(false);
+      }
+    });
+  }
+
+  // Adds a "copy" button to every fenced code block rendered by Shiki.
+  function initCodeCopyButtons() {
+    document.querySelectorAll<HTMLPreElement>('.prose pre.astro-code').forEach((pre) => {
+      if (pre.querySelector('.code-copy-btn')) return;
+
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'code-copy-btn';
+      button.textContent = 'copy';
+
+      button.addEventListener('click', async () => {
+        const text = pre.textContent ?? '';
+        try {
+          await navigator.clipboard?.writeText(text);
+        } catch {
+          // Clipboard API unavailable/denied — still flip the label so the
+          // click doesn't feel like a no-op.
+        }
+        button.textContent = 'copied ✓';
+        setTimeout(() => {
+          button.textContent = 'copy';
+        }, 1600);
+      });
+
+      pre.appendChild(button);
+    });
+  }
+
+  initNavToggle();
+  initCodeCopyButtons();
+  document.addEventListener('astro:page-load', () => {
+    initNavToggle();
+    initCodeCopyButtons();
+  });
+</script>

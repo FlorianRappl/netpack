@@ -1,0 +1,23 @@
+---
+// The site's index renders docs/README.md.
+import { getCollection, render } from 'astro:content';
+import DocsLayout from '../layouts/DocsLayout.astro';
+import { INDEX_ID, rewriteMdLinks, titleFromHeadings } from '../lib/docs';
+
+const entries = await getCollection('docs');
+const entry = entries.find((e) => e.id === INDEX_ID);
+
+if (!entry) {
+  throw new Error(
+    `docs/${INDEX_ID}.md is missing — the docs site needs it to render the index page.`
+  );
+}
+
+const { headings } = await render(entry);
+const html = rewriteMdLinks(entry.rendered?.html ?? '', true);
+const title = titleFromHeadings(headings, entry.id);
+---
+
+<DocsLayout current={entry.id} headings={headings} title={title}>
+  <Fragment set:html={html} />
+</DocsLayout>

@@ -1,0 +1,69 @@
+---
+import type { DocSummary } from '../lib/docs';
+import { INDEX_ID } from '../lib/docs';
+
+export interface Props {
+  docs: DocSummary[];
+  current: string;
+  /** '' at the site root, '../' from a one-level-deep doc page, etc. —
+   *  see DocsLayout for how this is computed. */
+  basePrefix: string;
+}
+
+const { docs, current, basePrefix } = Astro.props;
+---
+
+<nav class="docs-sidebar" id="docs-sidebar" aria-label="Documentation">
+  <ul>
+    {
+      docs.map((doc) => {
+        const isIndex = doc.id === INDEX_ID;
+        const href = isIndex ? basePrefix || '.' : `${basePrefix}${doc.id}/`;
+        const isActive = doc.id === current;
+
+        return (
+          <li>
+            <a href={href} class:list={['link', isActive && 'active']} aria-current={isActive ? 'page' : undefined}>
+              {doc.title}
+            </a>
+          </li>
+        );
+      })
+    }
+  </ul>
+</nav>
+
+<style>
+  .docs-sidebar ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .link {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--color-text-body);
+    text-decoration: none;
+    padding: 7px 10px;
+    border-radius: 5px;
+    border-left: 2px solid transparent;
+    transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+  }
+
+  .link:hover {
+    color: var(--color-text-command);
+    background: rgba(255, 255, 255, 0.03);
+  }
+
+  .link.active {
+    color: var(--color-accent-soft);
+    background: rgba(124, 58, 237, 0.08);
+    border-left-color: var(--color-accent);
+    font-weight: 600;
+  }
+</style>

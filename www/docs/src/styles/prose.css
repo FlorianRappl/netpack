@@ -1,0 +1,204 @@
+/**
+ * Typography for rendered Markdown content (see DocsLayout / the [slug] and
+ * index pages, which inject rendered HTML into an element with class
+ * "prose"). Plain global CSS on purpose — the markdown is injected via
+ * `set:html`, which Astro's scoped <style> blocks can't reach.
+ */
+
+.prose {
+  color: var(--color-text-body-strong);
+  font-size: 15.5px;
+  line-height: 1.75;
+}
+
+.prose > *:first-child {
+  margin-top: 0;
+}
+
+.prose h1,
+.prose h2,
+.prose h3,
+.prose h4 {
+  font-family: var(--font-mono);
+  color: var(--color-text-heading);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  scroll-margin-top: 24px;
+}
+
+.prose h1 {
+  font-size: clamp(24px, 5vw, 30px);
+  margin: 0 0 20px;
+}
+
+.prose h2 {
+  font-size: clamp(19px, 3.6vw, 22px);
+  margin: 44px 0 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-panel-border);
+}
+
+.prose h2:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+
+.prose h3 {
+  font-size: 16.5px;
+  margin: 32px 0 12px;
+}
+
+.prose h4 {
+  font-size: 14.5px;
+  margin: 24px 0 10px;
+  color: var(--color-text-command);
+}
+
+.prose p {
+  margin: 0 0 16px;
+}
+
+.prose a {
+  color: var(--color-accent-soft);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, currentColor 40%, transparent);
+  text-underline-offset: 3px;
+  transition: color 0.15s ease, text-decoration-color 0.15s ease;
+}
+
+.prose a:hover {
+  color: var(--color-accent);
+  text-decoration-color: currentColor;
+}
+
+.prose ul,
+.prose ol {
+  margin: 0 0 16px;
+  padding-left: 1.3em;
+}
+
+.prose li {
+  margin: 0 0 6px;
+}
+
+.prose li::marker {
+  color: var(--color-text-faint);
+}
+
+.prose blockquote {
+  margin: 0 0 16px;
+  padding: 2px 18px;
+  border-left: 3px solid var(--color-accent);
+  color: var(--color-text-body);
+}
+
+.prose hr {
+  border: none;
+  border-top: 1px solid var(--color-panel-border);
+  margin: 32px 0;
+}
+
+.prose strong {
+  color: var(--color-text-heading);
+  font-weight: 600;
+}
+
+.prose img {
+  border-radius: var(--panel-radius);
+  border: 1px solid var(--color-panel-border);
+}
+
+/* Inline code — not inside a fenced block. */
+.prose :not(pre) > code {
+  font-family: var(--font-mono);
+  font-size: 0.87em;
+  color: var(--color-accent-soft);
+  background: var(--color-tile-bg);
+  border: 1px solid var(--color-panel-border-strong);
+  border-radius: 4px;
+  padding: 0.1em 0.4em;
+}
+
+/* Fenced code blocks, rendered by Shiki (astro-code). Shiki sets its own
+   background/color as inline styles, so surface chrome needs !important
+   to win; token colors are left alone. */
+.prose pre.astro-code {
+  position: relative;
+  margin: 0 0 20px;
+  padding: 18px 20px !important;
+  border-radius: var(--panel-radius);
+  border: 1px solid var(--color-panel-border);
+  background: var(--color-panel-bg) !important;
+  overflow-x: auto;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.prose pre.astro-code code {
+  font-family: var(--font-mono);
+}
+
+/* Injected by the copy-button script (see DocsLayout). */
+.prose .code-copy-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  border: 1px solid var(--color-panel-border-strong);
+  background: #111;
+  color: var(--color-text-body);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 5px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s ease, color 0.15s ease;
+}
+
+.prose pre.astro-code:hover .code-copy-btn,
+.prose .code-copy-btn:focus-visible {
+  opacity: 1;
+}
+
+.prose .code-copy-btn:hover {
+  color: var(--color-text-command);
+}
+
+/* Tables */
+.prose table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 20px;
+  font-size: 14px;
+  /* Table (not block) display, so rows/columns still lay out natively —
+     this just lets a too-wide table scroll horizontally as its own box
+     instead of overflowing the page. */
+  overflow-x: auto;
+}
+
+.prose th,
+.prose td {
+  border: 1px solid var(--color-panel-border);
+  padding: 8px 12px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.prose th {
+  background: var(--color-panel-bg);
+  color: var(--color-text-heading);
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 12.5px;
+}
+
+.prose td code,
+.prose th code {
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .prose {
+    font-size: 15px;
+  }
+}

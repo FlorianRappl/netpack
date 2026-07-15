@@ -1,0 +1,25 @@
+---
+import { getCollection, render, type CollectionEntry } from 'astro:content';
+import DocsLayout from '../layouts/DocsLayout.astro';
+import { INDEX_ID, rewriteMdLinks, titleFromHeadings } from '../lib/docs';
+
+export interface Props {
+  entry: CollectionEntry<'docs'>;
+}
+
+export async function getStaticPaths() {
+  const entries = await getCollection('docs');
+  return entries
+    .filter((entry) => entry.id !== INDEX_ID)
+    .map((entry) => ({ params: { slug: entry.id }, props: { entry } }));
+}
+
+const { entry } = Astro.props;
+const { headings } = await render(entry);
+const html = rewriteMdLinks(entry.rendered?.html ?? '', false);
+const title = titleFromHeadings(headings, entry.id);
+---
+
+<DocsLayout current={entry.id} headings={headings} title={title}>
+  <Fragment set:html={html} />
+</DocsLayout>
