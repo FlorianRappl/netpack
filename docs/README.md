@@ -13,6 +13,9 @@ Usage docs for netpack, in addition to the feature overview in the
 - **[React & JSX](./react-and-jsx.md)** — the default `React.createElement`
   factory, retargeting it project-wide or per file, and React Fast Refresh
   in the dev server.
+- **[Vue single-file components](./vue.md)** — native `.vue` compilation:
+  `<script setup>` and its macros, build-time template precompilation, scoped
+  styles, and the runtime-compiler fallback.
 - **[Styling & assets](./styling-and-assets.md)** — CSS, CSS Modules,
   Sass/LESS/PostCSS (incl. Tailwind), images, JSON and the `public/` folder.
 - **[Other features](./other-features.md)** — tree shaking, source maps,

@@ -106,9 +106,10 @@ public class VueSfcTests
             var bundle = graph.Context.Bundles.Values.OfType<JsBundle>().First(b => b.IsPrimary);
             var output = bundle.Stringify(new OutputOptions { IsOptimizing = false, IsReloading = false });
 
-            // The .vue compiled into the bundle: template string, scope id and the
-            // scoped CSS selector are all present, and the whole bundle is valid JS.
-            Assert.Contains(".template =", output);
+            // The .vue compiled into the bundle: the template is precompiled to a
+            // render function, the scope id and scoped CSS selector are present, and
+            // the whole bundle is valid JS.
+            Assert.Contains(".render = function", output);
             Assert.Contains("data-v-", output);
             Assert.Contains("Hello", output);
             Assert.Empty(Parser.ParseModule(output, "out.js", new ParserOptions { Tolerant = true }).Diagnostics);

@@ -26,8 +26,20 @@ public sealed class VueStyleBlock
 /// </summary>
 public sealed class VueDescriptor
 {
-    /// <summary>The <c>&lt;template&gt;</c> markup, or null when the SFC has no template.</summary>
+    /// <summary>The <c>&lt;template&gt;</c> markup used for runtime compilation when
+    /// build-time precompilation is unavailable (no template, or an unsupported
+    /// construct). Null when a precompiled <see cref="RenderBody"/> is present.</summary>
     public string? Template { get; init; }
+
+    /// <summary>The precompiled render expression (the body of <c>render()</c>), or
+    /// null when the template falls back to runtime compilation.</summary>
+    public string? RenderBody { get; init; }
+
+    /// <summary>Vue runtime helpers the render body references (canonical names).</summary>
+    public IReadOnlyCollection<string> RenderHelpers { get; init; } = [];
+
+    /// <summary>Component tag names the render body resolves via <c>resolveComponent</c>.</summary>
+    public IReadOnlyCollection<string> RenderComponents { get; init; } = [];
 
     /// <summary>The classic <c>&lt;script&gt;</c> block contents, or null when absent.</summary>
     public string? Script { get; init; }
@@ -67,10 +79,18 @@ public static class VueSfc
     {
         var sb = new StringBuilder();
 
+        // 0) Import the Vue runtime helpers the precompiled render function needs.
+        if (sfc.RenderBody is not null && sfc.RenderHelpers.Count > 0)
+        {
+            var specifiers = string.Join(", ", sfc.RenderHelpers.OrderBy(h => h, System.StringComparer.Ordinal)
+                .Select(h => $"{h} as _vue_{h}"));
+            sb.Append("import { ").Append(specifiers).Append(" } from \"vue\";\n");
+        }
+
         // 1) Build the component object bound to __sfc_main from the script block(s).
         if (!string.IsNullOrWhiteSpace(sfc.ScriptSetup))
         {
-            sb.Append(BuildSetupComponent(sfc.ScriptSetup!, sfc.Script));
+            sb.Append(BuildSetupComponent(sfc.ScriptSetup!, sfc.Script, sfc.RenderComponents));
         }
         else
         {
@@ -99,14 +119,36 @@ public static class VueSfc
             sb.Append(ComponentLocal).Append(".__scopeId = ").Append(CssModules.JsString(sfc.ScopeId)).Append(";\n");
         }
 
-        // 4) The template is handed to Vue as a string (runtime compilation).
-        if (sfc.Template is { } template)
+        // 4) Attach the render function. A precompiled render is preferred; otherwise
+        //    the raw template string is left for Vue's runtime compiler.
+        if (sfc.RenderBody is { } body)
+        {
+            sb.Append(BuildRenderFunction(body, sfc.RenderComponents));
+        }
+        else if (sfc.Template is { } template)
         {
             sb.Append(ComponentLocal).Append(".template = ").Append(CssModules.JsString(template)).Append(";\n");
         }
 
         sb.Append(ComponentLocal).Append(".__file = ").Append(CssModules.JsString(sfc.RelativePath)).Append(";\n");
         sb.Append("export default ").Append(ComponentLocal).Append(";\n");
+        return sb.ToString();
+    }
+
+    /// <summary>Emits <c>__sfc_main.render = function (_ctx, _cache) { … }</c>, with a
+    /// <c>resolveComponent</c> lookup hoisted for each component tag the body uses.</summary>
+    private static string BuildRenderFunction(string body, IReadOnlyCollection<string> components)
+    {
+        var sb = new StringBuilder();
+        sb.Append(ComponentLocal).Append(".render = function (_ctx, _cache) {\n");
+
+        foreach (var tag in components)
+        {
+            sb.Append("  const _component_").Append(VueTemplateCompiler.Sanitize(tag))
+              .Append(" = _vue_resolveComponent(").Append(CssModules.JsString(tag)).Append(");\n");
+        }
+
+        sb.Append("  return ").Append(body).Append(";\n};\n");
         return sb.ToString();
     }
 
@@ -148,7 +190,7 @@ public static class VueSfc
     /// Compiles a <c>&lt;script setup&gt;</c> block (plus an optional classic
     /// <c>&lt;script&gt;</c>) into <c>const __sfc_main = { … , setup() { … } };</c>.
     /// </summary>
-    private static string BuildSetupComponent(string setup, string? classic)
+    private static string BuildSetupComponent(string setup, string? classic, IReadOnlyCollection<string> renderComponents)
     {
         var module = Parser.ParseModule(setup, "sfc-setup.js", ScriptOptions);
 
@@ -239,6 +281,14 @@ public static class VueSfc
             sb.Append(BuildClassicBase(classic!, out baseLocal));
         }
 
+        // Register imported components the template uses so `resolveComponent`
+        // finds them (script-setup bindings are otherwise invisible to it).
+        var registered = renderComponents
+            .Select(VueTemplateCompiler.PascalName)
+            .Where(seenBindings.Contains)
+            .Distinct()
+            .ToList();
+
         sb.Append("const ").Append(ComponentLocal).Append(" = {\n");
 
         if (baseLocal is not null)
@@ -249,6 +299,11 @@ public static class VueSfc
         if (optionsExpr is not null)
         {
             sb.Append("  ...(").Append(optionsExpr).Append("),\n");
+        }
+
+        if (registered.Count > 0)
+        {
+            sb.Append("  components: { ").Append(string.Join(", ", registered)).Append(" },\n");
         }
 
         if (propsExpr is not null)

@@ -548,7 +548,6 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
         var relative = Path.GetRelativePath(_context.Root, current.FileName).Replace('\\', '/');
         var scopeId = $"data-v-{Hash.Short(relative)}";
 
-        var template = await ReadVueBlock(current, templateEl, isTemplate: true);
         var script = await ReadVueBlock(current, classicEl, isTemplate: false);
         var scriptSetup = await ReadVueBlock(current, setupEl, isTemplate: false);
 
@@ -568,9 +567,35 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
             styles.Add(new VueStyleBlock { Css = css, Scoped = scoped });
         }
 
+        // Prefer build-time precompilation; fall back to the raw template string
+        // (Vue's runtime compiler) for any construct outside the supported subset.
+        var templateInfo = await ReadTemplateNodes(current, templateEl);
+        string? templateMarkup = null;
+        string? renderBody = null;
+        IReadOnlyCollection<string> renderHelpers = [];
+        IReadOnlyCollection<string> renderComponents = [];
+
+        if (templateInfo is { } info)
+        {
+            try
+            {
+                var render = VueTemplateCompiler.Compile(info.Nodes);
+                renderBody = render.Body;
+                renderHelpers = render.Helpers;
+                renderComponents = render.Components;
+            }
+            catch (VueTemplateException)
+            {
+                templateMarkup = info.Markup;
+            }
+        }
+
         var descriptor = new VueDescriptor
         {
-            Template = template,
+            Template = templateMarkup,
+            RenderBody = renderBody,
+            RenderHelpers = renderHelpers,
+            RenderComponents = renderComponents,
             Script = script,
             ScriptSetup = scriptSetup,
             Styles = styles,
@@ -581,6 +606,40 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
         var source = VueSfc.Generate(descriptor);
         var fragment = await ParseJsModule(bundle, current, source);
         _context.JsFragments.TryAdd(current, fragment);
+    }
+
+    /// <summary>
+    /// Returns the top-level DOM nodes of the <c>&lt;template&gt;</c> block (for
+    /// build-time compilation) together with its serialized markup (for the runtime
+    /// fallback). Honors a <c>src</c> attribute. Null when there is no template.
+    /// </summary>
+    private async Task<(IReadOnlyList<AngleSharp.Dom.INode> Nodes, string Markup)?> ReadTemplateNodes(
+        Node current, AngleSharp.Dom.IElement? templateEl)
+    {
+        if (templateEl is null)
+        {
+            return null;
+        }
+
+        var src = templateEl.GetAttribute("src");
+
+        if (!string.IsNullOrEmpty(src))
+        {
+            var path = await Resolve(current.ParentDir, src);
+            var text = await File.ReadAllTextAsync(path);
+            using var s = new MemoryStream(Encoding.UTF8.GetBytes(text));
+            var doc = await _browser.OpenAsync(res => res.Content(s));
+            var body = doc.Body;
+            var nodes = body?.ChildNodes.ToList() ?? new List<AngleSharp.Dom.INode>();
+            return (nodes, (body?.InnerHtml ?? text).Trim());
+        }
+
+        if (templateEl is AngleSharp.Html.Dom.IHtmlTemplateElement tpl)
+        {
+            return (tpl.Content.ChildNodes.ToList(), tpl.Content.ToHtml().Trim());
+        }
+
+        return (templateEl.ChildNodes.ToList(), templateEl.InnerHtml.Trim());
     }
 
     /// <summary>

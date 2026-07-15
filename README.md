@@ -250,15 +250,15 @@ becomes the component, the template is attached as a string, and `<style>` block
 injected at runtime. Supported today:
 
 - `<template>`, classic `<script>`, `<script setup>`, and one or more `<style>` blocks (JS or `lang="ts"`).
-- `<script setup>`: imports are hoisted, top-level bindings are exposed to the template, and the `defineProps` / `withDefaults` / `defineEmits` / `defineExpose` / `defineOptions` macros are expanded. A classic `<script>` alongside it contributes base options.
+- **Build-time template precompilation**: templates are compiled to a native render function (`h`-based), so the runtime template compiler is *not* required. Covered: text interpolation, `v-bind`/`:`, `v-on`/`@`, `v-if`/`v-else-if`/`v-else`, `v-for`, `v-show`, `v-html`, `v-text`, `v-model` (native and component), `key`/`ref`, components, default and named slots, and `<slot>` outlets. Any construct outside this subset transparently falls back to Vue's runtime compiler (the raw template string).
+- `<script setup>`: imports are hoisted, top-level bindings are exposed to the template, and the `defineProps` / `withDefaults` / `defineEmits` / `defineExpose` / `defineOptions` macros are expanded. A classic `<script>` alongside it contributes base options. Imported components used in the template are auto-registered so `resolveComponent` finds them.
 - `<style scoped>` (adds a `data-v-*` scope id and rewrites selectors) and `<style lang="scss|less">` (when SASS/LESS is enabled).
 - `src` attributes on any block (`<template src="./tpl.html">`, `<script src>`, `<style src>`).
 
-Notes / not yet supported: the template is handed to Vue's **runtime** compiler, so the
-app must use a compiler-included Vue build; type-only props (`defineProps<T>()`),
-`defineModel`, `<style module>`, and build-time render-function precompilation are
-follow-ups. Because the template is parsed as HTML, use kebab-case for child components
-(`<my-widget>`).
+Notes / not yet supported: `v-on`/`v-bind` modifiers, `v-model` modifiers, custom
+directives, `<component :is>`, type-only props (`defineProps<T>()`), `defineModel` and
+`<style module>` fall back to runtime compilation or are follow-ups. Because the
+template is parsed as HTML, use kebab-case for child components (`<my-widget>`).
 
 ### Bundler Basics
 
