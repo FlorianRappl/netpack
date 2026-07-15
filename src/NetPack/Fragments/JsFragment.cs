@@ -34,4 +34,15 @@ public class JsFragment(GraphNode root, SourceFile ast, IDictionary<Node, GraphN
     /// <c>React.Fragment</c>.
     /// </summary>
     public string JsxFragmentFactory { get; set; } = "React.Fragment";
+
+    /// <summary>
+    /// Optional module specifier to import automatically when this fragment uses
+    /// JSX lowered with a project-selected default runtime (e.g. <c>preact</c>).
+    /// </summary>
+    public string? AutoJsxImportModule { get; set; }
+
+    /// <summary>
+    /// Local identifier used for <see cref="AutoJsxImportModule"/>.
+    /// </summary>
+    public string? AutoJsxImportIdentifier { get; set; }
 }

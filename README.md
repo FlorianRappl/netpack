@@ -235,7 +235,7 @@ The following items are features or topics that are relevant for bundlers - netp
 - [ ] Angular
 - [ ] Astro
 - [x] React
-- [ ] Preact
+- [x] Preact
 - [ ] Solid
 - [ ] Svelte
 - [x] Vanilla

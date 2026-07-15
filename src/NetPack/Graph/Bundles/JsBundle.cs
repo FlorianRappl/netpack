@@ -113,6 +113,7 @@ public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags
         private readonly JsBundle _bundle = bundle;
         private readonly bool _reloading = reloading;
         private JsFragment? _current;
+        private bool _currentUsesJsx;
 
         public Ast.SourceFile Transpile()
         {
@@ -145,7 +146,9 @@ public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags
                 }
 
                 _current = fragment;
+                _currentUsesJsx = false;
                 var ast = (Ast.SourceFile)Visit(fragment.Ast)!;
+                ast = InjectAutoJsxImport(ast, fragment, _currentUsesJsx);
                 var body = new List<Ast.Statement>();
 
                 foreach (var statement in ast.Body)
@@ -554,6 +557,7 @@ public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags
 
         protected override Ast.Node VisitJsxElement(Ast.JsxElement node)
         {
+            _currentUsesJsx = true;
             var elementNameArg = GetName(node.OpeningElement.Name);
 
             Ast.Expression attributesArg;
@@ -587,10 +591,67 @@ public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags
 
         protected override Ast.Node VisitJsxFragment(Ast.JsxFragment node)
         {
+            _currentUsesJsx = true;
             var factory = _current?.JsxFragmentFactory ?? "React.Fragment";
             var fragment = BuildQualifiedName(factory);
             var children = ConvertJsxChildren(node.Children);
             return ReactCreateElement(fragment, new Ast.NullLiteral(), children);
+        }
+
+        private static Ast.SourceFile InjectAutoJsxImport(Ast.SourceFile ast, JsFragment fragment, bool usesJsx)
+        {
+            var module = fragment.AutoJsxImportModule;
+            var identifier = fragment.AutoJsxImportIdentifier;
+
+            if (!usesJsx || string.IsNullOrEmpty(module) || string.IsNullOrEmpty(identifier))
+            {
+                return ast;
+            }
+
+            if (HasTopLevelBinding(ast, identifier))
+            {
+                return ast;
+            }
+
+            var import = new Ast.ImportDeclaration(
+                new List<Ast.ImportSpecifierBase> { new Ast.ImportDefaultSpecifier(new Ast.Identifier(identifier)) },
+                MakeString(module),
+                false);
+
+            var body = new List<Ast.Statement>(ast.Body.Count + 1) { import };
+            body.AddRange(ast.Body);
+            return new Ast.SourceFile(ast.FileName, body, ast.Diagnostics);
+        }
+
+        private static bool HasTopLevelBinding(Ast.SourceFile ast, string identifier)
+        {
+            foreach (var statement in ast.Body)
+            {
+                switch (statement)
+                {
+                    case Ast.ImportDeclaration import:
+                        foreach (var specifier in import.Specifiers)
+                        {
+                            if (specifier.Local.Name == identifier)
+                            {
+                                return true;
+                            }
+                        }
+                        break;
+                    case Ast.VariableStatement variable:
+                        if (variable.Declarations.Any(d => d.Id is Ast.Identifier id && id.Name == identifier))
+                        {
+                            return true;
+                        }
+                        break;
+                    case Ast.FunctionDeclaration { Id: not null } function when function.Id.Name == identifier:
+                        return true;
+                    case Ast.ClassDeclaration { Id: not null } cls when cls.Id.Name == identifier:
+                        return true;
+                }
+            }
+
+            return false;
         }
 
         private Ast.Node ConvertAttribute(Ast.JsxAttribute node)

@@ -134,6 +134,29 @@ public class JsxFactoryTests
         Assert.Contains("dom(\"div\"", output);
     }
 
+    [Fact]
+    public async Task Preact_dependency_without_react_uses_preact_factory_and_import()
+    {
+        var output = await Bundle("app.jsx",
+            ("package.json", "{ \"dependencies\": { \"preact\": \"^10.0.0\" } }"),
+            ("app.jsx", "export const a = <div />;"));
+
+        Assert.Contains("import Preact from \"preact\";", output);
+        Assert.Contains("Preact.h(\"div\"", output);
+        Assert.DoesNotContain("React.createElement", output);
+    }
+
+    [Fact]
+    public async Task React_dependency_keeps_react_default()
+    {
+        var output = await Bundle("app.jsx",
+            ("package.json", "{ \"dependencies\": { \"preact\": \"^10.0.0\", \"react\": \"^18.0.0\" } }"),
+            ("app.jsx", "export const a = <div />;"));
+
+        Assert.Contains("React.createElement(\"div\"", output);
+        Assert.DoesNotContain("Preact.h", output);
+    }
+
     // Writes the given files to a fresh temp directory (always including a
     // package.json so root resolution is hermetic), bundles the entry, and
     // returns the pretty-printed JS.

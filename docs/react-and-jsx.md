@@ -5,10 +5,20 @@ becomes a plain factory call — the same transform Babel/TypeScript/esbuild
 do. What's configurable is *which* factory it calls, at three levels of
 precedence.
 
-## The default: `React.createElement`
+## The default: React or Preact (auto-detected)
 
-Out of the box, a `.jsx`/`.tsx` file compiles JSX to `React.createElement`
-(and fragments to `React.Fragment`):
+Out of the box, netpack picks the default JSX runtime from your dependencies:
+
+- if `react` is present (or neither `react` nor `preact` is present), JSX
+  lowers to `React.createElement` (fragments: `React.Fragment`);
+- if `preact` is present and `react` is not, JSX lowers to `Preact.h`
+  (fragments: `Preact.Fragment`).
+
+In the Preact case, netpack also auto-injects `import Preact from "preact"`
+for modules that contain JSX and don't already define a top-level `Preact`
+binding.
+
+React-style default output:
 
 ```jsx
 // in:
@@ -18,12 +28,16 @@ export const a = <div />;
 export const a = React.createElement("div");
 ```
 
-netpack does **not** inject an import for `React` — it only emits the call.
-`React` has to already be in scope, exactly as with any other JSX toolchain:
-either `import React from 'react'` in the file (bundled normally, or left
-external — see [Import maps & externals](./importmaps-and-externals.md)), or
-a global `window.React` provided some other way (e.g. a CDN `<script>` plus
-`--external react`).
+Preact-only default output:
+
+```jsx
+// in (package.json has preact but no react):
+export const a = <div />;
+
+// out:
+import Preact from "preact";
+export const a = Preact.h("div");
+```
 
 Static children are passed as separate trailing arguments, not as an array —
 `React.createElement("ul", null, child1, child2)`, never
@@ -84,7 +98,7 @@ export const a = <>{child}</>;
 
 **Precedence, most specific wins:** a file-local `@jsx` pragma overrides
 `tsconfig.json`'s `jsxFactory`, which overrides the `React.createElement`
-default.
+or auto-detected dependency default.
 
 ## React Fast Refresh in the dev server
 

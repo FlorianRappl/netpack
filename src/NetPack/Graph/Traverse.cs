@@ -64,8 +64,13 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
         var features = await FindFeatures(packageRoot);
         var traverse = new Traverse(packageRoot ?? root, features, moduleIds) { _devServer = devServer };
         var (jsxFactory, jsxFragmentFactory) = await FindJsxFactories(packageRoot);
+        var (defaultJsxFactory, defaultJsxFragmentFactory, defaultJsxImportModule, defaultJsxImportIdentifier) = await FindDefaultJsxRuntime(packageRoot);
         traverse.Context.JsxFactory = jsxFactory;
         traverse.Context.JsxFragmentFactory = jsxFragmentFactory;
+        traverse.Context.DefaultJsxFactory = defaultJsxFactory;
+        traverse.Context.DefaultJsxFragmentFactory = defaultJsxFragmentFactory;
+        traverse.Context.DefaultJsxImportModule = defaultJsxImportModule;
+        traverse.Context.DefaultJsxImportIdentifier = defaultJsxImportIdentifier;
         traverse.Context.Externals = [.. externals, .. shared];
         traverse.Context.Shared = [.. shared];
         await traverse.Run([path, .. shared]);
@@ -287,6 +292,63 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
             => element.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String
                 ? value.GetString()
                 : null;
+    }
+
+    /// <summary>
+    /// Picks a default JSX runtime from dependencies when no explicit JSX
+    /// factory is configured. If <c>preact</c> is present and <c>react</c> is
+    /// absent, JSX lowers to <c>Preact.h</c>/<c>Preact.Fragment</c> and modules
+    /// that use JSX automatically import <c>Preact</c> from <c>preact</c>.
+    /// </summary>
+    private static async Task<(string? Factory, string? FragmentFactory, string? ImportModule, string? ImportIdentifier)> FindDefaultJsxRuntime(string? root)
+    {
+        if (root is null)
+        {
+            return default;
+        }
+
+        var packageJsonPath = Path.Combine(root, "package.json");
+
+        if (!File.Exists(packageJsonPath))
+        {
+            return default;
+        }
+
+        try
+        {
+            using var packageJson = File.OpenRead(packageJsonPath);
+            using var jsonDoc = await JsonDocument.ParseAsync(packageJson);
+            var jsonObj = jsonDoc.RootElement;
+
+            var hasReact = HasDependency(jsonObj, "react");
+            var hasPreact = HasDependency(jsonObj, "preact");
+
+            if (hasPreact && !hasReact)
+            {
+                return ("Preact.h", "Preact.Fragment", "preact", "Preact");
+            }
+        }
+        catch
+        {
+            // A malformed package.json shouldn't break the build; fall back.
+        }
+
+        return default;
+
+        static bool HasDependency(JsonElement rootElement, string name)
+        {
+            return Has(rootElement, "dependencies", name)
+                || Has(rootElement, "devDependencies", name)
+                || Has(rootElement, "peerDependencies", name)
+                || Has(rootElement, "optionalDependencies", name);
+        }
+
+        static bool Has(JsonElement rootElement, string section, string name)
+        {
+            return rootElement.TryGetProperty(section, out var depObj)
+                && depObj.ValueKind == JsonValueKind.Object
+                && depObj.TryGetProperty(name, out _);
+        }
     }
 
     private async Task<string> Resolve(string dir, string name)
@@ -785,16 +847,33 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
     {
         var pragma = JsxPragma.Scan(content);
 
-        var factory = pragma.Factory ?? (isTypeScript ? _context.JsxFactory : null);
+        var tsFactory = isTypeScript ? _context.JsxFactory : null;
+        var tsFragmentFactory = isTypeScript ? _context.JsxFragmentFactory : null;
+
+        var isUsingDefaultRuntime = pragma.Factory is null
+            && pragma.FragmentFactory is null
+            && string.IsNullOrEmpty(tsFactory)
+            && string.IsNullOrEmpty(tsFragmentFactory)
+            && !string.IsNullOrEmpty(_context.DefaultJsxFactory)
+            && !string.IsNullOrEmpty(_context.DefaultJsxImportModule)
+            && !string.IsNullOrEmpty(_context.DefaultJsxImportIdentifier);
+
+        var factory = pragma.Factory ?? tsFactory ?? _context.DefaultJsxFactory;
         if (!string.IsNullOrEmpty(factory))
         {
             fragment.JsxFactory = factory;
         }
 
-        var fragmentFactory = pragma.FragmentFactory ?? (isTypeScript ? _context.JsxFragmentFactory : null);
+        var fragmentFactory = pragma.FragmentFactory ?? tsFragmentFactory ?? _context.DefaultJsxFragmentFactory;
         if (!string.IsNullOrEmpty(fragmentFactory))
         {
             fragment.JsxFragmentFactory = fragmentFactory;
+        }
+
+        if (isUsingDefaultRuntime)
+        {
+            fragment.AutoJsxImportModule = _context.DefaultJsxImportModule;
+            fragment.AutoJsxImportIdentifier = _context.DefaultJsxImportIdentifier;
         }
     }
 

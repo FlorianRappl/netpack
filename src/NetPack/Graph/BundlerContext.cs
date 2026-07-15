@@ -34,6 +34,29 @@ public sealed class BundlerContext(string root, FeatureFlags features, ModuleIdM
     /// </summary>
     public string? JsxFragmentFactory { get; set; }
 
+    /// <summary>
+    /// Project-wide default JSX factory selected from dependency heuristics
+    /// (e.g. Preact when <c>preact</c> is installed and <c>react</c> is not).
+    /// Applied when neither a file-local pragma nor tsconfig override is set.
+    /// </summary>
+    public string? DefaultJsxFactory { get; set; }
+
+    /// <summary>
+    /// Fragment counterpart to <see cref="DefaultJsxFactory"/>.
+    /// </summary>
+    public string? DefaultJsxFragmentFactory { get; set; }
+
+    /// <summary>
+    /// Optional module specifier to auto-import for JSX files using the default
+    /// runtime (for example, <c>preact</c> when using <c>Preact.h</c>).
+    /// </summary>
+    public string? DefaultJsxImportModule { get; set; }
+
+    /// <summary>
+    /// Local identifier name used for <see cref="DefaultJsxImportModule"/>.
+    /// </summary>
+    public string? DefaultJsxImportIdentifier { get; set; }
+
     public ConcurrentDictionary<Node, Asset> Assets = [];
 
     public ConcurrentDictionary<Node, Bundle> Bundles = [];
