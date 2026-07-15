@@ -1,0 +1,93 @@
+<!DOCTYPE html><html lang="en"> <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Import maps &amp; externals — netpack docs</title><meta name="description" content="Usage docs for netpack — the fast, batteries-included bundler for the web, built on C#/.NET with Ahead-of-Time compilation."><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="/docs/_astro/_slug_.ua-6liFK.css"><script type="module">function d(){const e=document.getElementById("docs-nav-toggle"),t=document.getElementById("docs-scrim"),c=document.getElementById("docs-sidebar"),o=n=>{document.body.classList.toggle("docs-nav-open",n),e?.setAttribute("aria-expanded",String(n))};e?.addEventListener("click",()=>{o(!document.body.classList.contains("docs-nav-open"))}),t?.addEventListener("click",()=>o(!1)),c?.addEventListener("click",n=>{n.target.closest("a")&&o(!1)}),document.addEventListener("keydown",n=>{n.key==="Escape"&&o(!1)})}function s(){document.querySelectorAll(".prose pre.astro-code").forEach(e=>{if(e.querySelector(".code-copy-btn"))return;const t=document.createElement("button");t.type="button",t.className="code-copy-btn",t.textContent="copy",t.addEventListener("click",async()=>{const c=e.textContent??"";try{await navigator.clipboard?.writeText(c)}catch{}t.textContent="copied ✓",setTimeout(()=>{t.textContent="copy"},1600)}),e.appendChild(t)})}d();s();document.addEventListener("astro:page-load",()=>{d(),s()});
+</script></head> <body>  <div class="shell" data-astro-cid-zaqc7ala> <div class="dot-grid" aria-hidden="true" data-astro-cid-tw3ctjfb></div> <div class="glow glow-a" aria-hidden="true" data-astro-cid-tw3ctjfb></div> <div class="glow glow-b" aria-hidden="true" data-astro-cid-tw3ctjfb></div> <div class="scanlines" aria-hidden="true" data-astro-cid-tw3ctjfb></div>  <header class="docs-header" data-astro-cid-l4ysfnjo> <div class="docs-header-inner" data-astro-cid-l4ysfnjo> <button type="button" class="nav-toggle" id="docs-nav-toggle" aria-label="Toggle navigation" aria-controls="docs-sidebar" aria-expanded="false" data-astro-cid-l4ysfnjo> <span data-astro-cid-l4ysfnjo></span> <span data-astro-cid-l4ysfnjo></span> <span data-astro-cid-l4ysfnjo></span> </button> <a href="../../" class="brand" data-astro-cid-l4ysfnjo> <span class="mark" data-astro-cid-l4ysfnjo> <span data-astro-cid-l4ysfnjo>n</span> </span> <span class="wordmark" data-astro-cid-l4ysfnjo>netpack <span class="wordmark-sub" data-astro-cid-l4ysfnjo>docs</span></span> </a> <nav class="links" aria-label="Site" data-astro-cid-l4ysfnjo> <a href="../../../" data-astro-cid-l4ysfnjo>Home</a> <a href="https://github.com/FlorianRappl/netpack" target="_blank" rel="noopener noreferrer" data-astro-cid-l4ysfnjo> <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true" data-astro-cid-l4ysfnjo> <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z" data-astro-cid-l4ysfnjo></path> </svg> <span class="github-label" data-astro-cid-l4ysfnjo>GitHub</span> </a> </nav> </div> </header>  <main class="content" data-astro-cid-zaqc7ala>   <div class="docs-scrim" id="docs-scrim"></div> <div class="docs-grid"> <nav class="docs-sidebar" id="docs-sidebar" aria-label="Documentation" data-astro-cid-ssfzsv2f> <ul data-astro-cid-ssfzsv2f> <li data-astro-cid-ssfzsv2f> <a href="../../" class="link" data-astro-cid-ssfzsv2f> netpack documentation </a> </li><li data-astro-cid-ssfzsv2f> <a href="../../getting-started/" class="link" data-astro-cid-ssfzsv2f> Getting started </a> </li><li data-astro-cid-ssfzsv2f> <a href="../../importmaps-and-externals/" class="link active" aria-current="page" data-astro-cid-ssfzsv2f> Import maps &amp; externals </a> </li><li data-astro-cid-ssfzsv2f> <a href="../../module-federation/" class="link" data-astro-cid-ssfzsv2f> Module Federation </a> </li><li data-astro-cid-ssfzsv2f> <a href="../../react-and-jsx/" class="link" data-astro-cid-ssfzsv2f> React &amp; JSX </a> </li><li data-astro-cid-ssfzsv2f> <a href="../../styling-and-assets/" class="link" data-astro-cid-ssfzsv2f> Styling &amp; assets </a> </li><li data-astro-cid-ssfzsv2f> <a href="../../other-features/" class="link" data-astro-cid-ssfzsv2f> Other features </a> </li><li data-astro-cid-ssfzsv2f> <a href="../../vue/" class="link" data-astro-cid-ssfzsv2f> Vue single-file components </a> </li> </ul> </nav>  <article class="prose docs-main">  <h1 id="import-maps--externals">Import maps &#x26; externals</h1>
+<p>netpack can leave a dependency out of the bundle entirely and let the
+browser resolve it instead, via a native
+<a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/script/type/importmap">import map</a>.
+There are two ways into this, depending on who owns the mapping.</p>
+<h2 id="you-already-have-an-import-map">You already have an import map</h2>
+<p>If your HTML entry point already contains a <code>&#x3C;script type="importmap"></code>,
+netpack reads it and automatically treats every key in <code>imports</code> as an
+external — you don’t need to repeat them with <code>--external</code>:</p>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="html"><code><span class="line"><span style="color:#666666">&#x3C;</span><span style="color:#4D9375">script</span><span style="color:#BD976A"> type</span><span style="color:#666666">=</span><span style="color:#C98A7D77">"</span><span style="color:#C98A7D">importmap</span><span style="color:#C98A7D77">"</span><span style="color:#666666">></span></span>
+<span class="line"><span style="color:#DBD7CAEE">  {</span></span>
+<span class="line"><span style="color:#DBD7CAEE">    "imports": {</span></span>
+<span class="line"><span style="color:#DBD7CAEE">      "react": "https://esm.sh/react@18",</span></span>
+<span class="line"><span style="color:#DBD7CAEE">      "react-dom/client": "https://esm.sh/react-dom@18/client"</span></span>
+<span class="line"><span style="color:#DBD7CAEE">    }</span></span>
+<span class="line"><span style="color:#DBD7CAEE">  }</span></span>
+<span class="line"><span style="color:#666666">&#x3C;/</span><span style="color:#4D9375">script</span><span style="color:#666666">></span></span>
+<span class="line"><span style="color:#666666">&#x3C;</span><span style="color:#4D9375">script</span><span style="color:#BD976A"> type</span><span style="color:#666666">=</span><span style="color:#C98A7D77">"</span><span style="color:#C98A7D">module</span><span style="color:#C98A7D77">"</span><span style="color:#BD976A"> src</span><span style="color:#666666">=</span><span style="color:#C98A7D77">"</span><span style="color:#C98A7D">./main.tsx</span><span style="color:#C98A7D77">"</span><span style="color:#666666">>&#x3C;/</span><span style="color:#4D9375">script</span><span style="color:#666666">></span></span>
+<span class="line"></span></code></pre>
+<p>Here, <code>import React from 'react'</code> in <code>main.tsx</code> is left as a real ESM import
+in the output bundle — the browser resolves <code>react</code> using the import map
+above, netpack never touches its contents. This is the escape hatch for
+CDN-hosted or otherwise externally-served dependencies.</p>
+<h2 id="--external-dont-bundle-this-but-dont-manage-it-either"><code>--external</code>: don’t bundle this, but don’t manage it either</h2>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="sh"><code><span class="line"><span style="color:#80A665">npx</span><span style="color:#C98A7D"> netpack</span><span style="color:#C98A7D"> bundle</span><span style="color:#C98A7D"> src/index.html</span><span style="color:#C99076"> --external</span><span style="color:#C98A7D"> react</span><span style="color:#C99076"> --external</span><span style="color:#C98A7D"> react-dom</span></span>
+<span class="line"></span></code></pre>
+<p>Use this when you already have your own import map (or a <code>&#x3C;script></code> tag
+exposing a global) and just want netpack to stop trying to bundle the
+import. netpack hoists the plain <code>import ... from 'react'</code> statement to the
+top of the output bundle and leaves resolution entirely to the browser.</p>
+<h2 id="--shared-dont-bundle-this-and-wire-it-up-for-me"><code>--shared</code>: don’t bundle this, and wire it up for me</h2>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="sh"><code><span class="line"><span style="color:#80A665">npx</span><span style="color:#C98A7D"> netpack</span><span style="color:#C98A7D"> bundle</span><span style="color:#C98A7D"> src/index.html</span><span style="color:#C99076"> --shared</span><span style="color:#C98A7D"> react</span><span style="color:#C99076"> --shared</span><span style="color:#C98A7D"> react-dom</span></span>
+<span class="line"></span></code></pre>
+<p><code>--shared</code> does everything <code>--external</code> does, plus:</p>
+<ol>
+<li>
+<p>it builds each shared name as its <strong>own entry point</strong>, producing a
+standalone output chunk (e.g. <code>react.js</code>, <code>react-dom.js</code>) from the actual
+package installed in <code>node_modules</code>;</p>
+</li>
+<li>
+<p>it injects or extends the <code>&#x3C;script type="importmap"></code> in your HTML,
+adding an entry per shared name that points at the generated chunk:</p>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="html"><code><span class="line"><span style="color:#666666">&#x3C;</span><span style="color:#4D9375">script</span><span style="color:#BD976A"> type</span><span style="color:#666666">=</span><span style="color:#C98A7D77">"</span><span style="color:#C98A7D">importmap</span><span style="color:#C98A7D77">"</span><span style="color:#666666">></span></span>
+<span class="line"><span style="color:#DBD7CAEE">  { "imports": { "react": "./react.js", "react-dom": "./react-dom.js" } }</span></span>
+<span class="line"><span style="color:#666666">&#x3C;/</span><span style="color:#4D9375">script</span><span style="color:#666666">></span></span>
+<span class="line"></span></code></pre>
+</li>
+</ol>
+<p>In other words, <code>--external</code> assumes someone else (a CDN, a prior
+<code>&#x3C;script></code>) is going to serve the module; <code>--shared</code> makes netpack build and
+serve it itself, as a separate cacheable chunk, without duplicating it
+inside every bundle that imports it. This is the option to reach for when
+you want one shared copy of React (or any other dependency) across several
+independently-loaded entry points on the same page.</p>
+<p>A shared name is sanitized into a file name by stripping characters that
+can’t appear in a path (so a scoped or sub-path import like
+<code>react-dom/client</code> becomes something like <code>./react-domclient.js</code>) — if that
+matters to you, prefer top-level package names for <code>--shared</code>.</p>
+<h2 id="choosing-between-them">Choosing between them</h2>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th></th><th>Bundled</th><th>Own output chunk</th><th>Import map entry written</th></tr></thead><tbody><tr><td>(default)</td><td>yes</td><td>—</td><td>—</td></tr><tr><td><code>--external</code></td><td>no</td><td>no</td><td>no (you provide it, or the browser already had one)</td></tr><tr><td><code>--shared</code></td><td>no</td><td>yes</td><td>yes, generated automatically</td></tr></tbody></table>
+<p><code>serve</code> and <code>analyze</code> accept the same <code>--external</code>/<code>--shared</code> flags as
+<code>bundle</code>.</p>  </article> <nav class="docs-toc" aria-label="On this page" data-astro-cid-xvrfupwn><div class="toc-label" data-astro-cid-xvrfupwn>On this page</div><ul data-astro-cid-xvrfupwn><li class="depth-2" data-astro-cid-xvrfupwn><a href="#you-already-have-an-import-map" data-astro-cid-xvrfupwn>You already have an import map</a></li><li class="depth-2" data-astro-cid-xvrfupwn><a href="#--external-dont-bundle-this-but-dont-manage-it-either" data-astro-cid-xvrfupwn>--external: don’t bundle this, but don’t manage it either</a></li><li class="depth-2" data-astro-cid-xvrfupwn><a href="#--shared-dont-bundle-this-and-wire-it-up-for-me" data-astro-cid-xvrfupwn>--shared: don’t bundle this, and wire it up for me</a></li><li class="depth-2" data-astro-cid-xvrfupwn><a href="#choosing-between-them" data-astro-cid-xvrfupwn>Choosing between them</a></li></ul></nav> </div>  </main> </div>   </body></html> 
