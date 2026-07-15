@@ -21,6 +21,7 @@ const NAV_ORDER = [
   'importmaps-and-externals',
   'module-federation',
   'react-and-jsx',
+  'vue',
   'styling-and-assets',
   'other-features',
 ];

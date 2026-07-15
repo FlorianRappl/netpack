@@ -18,7 +18,7 @@ const { docs, current, basePrefix } = Astro.props;
     {
       docs.map((doc) => {
         const isIndex = doc.id === INDEX_ID;
-        const href = isIndex ? basePrefix || '.' : `${basePrefix}${doc.id}/`;
+        const href = new URL(isIndex ? basePrefix || '.' : `${basePrefix}${doc.id}/`, Astro.url).pathname;
         const isActive = doc.id === current;
 
         return (

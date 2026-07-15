@@ -161,6 +161,7 @@ jobs:
           set -euo pipefail
           rm -rf deploy
           mkdir -p deploy
+          echo "netpack.anglevisions.com" > deploy/CNAME
           cp -r www/home/dist/. deploy/
           mkdir -p deploy/docs
           cp -r www/docs/dist/. deploy/docs/
