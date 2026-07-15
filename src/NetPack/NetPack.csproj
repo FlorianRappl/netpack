@@ -23,15 +23,15 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="AngleSharp" Version="1.2.0" />
-    <PackageReference Include="AngleSharp.Css" Version="1.0.0-beta.144" />
+    <PackageReference Include="AngleSharp" Version="1.5.2" />
+    <PackageReference Include="AngleSharp.Css" Version="1.0.0-beta.216" />
     <PackageReference Include="CommandLineParser" Version="2.9.1" />
-    <PackageReference Include="SkiaSharp" Version="3.116.1" />
+    <PackageReference Include="SkiaSharp" Version="4.150.1" />
     <!-- Pull the SkiaSharp native binaries matching the target runtime, so each
          platform's AOT publish ships a working libSkiaSharp. -->
-    <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="3.116.1" Condition="$(RuntimeIdentifier.StartsWith('linux'))" />
-    <PackageReference Include="SkiaSharp.NativeAssets.macOS" Version="3.116.1" Condition="$(RuntimeIdentifier.StartsWith('osx'))" />
-    <PackageReference Include="SkiaSharp.NativeAssets.Win32" Version="3.116.1" Condition="$(RuntimeIdentifier.StartsWith('win'))" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="4.150.1" Condition="$(RuntimeIdentifier.StartsWith('linux'))" />
+    <PackageReference Include="SkiaSharp.NativeAssets.macOS" Version="4.150.1" Condition="$(RuntimeIdentifier.StartsWith('osx'))" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Win32" Version="4.150.1" Condition="$(RuntimeIdentifier.StartsWith('win'))" />
   </ItemGroup>
 
   <ItemGroup>
