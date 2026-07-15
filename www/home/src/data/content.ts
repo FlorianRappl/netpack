@@ -37,6 +37,9 @@ export const site = {
     'Built on C#/.NET with Ahead-of-Time compilation. No JIT to warm up, no runtime to install — netpack starts at native speed and stays there.',
   repoUrl: 'https://github.com/FlorianRappl/netpack',
   repoLabel: 'github.com/FlorianRappl/netpack',
+  // The docs site (www/docs) is deployed to the /docs subpath of this same
+  // domain — see the "pages" job in .github/workflows/publish.yml.
+  docsUrl: '/docs/',
 };
 
 export const terminal = {
