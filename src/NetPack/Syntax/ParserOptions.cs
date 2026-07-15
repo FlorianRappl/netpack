@@ -29,12 +29,15 @@ public readonly record struct ParserOptions
         var jsx = fileName.EndsWith(".jsx") || fileName.EndsWith(".tsx");
         var ts = fileName.EndsWith(".ts") || fileName.EndsWith(".tsx")
             || fileName.EndsWith(".mts") || fileName.EndsWith(".cts");
+        // A Vue SFC compiles to a virtual JS module whose <script> may be TypeScript
+        // (lang="ts"); parse it with TS stripping enabled.
+        var vue = fileName.EndsWith(".vue");
         // JSX is also commonly used in plain .js files; enable it permissively.
         return new ParserOptions
         {
             Tolerant = true,
             Jsx = jsx || fileName.EndsWith(".js") || fileName.EndsWith(".mjs"),
-            TypeScript = ts,
+            TypeScript = ts || vue,
         };
     }
 }

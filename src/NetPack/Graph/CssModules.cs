@@ -1,5 +1,7 @@
 namespace NetPack.Graph;
 
+using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using AngleSharp.Css;
@@ -80,6 +82,45 @@ public static class CssModules
     }
 
     /// <summary>
+    /// Rewrites every selector of <paramref name="sheet"/> to also require the
+    /// <paramref name="scopeAttribute"/> (e.g. <c>[data-v-1a2b3c]</c>), implementing
+    /// Vue's <c>&lt;style scoped&gt;</c>. Returns the serialized, scoped CSS.
+    /// </summary>
+    public static string ApplyScope(ICssStyleSheet sheet, string scopeAttribute)
+    {
+        ScopeRules(sheet.Rules, scopeAttribute);
+        using var writer = new StringWriter();
+        sheet.ToCss(writer, new MinifyStyleFormatter());
+        return writer.ToString();
+    }
+
+    private static void ScopeRules(IEnumerable<ICssRule> rules, string scopeAttribute)
+    {
+        foreach (var rule in rules)
+        {
+            if (rule is ICssStyleRule style)
+            {
+                var selectors = style.SelectorText.Split(',');
+                style.SelectorText = string.Join(", ", selectors.Select(s => AppendScope(s.Trim(), scopeAttribute)));
+            }
+            else if (rule is ICssGroupingRule grouping)
+            {
+                ScopeRules(grouping.Rules, scopeAttribute);
+            }
+        }
+    }
+
+    private static string AppendScope(string selector, string scopeAttribute)
+    {
+        // Keep the scope attribute in front of a trailing pseudo-element (::before,
+        // ::after, …) so the selector stays valid; otherwise append to the end.
+        var idx = selector.IndexOf("::", System.StringComparison.Ordinal);
+        return idx >= 0
+            ? string.Concat(selector[..idx], scopeAttribute, selector[idx..])
+            : string.Concat(selector, scopeAttribute);
+    }
+
+    /// <summary>
     /// Builds the virtual JavaScript module for a CSS import: it injects the CSS
     /// at runtime and exports the class-name map (named exports for identifier-safe
     /// names, plus a default export object covering every class).
@@ -119,7 +160,7 @@ public static class CssModules
     // Encodes a string as a JavaScript/JSON double-quoted literal. Written by
     // hand (rather than via JsonSerializer) so it stays trim/AOT-safe. Also
     // escapes U+2028/U+2029, which are legal in JSON but break JS string literals.
-    private static string JsString(string value)
+    public static string JsString(string value)
     {
         var sb = new StringBuilder(value.Length + 2);
         sb.Append('"');

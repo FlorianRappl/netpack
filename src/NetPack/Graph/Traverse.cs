@@ -523,6 +523,143 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
         _context.CssFragments.TryAdd(current, fragment);
     }
 
+    /// <summary>
+    /// Compiles a Vue single-file component (.vue) into a virtual JavaScript module.
+    /// AngleSharp splits the file into its top-level &lt;template&gt;, &lt;script&gt;
+    /// and &lt;style&gt; blocks; <see cref="VueSfc"/> then assembles a module that
+    /// exports the component (with the template attached as a string for Vue's
+    /// runtime compiler, scoped styles applied, and CSS injected at runtime).
+    /// Blocks carrying a <c>src</c> attribute are loaded from the referenced file.
+    /// </summary>
+    private async Task ProcessVue(Node current, byte[] bytes, Bundle bundle)
+    {
+        using var stream = new MemoryStream(bytes);
+        var document = await _browser.OpenAsync(res => res.Content(stream));
+
+        // querySelectorAll does not descend into <template> content (it lives in a
+        // separate fragment), so tags nested in the template are not seen as blocks.
+        var templateEl = document.QuerySelector("template");
+        var scriptEls = document.QuerySelectorAll("script").ToList();
+        var styleEls = document.QuerySelectorAll("style").ToList();
+
+        if (scriptEls.Any(s => s.HasAttribute("setup")))
+        {
+            throw new NotSupportedException(
+                $"'{current.FileName}': <script setup> is not supported yet — use a classic <script> block with `export default`.");
+        }
+
+        var relative = Path.GetRelativePath(_context.Root, current.FileName).Replace('\\', '/');
+        var scopeId = $"data-v-{Hash.Short(relative)}";
+
+        var template = await ReadVueBlock(current, templateEl, isTemplate: true);
+        var script = await ReadVueBlock(current, scriptEls.FirstOrDefault(), isTemplate: false);
+
+        var styles = new List<VueStyleBlock>();
+
+        foreach (var styleEl in styleEls)
+        {
+            var css = await ReadVueBlock(current, styleEl, isTemplate: false) ?? "";
+            css = await PreprocessVueStyle(css, current.FileName, styleEl.GetAttribute("lang"));
+            var scoped = styleEl.HasAttribute("scoped");
+
+            if (scoped && css.Length > 0)
+            {
+                css = await ScopeVueStyle(css, $"[{scopeId}]");
+            }
+
+            styles.Add(new VueStyleBlock { Css = css, Scoped = scoped });
+        }
+
+        var descriptor = new VueDescriptor
+        {
+            Template = template,
+            Script = script,
+            Styles = styles,
+            RelativePath = relative,
+            ScopeId = scopeId,
+        };
+
+        var source = VueSfc.Generate(descriptor);
+        var fragment = await ParseJsModule(bundle, current, source);
+        _context.JsFragments.TryAdd(current, fragment);
+    }
+
+    /// <summary>
+    /// Returns the text of a single SFC block. A block with a <c>src</c> attribute
+    /// is read from the referenced file (resolved relative to the .vue file);
+    /// otherwise the inline content is used. Template content is serialized from the
+    /// element's template fragment.
+    /// </summary>
+    private async Task<string?> ReadVueBlock(Node current, AngleSharp.Dom.IElement? element, bool isTemplate)
+    {
+        if (element is null)
+        {
+            return null;
+        }
+
+        var src = element.GetAttribute("src");
+
+        if (!string.IsNullOrEmpty(src))
+        {
+            var path = await Resolve(current.ParentDir, src);
+            var text = await File.ReadAllTextAsync(path);
+
+            if (isTemplate)
+            {
+                using var s = new MemoryStream(Encoding.UTF8.GetBytes(text));
+                var doc = await _browser.OpenAsync(res => res.Content(s));
+                return (doc.Body?.InnerHtml ?? text).Trim();
+            }
+
+            return text.Trim();
+        }
+
+        if (isTemplate)
+        {
+            // The template element keeps its markup in a separate content fragment.
+            var markup = element is AngleSharp.Html.Dom.IHtmlTemplateElement tpl
+                ? tpl.Content.ToHtml()
+                : element.InnerHtml;
+            return markup.Trim();
+        }
+
+        return element.TextContent.Trim();
+    }
+
+    private async Task<string> PreprocessVueStyle(string css, string file, string? lang)
+    {
+        if (css.Length == 0)
+        {
+            return css;
+        }
+
+        if ((lang == "scss" || lang == "sass") && _context.Features.HasFlag(FeatureFlags.Sass))
+        {
+            return await TranspileSass(css, file);
+        }
+
+        if (lang == "less" && _context.Features.HasFlag(FeatureFlags.Less))
+        {
+            return await TranspileLess(css, file);
+        }
+
+        return css;
+    }
+
+    private async Task<string> ScopeVueStyle(string css, string scopeAttribute)
+    {
+        using var stream = new MemoryStream(Encoding.UTF8.GetBytes(css));
+        var options = new CssParserOptions
+        {
+            IsIncludingUnknownRules = true,
+            IsIncludingUnknownDeclarations = true,
+            IsToleratingInvalidSelectors = true,
+        };
+        var parser = new CssParser(options, _browser);
+        var sheet = await parser.ParseStyleSheetAsync(stream);
+        return CssModules.ApplyScope(sheet, scopeAttribute);
+    }
+
     private async Task<JsFragment> ParseJsModule(Bundle bundle, Node current, string content)
     {
         var options = ParserOptions.ForFile(current.FileName);
@@ -742,6 +879,14 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
                 await ProcessAsset(node, bytes);
                 return node;
             }
+        }
+
+        // Vue SFCs compile to JS (their extension maps to ".js"), so dispatch on the
+        // raw extension before the type switch to route them through ProcessVue.
+        if (node.Extension == ".vue")
+        {
+            await ProcessVue(node, bytes, bundle);
+            return node;
         }
 
         await (node.Type switch

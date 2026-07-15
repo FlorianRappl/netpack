@@ -222,6 +222,7 @@ The following items are features or topics that are relevant for bundlers - netp
 - [x] Handle any asset
 - [x] Handle CSS
 - [x] Handle CSS modules (named/default import of a `.css` file hashes its class names and exports the original→hashed map)
+- [x] Handle Vue SFCs (`.vue`; native block splitting via AngleSharp)
 - [x] Handle PostCSS (incl. Tailwind)
 - [x] Handle SASS
 - [x] Handle LESS
@@ -238,7 +239,24 @@ The following items are features or topics that are relevant for bundlers - netp
 - [ ] Solid
 - [ ] Svelte
 - [x] Vanilla
-- [ ] Vue
+- [x] Vue (single-file components; see notes below)
+
+#### Vue single-file components
+
+`.vue` files are compiled natively (no Node round-trip). AngleSharp — already used
+for HTML — splits the SFC into its top-level `<template>`, `<script>` and `<style>`
+blocks, which are assembled into a virtual JS module: the `<script>` default export
+becomes the component, the template is attached as a string, and `<style>` blocks are
+injected at runtime. Supported today:
+
+- `<template>`, classic `<script>` (JS or `lang="ts"`), and one or more `<style>` blocks.
+- `<style scoped>` (adds a `data-v-*` scope id and rewrites selectors) and `<style lang="scss|less">` (when SASS/LESS is enabled).
+- `src` attributes on any block (`<template src="./tpl.html">`, `<script src>`, `<style src>`).
+
+Notes / not yet supported: the template is handed to Vue's **runtime** compiler, so the
+app must use a compiler-included Vue build; `<script setup>` and its compiler macros,
+`<style module>`, and build-time render-function precompilation are follow-ups. Because
+the template is parsed as HTML, use kebab-case for child components (`<my-widget>`).
 
 ### Bundler Basics
 

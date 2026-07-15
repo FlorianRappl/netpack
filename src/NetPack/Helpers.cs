@@ -22,6 +22,7 @@ public static class Helpers
         { ".jsx", ".js" },
         { ".js", ".js" },
         { ".cjs", ".js" },
+        { ".vue", ".js" },
         { ".html", ".html" },
         { ".htm", ".html" },
         { ".css", ".css" },
