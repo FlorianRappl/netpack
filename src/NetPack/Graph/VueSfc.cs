@@ -79,12 +79,28 @@ public static class VueSfc
     {
         var sb = new StringBuilder();
 
+        // Scoped styles are stamped onto the precompiled render's vnodes via
+        // pushScopeId/popScopeId (in addition to the component's __scopeId).
+        var scopedRender = sfc.RenderBody is not null
+            && sfc.Styles.Any(s => s.Scoped)
+            && !string.IsNullOrEmpty(sfc.ScopeId);
+
         // 0) Import the Vue runtime helpers the precompiled render function needs.
-        if (sfc.RenderBody is not null && sfc.RenderHelpers.Count > 0)
+        if (sfc.RenderBody is not null)
         {
-            var specifiers = string.Join(", ", sfc.RenderHelpers.OrderBy(h => h, System.StringComparer.Ordinal)
-                .Select(h => $"{h} as _vue_{h}"));
-            sb.Append("import { ").Append(specifiers).Append(" } from \"vue\";\n");
+            var helpers = new SortedSet<string>(sfc.RenderHelpers, System.StringComparer.Ordinal);
+
+            if (scopedRender)
+            {
+                helpers.Add("pushScopeId");
+                helpers.Add("popScopeId");
+            }
+
+            if (helpers.Count > 0)
+            {
+                var specifiers = string.Join(", ", helpers.Select(h => $"{h} as _vue_{h}"));
+                sb.Append("import { ").Append(specifiers).Append(" } from \"vue\";\n");
+            }
         }
 
         // 1) Build the component object bound to __sfc_main from the script block(s).
@@ -123,7 +139,7 @@ public static class VueSfc
         //    the raw template string is left for Vue's runtime compiler.
         if (sfc.RenderBody is { } body)
         {
-            sb.Append(BuildRenderFunction(body, sfc.RenderComponents));
+            sb.Append(BuildRenderFunction(body, sfc.RenderComponents, scopedRender ? sfc.ScopeId : null));
         }
         else if (sfc.Template is { } template)
         {
@@ -136,8 +152,11 @@ public static class VueSfc
     }
 
     /// <summary>Emits <c>__sfc_main.render = function (_ctx, _cache) { … }</c>, with a
-    /// <c>resolveComponent</c> lookup hoisted for each component tag the body uses.</summary>
-    private static string BuildRenderFunction(string body, IReadOnlyCollection<string> components)
+    /// <c>resolveComponent</c> lookup hoisted for each component tag the body uses.
+    /// When <paramref name="scopeId"/> is set (scoped styles), the render body is
+    /// wrapped in <c>pushScopeId</c>/<c>popScopeId</c> so the created vnodes carry
+    /// the <c>data-v-*</c> attribute.</summary>
+    private static string BuildRenderFunction(string body, IReadOnlyCollection<string> components, string? scopeId)
     {
         var sb = new StringBuilder();
         sb.Append(ComponentLocal).Append(".render = function (_ctx, _cache) {\n");
@@ -148,7 +167,18 @@ public static class VueSfc
               .Append(" = _vue_resolveComponent(").Append(CssModules.JsString(tag)).Append(");\n");
         }
 
-        sb.Append("  return ").Append(body).Append(";\n};\n");
+        if (scopeId is not null)
+        {
+            sb.Append("  _vue_pushScopeId(").Append(CssModules.JsString(scopeId)).Append(");\n");
+            sb.Append("  const _node = ").Append(body).Append(";\n");
+            sb.Append("  _vue_popScopeId();\n");
+            sb.Append("  return _node;\n};\n");
+        }
+        else
+        {
+            sb.Append("  return ").Append(body).Append(";\n};\n");
+        }
+
         return sb.ToString();
     }
 

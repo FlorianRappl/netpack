@@ -156,4 +156,72 @@ public class VueTemplateTests
         Assert.Contains(".template =", output);
         Assert.DoesNotContain(".render = function", output);
     }
+
+    // -- modifiers -----------------------------------------------------------
+
+    [Fact]
+    public async Task Compiles_event_system_modifiers()
+    {
+        var output = await BundleVue(
+            "<template><button @click.stop.prevent=\"go\">x</button></template>",
+            "<script setup>\nfunction go(){}\n</script>");
+
+        Assert.Contains("_vue_withModifiers(_ctx.go, [\"stop\", \"prevent\"])", output);
+    }
+
+    [Fact]
+    public async Task Compiles_key_and_event_option_modifiers()
+    {
+        var output = await BundleVue(
+            "<template><input @keyup.enter=\"submit\" @focus.once=\"onFocus\"></template>",
+            "<script setup>\nfunction submit(){}\nfunction onFocus(){}\n</script>");
+
+        Assert.Contains("_vue_withKeys(_ctx.submit, [\"enter\"])", output);
+        Assert.Contains("onFocusOnce:", output);
+    }
+
+    [Fact]
+    public async Task Compiles_v_bind_modifiers()
+    {
+        var output = await BundleVue(
+            "<template><div :view-box.camel=\"vb\" :bar.prop=\"x\"></div></template>",
+            "<script setup>\nconst vb='0 0 1 1'\nconst x=1\n</script>");
+
+        Assert.Contains("viewBox: _ctx.vb", output);
+        Assert.Contains("\".bar\": _ctx.x", output);
+    }
+
+    [Fact]
+    public async Task Compiles_v_model_modifiers_on_native_input()
+    {
+        var output = await BundleVue(
+            "<template><input v-model.trim.number=\"name\"></template>",
+            "<script setup>\nconst name=''\n</script>");
+
+        Assert.Contains("_vue_vModelText", output);
+        Assert.Contains("void 0, { trim: true, number: true }", output);
+    }
+
+    [Fact]
+    public async Task Compiles_dynamic_component()
+    {
+        var output = await BundleVue(
+            "<template><component :is=\"page\" /></template>",
+            "<script setup>\nconst page='div'\n</script>");
+
+        Assert.Contains("_vue_resolveDynamicComponent(_ctx.page)", output);
+    }
+
+    [Fact]
+    public async Task Scoped_styles_stamp_scope_id_in_render()
+    {
+        var output = await BundleVue(
+            "<template><p class=\"box\">hi</p></template>\n<style scoped>.box{color:red}</style>");
+
+        // The render is wrapped in pushScopeId/popScopeId (substring-matched so the
+        // assertions survive the bundler rewriting the external `vue` import).
+        Assert.Contains("pushScopeId(\"data-v-", output);
+        Assert.Contains("popScopeId()", output);
+        Assert.Contains(".__scopeId = \"data-v-", output);
+    }
 }

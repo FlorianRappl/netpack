@@ -131,12 +131,12 @@ _vue_h(_vue_Fragment, null, _vue_renderList(_ctx.items, (item) =>
 Supported in the render compiler:
 
 - Text interpolation `{{ … }}`.
-- `v-bind` / `:attr`, `v-on` / `@event`.
+- `v-bind` / `:attr` (incl. `.prop` / `.attr` / `.camel` modifiers), `v-on` / `@event` (incl. system/key/`.capture`/`.once`/`.passive` modifiers, e.g. `@click.stop.prevent`, `@keyup.enter`, `@scroll.passive`).
 - `v-if` / `v-else-if` / `v-else`, `v-for`.
 - `v-show`, `v-html`, `v-text`.
-- `v-model` — both native form controls (via the `vModel*` directives) and components (`modelValue` + `onUpdate:modelValue`).
+- `v-model` — native form controls (via the `vModel*` directives) and components (`modelValue` + `onUpdate:modelValue`), with `.lazy` / `.number` / `.trim` modifiers.
 - `key`, `ref`, static and dynamic attributes.
-- Components, default and named slots, and `<slot>` outlets.
+- Components, `<component :is="…">` (via `resolveDynamicComponent`), default and named slots, and `<slot>` outlets.
 
 ### Graceful fallback
 
@@ -144,9 +144,8 @@ Anything outside that subset makes netpack **fall back to Vue's runtime
 compiler** for that component: it attaches the raw template string as
 `.template` instead of a precompiled `.render`. Your app keeps working (a
 compiler-included Vue build is only needed for components that actually fall
-back). Constructs that currently fall back: `v-on` / `v-bind` / `v-model`
-modifiers (`@click.stop`, `:x.prop`, `v-model.trim`), custom directives, and
-`<component :is="…">`.
+back). Constructs that currently fall back: custom directives, `v-once` /
+`v-memo` caching, and `v-bind="object"` spreads.
 
 ### Component resolution
 
@@ -165,10 +164,10 @@ imported/registered as `MyWidget`.
 
 Each `<style>` block's CSS is injected at runtime via a `<style>` element.
 
-- **`scoped`** — netpack computes a `data-v-*` scope id, rewrites the block's
-  selectors to require it (`.box` → `.box[data-v-1a2b3c]`) and sets the
-  component's `__scopeId`, so the runtime stamps the attribute onto the elements
-  it renders.
+- **`scoped`** — netpack computes a `data-v-*` scope id and rewrites the block's
+  selectors to require it (`.box` → `.box[data-v-1a2b3c]`). The precompiled
+  render is wrapped in `pushScopeId`/`popScopeId` (and the component's
+  `__scopeId` is set) so every element it renders is stamped with the attribute.
 - **`lang="scss" | "sass" | "less"`** — preprocessed with the same pipeline as
   standalone stylesheets (when the corresponding tool is enabled via
   `package.json`; see [Styling & assets](./styling-and-assets.md)).

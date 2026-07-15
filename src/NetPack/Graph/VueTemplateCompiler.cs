@@ -250,13 +250,27 @@ public static class VueTemplateCompiler
                 };
             }
 
-            var isComponent = IsComponent(tag);
-            var typeExpr = isComponent ? ComponentRef(tag) : Json(tag);
+            bool isComponent;
+            string typeExpr;
+
+            if (tag == "component")
+            {
+                // <component :is="…"> — a dynamically resolved component.
+                var isExpr = DynamicIs(element, locals)
+                    ?? throw new VueTemplateException("<component> requires an `is` binding");
+                typeExpr = $"{Use("resolveDynamicComponent")}({isExpr})";
+                isComponent = true;
+            }
+            else
+            {
+                isComponent = IsComponent(tag);
+                typeExpr = isComponent ? ComponentRef(tag) : Json(tag);
+            }
 
             var props = new List<string>();
             var directives = new List<string>();
             string? textChild = null;
-            var vModel = default((string Directive, string Expr)?);
+            var vModel = default((string Directive, string Expr, string? Mods)?);
 
             foreach (var attr in element.Attributes)
             {
@@ -291,10 +305,13 @@ public static class VueTemplateCompiler
                 ? $"{Use("h")}({typeExpr}, {propsArg})"
                 : $"{Use("h")}({typeExpr}, {propsArg}, {childrenArg})";
 
-            // v-model on native elements and v-show attach as directives.
+            // v-model on native elements and v-show attach as directives. A native
+            // v-model carries its modifiers as the directive's fourth element.
             if (vModel is { } model)
             {
-                directives.Add($"[{Use(model.Directive)}, {model.Expr}]");
+                directives.Add(model.Mods is null
+                    ? $"[{Use(model.Directive)}, {model.Expr}]"
+                    : $"[{Use(model.Directive)}, {model.Expr}, void 0, {model.Mods}]");
             }
 
             if (directives.Count > 0)
@@ -308,10 +325,16 @@ public static class VueTemplateCompiler
         private void ApplyAttribute(
             IElement element, bool isComponent, IAttr attr, IReadOnlySet<string> locals,
             List<string> props, List<string> directives, ref string? textChild,
-            ref (string Directive, string Expr)? vModel)
+            ref (string Directive, string Expr, string? Mods)? vModel)
         {
             var name = attr.Name;
             var value = attr.Value;
+
+            // The `is` binding of <component> is consumed as the element type.
+            if (element.LocalName == "component" && name is "is" or ":is" or "v-bind:is")
+            {
+                return;
+            }
 
             switch (name)
             {
@@ -333,10 +356,6 @@ public static class VueTemplateCompiler
                     textChild = $"{Use("toDisplayString")}({VueExpression.Prefix(value, locals)})";
                     return;
 
-                case "v-model":
-                    vModel = BuildVModel(element, isComponent, "modelValue", value, locals, props);
-                    return;
-
                 case "ref":
                     props.Add($"ref: {Json(value)}");
                     return;
@@ -349,36 +368,26 @@ public static class VueTemplateCompiler
                     throw new VueTemplateException("v-bind=\"object\" is not supported");
             }
 
-            if (name.StartsWith("v-model:", System.StringComparison.Ordinal))
+            if (name == "v-model" || name.StartsWith("v-model:", System.StringComparison.Ordinal)
+                || name.StartsWith("v-model.", System.StringComparison.Ordinal))
             {
-                var arg = name["v-model:".Length..];
-                vModel = BuildVModel(element, isComponent, arg, value, locals, props);
+                var (arg, mods) = ParseModelName(name);
+                vModel = BuildVModel(element, isComponent, arg, mods, value, locals, props);
                 return;
             }
 
             if (name.StartsWith(':') || name.StartsWith("v-bind:", System.StringComparison.Ordinal))
             {
-                var key = name.StartsWith(':') ? name[1..] : name["v-bind:".Length..];
-
-                if (key.Contains('.'))
-                {
-                    throw new VueTemplateException($"v-bind modifiers are not supported ({name})");
-                }
-
-                props.Add($"{PropKey(key)}: {VueExpression.Prefix(value, locals)}");
+                var raw = name.StartsWith(':') ? name[1..] : name["v-bind:".Length..];
+                ApplyBind(raw, value, locals, props);
                 return;
             }
 
             if (name.StartsWith('@') || name.StartsWith("v-on:", System.StringComparison.Ordinal))
             {
-                var rawEvent = name.StartsWith('@') ? name[1..] : name["v-on:".Length..];
-
-                if (rawEvent.Contains('.'))
-                {
-                    throw new VueTemplateException($"v-on modifiers are not supported ({name})");
-                }
-
-                props.Add($"{EventKey(rawEvent)}: {CompileHandler(value, locals)}");
+                var raw = name.StartsWith('@') ? name[1..] : name["v-on:".Length..];
+                var (key, handler) = CompileEventBinding(raw, value, locals);
+                props.Add($"{key}: {handler}");
                 return;
             }
 
@@ -396,25 +405,165 @@ public static class VueTemplateCompiler
             props.Add($"{PropKey(name)}: {Json(value)}");
         }
 
-        private (string Directive, string Expr)? BuildVModel(
-            IElement element, bool isComponent, string arg, string value, IReadOnlySet<string> locals, List<string> props)
+        private string? DynamicIs(IElement element, IReadOnlySet<string> locals)
+        {
+            foreach (var attr in element.Attributes)
+            {
+                if (attr.Name is ":is" or "v-bind:is")
+                {
+                    return VueExpression.Prefix(attr.Value, locals);
+                }
+
+                if (attr.Name == "is")
+                {
+                    return Json(attr.Value);
+                }
+            }
+
+            return null;
+        }
+
+        // -- v-bind (:) with modifiers ----------------------------------------
+
+        private void ApplyBind(string raw, string value, IReadOnlySet<string> locals, List<string> props)
+        {
+            var dot = raw.IndexOf('.');
+            var key = dot < 0 ? raw : raw[..dot];
+            var modifiers = dot < 0 ? System.Array.Empty<string>() : SplitModifiers(raw[(dot + 1)..]);
+
+            foreach (var modifier in modifiers)
+            {
+                key = modifier switch
+                {
+                    "camel" => Camelize(key),
+                    "prop" => "." + key,   // force a DOM property
+                    "attr" => "^" + key,   // force an attribute
+                    _ => throw new VueTemplateException($"unsupported v-bind modifier .{modifier}"),
+                };
+            }
+
+            props.Add($"{PropKey(key)}: {VueExpression.Prefix(value, locals)}");
+        }
+
+        // -- v-on (@) with modifiers ------------------------------------------
+
+        private static readonly HashSet<string> EventOptionModifiers = ["passive", "once", "capture"];
+
+        private static readonly HashSet<string> SystemModifiers =
+            ["stop", "prevent", "self", "ctrl", "shift", "alt", "meta", "exact", "middle"];
+
+        private (string Key, string Handler) CompileEventBinding(string raw, string value, IReadOnlySet<string> locals)
+        {
+            var dot = raw.IndexOf('.');
+            var eventName = dot < 0 ? raw : raw[..dot];
+            var modifiers = dot < 0 ? System.Array.Empty<string>() : SplitModifiers(raw[(dot + 1)..]);
+
+            var isKeyboard = eventName is "keyup" or "keydown" or "keypress";
+            var keyModifiers = new List<string>();
+            var systemModifiers = new List<string>();
+            var eventOptions = new List<string>();
+
+            foreach (var modifier in modifiers)
+            {
+                if (EventOptionModifiers.Contains(modifier))
+                {
+                    eventOptions.Add(modifier);
+                }
+                else if (modifier is "left" or "right")
+                {
+                    // ambiguous: a key on keyboard events, a mouse button otherwise
+                    (isKeyboard ? keyModifiers : systemModifiers).Add(modifier);
+                }
+                else if (SystemModifiers.Contains(modifier))
+                {
+                    systemModifiers.Add(modifier);
+                }
+                else
+                {
+                    keyModifiers.Add(modifier);
+                }
+            }
+
+            var handler = string.IsNullOrWhiteSpace(value) ? "() => {}" : CompileHandler(value, locals);
+
+            if (systemModifiers.Count > 0)
+            {
+                handler = $"{Use("withModifiers")}({handler}, [{string.Join(", ", systemModifiers.Select(Json))}])";
+            }
+
+            if (keyModifiers.Count > 0)
+            {
+                handler = $"{Use("withKeys")}({handler}, [{string.Join(", ", keyModifiers.Select(Json))}])";
+            }
+
+            var key = "on" + Capitalize(Camelize(eventName));
+
+            foreach (var option in eventOptions)
+            {
+                key += Capitalize(option);
+            }
+
+            return (IsIdentifier(key) ? key : Json(key), handler);
+        }
+
+        // -- v-model with modifiers -------------------------------------------
+
+        private static (string Arg, List<string> Modifiers) ParseModelName(string name)
+        {
+            var body = name["v-model".Length..]; // "", ":arg", ".mod", ":arg.mods"
+            var arg = "modelValue";
+            var modifiers = new List<string>();
+
+            if (body.StartsWith(':'))
+            {
+                var rest = body[1..];
+                var dot = rest.IndexOf('.');
+                arg = dot < 0 ? rest : rest[..dot];
+
+                if (dot >= 0)
+                {
+                    modifiers.AddRange(SplitModifiers(rest[(dot + 1)..]));
+                }
+            }
+            else if (body.StartsWith('.'))
+            {
+                modifiers.AddRange(SplitModifiers(body[1..]));
+            }
+
+            return (arg, modifiers);
+        }
+
+        private (string Directive, string Expr, string? Mods)? BuildVModel(
+            IElement element, bool isComponent, string arg, List<string> modifiers,
+            string value, IReadOnlySet<string> locals, List<string> props)
         {
             var bound = VueExpression.Prefix(value, locals);
             var setter = $"$event => (({bound}) = $event)";
+            var modsObject = modifiers.Count > 0
+                ? $"{{ {string.Join(", ", modifiers.Select(m => $"{m}: true"))} }}"
+                : null;
 
             props.Add($"{EventKey("update:" + arg)}: {setter}");
 
             if (isComponent)
             {
-                // Component v-model: a prop + update handler, no directive.
+                // Component v-model: a prop + update handler (+ modifiers prop), no directive.
                 props.Add($"{PropKey(arg)}: {bound}");
+
+                if (modsObject is not null)
+                {
+                    props.Add($"{PropKey(ModifiersProp(arg))}: {modsObject}");
+                }
+
                 return null;
             }
 
-            // Native form control: the vModel* directive keeps the DOM in sync and
-            // reads the update handler above.
-            return (Directive: NativeModelDirective(element), Expr: bound);
+            // Native form control: the vModel* directive keeps the DOM in sync,
+            // reads the update handler above and honours its modifiers.
+            return (NativeModelDirective(element), bound, modsObject);
         }
+
+        private static string ModifiersProp(string arg) => arg == "modelValue" ? "modelModifiers" : arg + "Modifiers";
 
         private static string NativeModelDirective(IElement element)
         {
@@ -439,6 +588,9 @@ public static class VueTemplateCompiler
                 _ => "vModelText",
             };
         }
+
+        private static string[] SplitModifiers(string text) =>
+            text.Split('.', System.StringSplitOptions.RemoveEmptyEntries);
 
         // -- slots -------------------------------------------------------------
 
