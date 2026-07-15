@@ -84,9 +84,9 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
 
             switch (name)
             {
-                // special case - Module Federation
+                // special case - Module / Native Federation
                 case "federation.json":
-                    await AddModuleFederation(entry);
+                    await AddFederation(entry);
                     break;
                 default:
                     var node = await AddNewBundle(entry);
@@ -835,10 +835,23 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
         }
     }
 
-    private async Task<Node> AddModuleFederation(string entry)
+    /// <summary>
+    /// Reads a <c>federation.json</c> entry and dispatches on its <c>kind</c>:
+    /// <c>module</c> (default) builds a Module Federation container; <c>native</c>
+    /// builds a plain ESM native-federation remote.
+    /// </summary>
+    private async Task<Node> AddFederation(string entry)
     {
         var definition = await ModuleFederationHelpers.ReadFrom(entry);
+        var kind = ModuleFederationHelpers.NormalizeKind(definition.Kind);
 
+        return kind == "native"
+            ? await AddNativeFederation(definition, entry)
+            : await AddModuleFederation(definition, entry);
+    }
+
+    private async Task<Node> AddModuleFederation(ModuleFederation definition, string entry)
+    {
         if (definition.Shared is not null && definition.Shared.Count > 0)
         {
             await Task.WhenAll(definition.Shared.Keys.Select(AddModuleFederationDependency));
@@ -852,6 +865,51 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
         _context.Bundles.TryAdd(node, bundle);
         var fragment = await ParseJsModule(bundle, node, code);
         _context.JsFragments.TryAdd(node, fragment);
+        return node;
+    }
+
+    /// <summary>
+    /// Builds a native-federation remote. Shared dependencies are treated as
+    /// externals (so every <c>import … from "&lt;dep&gt;"</c> stays a bare ESM
+    /// import) and are additionally emitted as their own standalone ESM bundles;
+    /// the generated remote entry is a plain ES module.
+    /// </summary>
+    private async Task<Node> AddNativeFederation(ModuleFederation definition, string entry)
+    {
+        var sharedNames = definition.Shared?.Keys.ToList() ?? [];
+
+        foreach (var name in sharedNames)
+        {
+            AddExternal(name);
+
+            if (!_context.Shared.Contains(name))
+            {
+                _context.Shared.Add(name);
+            }
+        }
+
+        var code = ModuleFederationHelpers.CreateNativeContainerCode(definition);
+        var fileName = Path.Combine(Path.GetDirectoryName(entry)!, definition.FileName);
+        var node = new Node(fileName, code.Length);
+        var bundle = CreateBundle(node, BundleFlags.Primary);
+        _context.Modules.TryAdd(fileName, node);
+        _context.Bundles.TryAdd(node, bundle);
+        var fragment = await ParseJsModule(bundle, node, code);
+        _context.JsFragments.TryAdd(node, fragment);
+
+        // Emit each shared dependency as its own ESM file (host wires it up via an
+        // import map). Bundling by resolved entry path gives it the dependency's
+        // name (e.g. react.js) and keeps it separate from the bare "react" import.
+        foreach (var name in sharedNames)
+        {
+            var path = await ResolveFromNodeModules(_context.Root, name);
+
+            if (!string.IsNullOrEmpty(path))
+            {
+                await AddNewBundle(path);
+            }
+        }
+
         return node;
     }
 

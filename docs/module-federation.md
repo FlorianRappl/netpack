@@ -37,6 +37,7 @@ npx netpack bundle src/federation.json --outdir dist
 | Field | Meaning |
 | --- | --- |
 | `name` | The container's federation name — how other remotes refer to it. |
+| `kind` | `"module"` (default) for Module Federation, or `"native"` for [native federation](#native-federation). Any other value is an error. |
 | `filename` | Output file name for the generated container (defaults to `remoteEntry.js`). |
 | `shareScope` | Federation share scope, `"default"` unless you're isolating multiple federations on one page. |
 | `shareStrategy` | `"version-first"` (default) or `"loaded-first"` — how the runtime picks between multiple copies of a shared dependency. |
@@ -65,6 +66,58 @@ The container is emitted as a regular bundle in `--outdir`, alongside
 whatever else that build produces — there's nothing extra to wire up on the
 consuming side beyond pointing a host's `remotes` config (or another
 `federation.json`) at the emitted file.
+
+## Native federation
+
+Set `"kind": "native"` to emit a **native-federation** remote instead of a
+Module Federation container. It uses the exact same `federation.json` entry —
+only the output shape differs.
+
+```json
+{
+  "name": "checkout",
+  "kind": "native",
+  "filename": "remoteEntry.js",
+  "exposes": {
+    "./CheckoutForm": "./src/CheckoutForm.tsx"
+  },
+  "shared": {
+    "react": { "singleton": true },
+    "react-dom": { "singleton": true }
+  }
+}
+```
+
+Where a Module Federation container ships the federation runtime and negotiates
+shared dependencies through it, a native-federation remote is **just an ES
+module**. Shared dependencies are imported directly, so the host resolves them
+through a standard [import map](./importmaps-and-externals.md):
+
+```js
+// remoteEntry.js (native)
+import * as __shared_0 from "react";
+import * as __shared_1 from "react-dom";
+
+export const shared = { "react": __shared_0, "react-dom": __shared_1 };
+export const exposes = {
+  "./CheckoutForm": () => import("./CheckoutForm.<hash>.js"),
+};
+export default { name: "checkout", exposes, shared };
+```
+
+netpack:
+
+1. treats every `shared` dependency as an **external**, so each
+   `import … from "react"` stays a bare specifier the host's import map
+   resolves — no copy is inlined into the remote;
+2. still emits each shared dependency as its **own standalone ES module**
+   (`react.js`, `react-dom.js`, …), so the host can serve them and point its
+   import map at them;
+3. emits each `exposes` entry as its own ESM chunk, loaded on demand.
+
+Everything stays ESM — there is no runtime container to load. The consuming host
+provides an import map mapping the bare specifiers (`"react"`, the remote's own
+name, …) to the emitted files.
 
 ## Combining with shared React etc.
 

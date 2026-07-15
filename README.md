@@ -276,7 +276,7 @@ template is parsed as HTML, use kebab-case for child components (`<my-widget>`).
 - [x] Importmap support
 - [x] Shared dependencies (`--shared react react-dom`; automatically adds an importmap if HTML is used)
 - [x] Module Federation support
-- [ ] Native Federation support
+- [x] Native Federation support (`federation.json` with `"kind": "native"`)
 - [x] React Fast Refresh support (dev server; requires `react-refresh` installed)
 - [x] Custom JSX factory
 - [ ] Platforms (web, npm, deno)

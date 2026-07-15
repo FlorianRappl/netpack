@@ -6,7 +6,15 @@ public sealed class ModuleFederation
 {
     [JsonPropertyName("name")]
     public string Name { get; set; } = "";
-    
+
+    /// <summary>
+    /// The federation flavour: <c>module</c> (default) emits a Module Federation
+    /// container; <c>native</c> emits a plain ESM remote whose shared dependencies
+    /// are imported directly. Any other value is an error.
+    /// </summary>
+    [JsonPropertyName("kind")]
+    public string? Kind { get; set; }
+
     [JsonPropertyName("filename")]
     public string FileName { get; set; } = "remoteEntry.js";
     
