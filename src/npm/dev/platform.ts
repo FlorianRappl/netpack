@@ -14,7 +14,7 @@ const packageDarwin_arm64 = "@netpack/osx-arm64";
 const packageDarwin_x64 = "@netpack/osx-x64";
 
 export const knownWindowsPackages: Record<string, string> = {
-  // "win32 arm64 LE": "@netpack/win-arm64",
+  "win32 arm64 LE": "@netpack/win-arm64",
   // "win32 ia32 LE": "@netpack/win-x86",
   "win32 x64 LE": "@netpack/win-x64",
 };
@@ -27,7 +27,7 @@ export const knownUnixlikePackages: Record<string, string> = {
   // "freebsd arm64 LE": "@netpack/freebsd-arm64",
   // "freebsd x64 LE": "@netpack/freebsd-x64",
   // "linux arm LE": "@netpack/linux-arm",
-  // "linux arm64 LE": "@netpack/linux-arm64",
+  "linux arm64 LE": "@netpack/linux-arm64",
   // "linux ia32 LE": "@netpack/linux-ia32",
   // "linux mips64el LE": "@netpack/linux-mips64el",
   // "linux ppc64 LE": "@netpack/linux-ppc64",

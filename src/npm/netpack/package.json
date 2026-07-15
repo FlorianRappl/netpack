@@ -23,8 +23,10 @@
     "netpack": "cli/netpack.js"
   },
   "optionalDependencies": {
+    "@netpack/linux-arm64": "0.3.0",
     "@netpack/linux-x64": "0.3.0",
     "@netpack/osx-arm64": "0.3.0",
+    "@netpack/win-arm64": "0.3.0",
     "@netpack/win-x64": "0.3.0"
   },
   "license": "MIT"

@@ -1,0 +1,26 @@
+{
+  "name": "@netpack/win-arm64",
+  "version": "0.3.0",
+  "description": "The Windows ARM 64-bit binary for netpack, a web project bundler.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/FlorianRappl/netpack.git"
+  },
+  "license": "MIT",
+  "preferUnplugged": true,
+  "files": [
+    "bin"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "os": [
+    "win32"
+  ],
+  "cpu": [
+    "arm64"
+  ]
+}

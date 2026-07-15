@@ -2,7 +2,8 @@ name: Publish
 
 # Release pipeline, three jobs:
 #   1. build   — compile the native AOT binary once per platform (Linux x64,
-#                macOS arm64, Windows x64) and upload each as an artifact.
+#                Linux arm64, macOS arm64, Windows x64, Windows arm64) and
+#                upload each as an artifact.
 #   2. publish — assemble the per-platform npm packages from those artifacts and
 #                publish them together with the central wrapper package.
 #   3. pages   — build both Astro sites (www/home, the landing page, and
@@ -13,7 +14,8 @@ name: Publish
 #
 # Publishing uses npm Trusted Publishing (OIDC): no NPM token / secret is needed.
 # The maintainer must configure trusted publishing on npmjs.com for each of
-# `netpack`, `@netpack/linux-x64`, `@netpack/osx-arm64` and `@netpack/win-x64`,
+# `netpack`, `@netpack/linux-x64`, `@netpack/linux-arm64`, `@netpack/osx-arm64`,
+# `@netpack/win-x64`, and `@netpack/win-arm64`,
 # pointing at this repository and this workflow file (.github/workflows/publish.yml).
 #
 # The published version is the <VersionPrefix> in src/Directory.Build.props; bump
@@ -43,10 +45,14 @@ jobs:
         include:
           - rid: linux-x64
             os: ubuntu-latest
+          - rid: linux-arm64
+            os: ubuntu-24.04-arm
           - rid: osx-arm64
             os: macos-14 # Apple Silicon runner
           - rid: win-x64
             os: windows-latest
+          - rid: win-arm64
+            os: windows-11-arm
     steps:
       - uses: actions/checkout@v4
 
@@ -94,13 +100,13 @@ jobs:
       - name: Assemble native packages
         run: |
           set -euo pipefail
-          for rid in linux-x64 osx-arm64 win-x64; do
+          for rid in linux-x64 linux-arm64 osx-arm64 win-x64 win-arm64; do
             dest="src/npm/@netpack/$rid/bin"
             rm -rf "$dest"
             mkdir -p "$dest"
             cp -r "artifacts/binary-$rid/." "$dest/"
           done
-          chmod +x src/npm/@netpack/linux-x64/bin/netpack src/npm/@netpack/osx-arm64/bin/netpack
+          chmod +x src/npm/@netpack/linux-x64/bin/netpack src/npm/@netpack/linux-arm64/bin/netpack src/npm/@netpack/osx-arm64/bin/netpack
 
       - name: Build wrapper and sync versions
         working-directory: src/npm/dev
@@ -112,7 +118,7 @@ jobs:
       - name: Publish native packages
         run: |
           set -euo pipefail
-          for rid in linux-x64 osx-arm64 win-x64; do
+          for rid in linux-x64 linux-arm64 osx-arm64 win-x64 win-arm64; do
             ( cd "src/npm/@netpack/$rid" && npm publish --provenance --access public )
           done
 

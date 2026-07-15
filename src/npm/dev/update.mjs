@@ -3,7 +3,13 @@ import { resolve } from "node:path";
 
 const root = resolve(process.cwd(), "..", "..");
 const npm = resolve(root, "npm");
-const natives = ["@netpack/linux-x64", "@netpack/osx-arm64", "@netpack/win-x64"];
+const natives = [
+  "@netpack/linux-x64",
+  "@netpack/linux-arm64",
+  "@netpack/osx-arm64",
+  "@netpack/win-x64",
+  "@netpack/win-arm64",
+];
 const projects = [...natives, "netpack"];
 const props = resolve(root, "Directory.Build.props");
 
