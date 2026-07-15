@@ -19,6 +19,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="NetPack.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="AngleSharp" Version="1.2.0" />
     <PackageReference Include="AngleSharp.Css" Version="1.0.0-beta.144" />
     <PackageReference Include="CommandLineParser" Version="2.9.1" />

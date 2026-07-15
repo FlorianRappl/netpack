@@ -7,6 +7,10 @@ sealed class DiskResultWriter(BundlerContext context, string target) : ResultWri
     protected override Stream OpenWrite(string name)
     {
         var fileName = Path.Combine(_target, name);
-        return File.OpenWrite(fileName);
+        // File.Create truncates an existing file to zero length first. File.OpenWrite
+        // (FileMode.OpenOrCreate) would leave any trailing bytes from a previous,
+        // longer build in place — corrupting a bundle whenever a rebuild produces a
+        // shorter file (e.g. after minification or tree-shaking removes code).
+        return File.Create(fileName);
     }
 }
