@@ -24,22 +24,14 @@ const docs = await getAllDocs();
 // correct *relative* links regardless of where this site is actually
 // deployed (root domain, a "/docs" subpath, its own subdomain, ...) — see
 // src/lib/docs.ts for the same idea applied to in-content Markdown links.
-const path = Astro.url.pathname.replace(/\/+$/, '');
-const segments = path.split('/').filter(Boolean);
-const basePrefix = '../'.repeat(segments.length - 1);
-
-// One level further up exits this site entirely, back to the landing page
-// — see the CI workflow, which deploys the docs build one directory below
-// the landing page's.
-const homeHref = new URL(`${basePrefix}../`, Astro.url).pathname;
-const indexHref = new URL(basePrefix || '.', Astro.url).pathname;
+const basePrefix = '/docs';
 
 const tocHeadings = headings.filter((h) => h.depth === 2 || h.depth === 3);
 ---
 
 <Layout title={title} description={description}>
   <PageShell>
-    <DocsHeader slot="header" indexHref={indexHref} homeHref={homeHref} />
+    <DocsHeader slot="header" indexHref={basePrefix} homeHref="/" />
 
     <div class="docs-scrim" id="docs-scrim"></div>
 

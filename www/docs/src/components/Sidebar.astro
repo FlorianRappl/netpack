@@ -1,6 +1,6 @@
 ---
-import type { DocSummary } from '../lib/docs';
-import { INDEX_ID } from '../lib/docs';
+import type { DocSummary } from "../lib/docs";
+import { INDEX_ID } from "../lib/docs";
 
 export interface Props {
   docs: DocSummary[];
@@ -18,12 +18,16 @@ const { docs, current, basePrefix } = Astro.props;
     {
       docs.map((doc) => {
         const isIndex = doc.id === INDEX_ID;
-        const href = new URL(isIndex ? basePrefix || '.' : `${basePrefix}${doc.id}/`, Astro.url).pathname;
+        const href = isIndex ? basePrefix : `${basePrefix}/${doc.id}/`;
         const isActive = doc.id === current;
 
         return (
           <li>
-            <a href={href} class:list={['link', isActive && 'active']} aria-current={isActive ? 'page' : undefined}>
+            <a
+              href={href}
+              class:list={["link", isActive && "active"]}
+              aria-current={isActive ? "page" : undefined}
+            >
               {doc.title}
             </a>
           </li>
@@ -52,7 +56,10 @@ const { docs, current, basePrefix } = Astro.props;
     padding: 7px 10px;
     border-radius: 5px;
     border-left: 2px solid transparent;
-    transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+    transition:
+      color 0.15s ease,
+      background 0.15s ease,
+      border-color 0.15s ease;
   }
 
   .link:hover {

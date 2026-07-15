@@ -85,7 +85,7 @@ export function sortDocs(docs: DocSummary[]): DocSummary[] {
  * (served at the site root); every other doc is served one level deep.
  */
 export function rewriteMdLinks(html: string, isIndexPage: boolean): string {
-  const prefix = isIndexPage ? '' : '../';
+  const prefix = '/docs';
 
   return html.replace(
     /href="(\.\.?\/)?([A-Za-z0-9_-]+)\.md(#[^"]*)?"/g,
@@ -96,7 +96,7 @@ export function rewriteMdLinks(html: string, isIndexPage: boolean): string {
         return `href="${site.repoUrl}/blob/main/${name}.md${anchor}" target="_blank" rel="noopener noreferrer"`;
       }
 
-      const target = name === INDEX_ID ? '' : `${name}/`;
+      const target = name === INDEX_ID ? '' : `/${name}`;
       return `href="${prefix}${target}${anchor}"`;
     }
   );
