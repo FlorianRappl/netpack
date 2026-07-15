@@ -249,14 +249,16 @@ blocks, which are assembled into a virtual JS module: the `<script>` default exp
 becomes the component, the template is attached as a string, and `<style>` blocks are
 injected at runtime. Supported today:
 
-- `<template>`, classic `<script>` (JS or `lang="ts"`), and one or more `<style>` blocks.
+- `<template>`, classic `<script>`, `<script setup>`, and one or more `<style>` blocks (JS or `lang="ts"`).
+- `<script setup>`: imports are hoisted, top-level bindings are exposed to the template, and the `defineProps` / `withDefaults` / `defineEmits` / `defineExpose` / `defineOptions` macros are expanded. A classic `<script>` alongside it contributes base options.
 - `<style scoped>` (adds a `data-v-*` scope id and rewrites selectors) and `<style lang="scss|less">` (when SASS/LESS is enabled).
 - `src` attributes on any block (`<template src="./tpl.html">`, `<script src>`, `<style src>`).
 
 Notes / not yet supported: the template is handed to Vue's **runtime** compiler, so the
-app must use a compiler-included Vue build; `<script setup>` and its compiler macros,
-`<style module>`, and build-time render-function precompilation are follow-ups. Because
-the template is parsed as HTML, use kebab-case for child components (`<my-widget>`).
+app must use a compiler-included Vue build; type-only props (`defineProps<T>()`),
+`defineModel`, `<style module>`, and build-time render-function precompilation are
+follow-ups. Because the template is parsed as HTML, use kebab-case for child components
+(`<my-widget>`).
 
 ### Bundler Basics
 

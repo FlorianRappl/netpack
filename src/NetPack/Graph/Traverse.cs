@@ -542,17 +542,15 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
         var scriptEls = document.QuerySelectorAll("script").ToList();
         var styleEls = document.QuerySelectorAll("style").ToList();
 
-        if (scriptEls.Any(s => s.HasAttribute("setup")))
-        {
-            throw new NotSupportedException(
-                $"'{current.FileName}': <script setup> is not supported yet — use a classic <script> block with `export default`.");
-        }
+        var setupEl = scriptEls.FirstOrDefault(s => s.HasAttribute("setup"));
+        var classicEl = scriptEls.FirstOrDefault(s => !s.HasAttribute("setup"));
 
         var relative = Path.GetRelativePath(_context.Root, current.FileName).Replace('\\', '/');
         var scopeId = $"data-v-{Hash.Short(relative)}";
 
         var template = await ReadVueBlock(current, templateEl, isTemplate: true);
-        var script = await ReadVueBlock(current, scriptEls.FirstOrDefault(), isTemplate: false);
+        var script = await ReadVueBlock(current, classicEl, isTemplate: false);
+        var scriptSetup = await ReadVueBlock(current, setupEl, isTemplate: false);
 
         var styles = new List<VueStyleBlock>();
 
@@ -574,6 +572,7 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
         {
             Template = template,
             Script = script,
+            ScriptSetup = scriptSetup,
             Styles = styles,
             RelativePath = relative,
             ScopeId = scopeId,
