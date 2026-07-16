@@ -46,24 +46,17 @@ no separate flag needed.
 These three are the one place the otherwise-native, no-runtime netpack
 binary reaches out to Node: preprocessing is delegated to a small
 long-lived Node helper process that calls the real `sass`/`less`/`postcss`
-packages. Everything else in this document (plain CSS, CSS Modules, images,
-JSON, `public/`) has no such dependency. Practically, this means `sass`,
-`less` or `postcss` (plus a PostCSS config, for Tailwind) need to be
-installed in your project — and Node.js available — the moment you import
-a file that needs them.
+packages. Everything else in this document (plain CSS, CSS Modules) has no
+such dependency. Practically, this means `sass`, `less` or `postcss` (plus
+a PostCSS config, for Tailwind) need to be installed in your project — and
+Node.js available — the moment you import a file that needs them.
 
-## Images & other assets
+## Images, other assets and `public/`
 
-Importing an image gives you back its final URL, and netpack optimizes the
-image (via SkiaSharp) as part of the build:
-
-```js
-import logoUrl from './logo.png';
-```
-
-Any other file type netpack doesn't specifically understand is still
-handled as a generic asset: copied to the output with a content hash in its
-name, with the import resolving to that final URL.
+Covered in full in [Images & assets](./images-and-assets.md) — importing an
+image or any other non-CSS/JSON file, the SkiaSharp-based optimization pass,
+content hashing, and the `public/` folder convention for files that should
+bypass the bundler entirely.
 
 ## JSON
 
@@ -72,10 +65,3 @@ import config from './config.json';
 ```
 
 Imported directly as a parsed module — no plugin required.
-
-## Static files: `public/`
-
-For an HTML entry point, a `public/` folder next to it is copied verbatim
-into the output directory — the same convention as Vite/Parcel/CRA, useful
-for a `favicon.ico`, `robots.txt`, or anything else that shouldn't go
-through the bundler at all.

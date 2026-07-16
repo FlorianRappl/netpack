@@ -49,28 +49,11 @@ one is — and keeps recompiling as you edit. Drop `--interactive` and add
 neither to just print it to the console. See
 [Getting started](./getting-started.md#analyze--inspect-the-bundle-graph).
 
-## Build-time code generation (`.codegen` files)
+## Build-time code generation
 
-A file with a `.codegen` extension is executed as a small Node module —
-called with a minimal loader-style context (`name`, `options`,
-`addDependency()`) — and whatever string it returns becomes that module's
-JavaScript source, which is then parsed and bundled normally:
-
-```js
-// tokens.codegen
-module.exports = function () {
-  const tokens = require('./design-tokens.json');
-  return `export default ${JSON.stringify(tokens)};`;
-};
-```
-
-```js
-import tokens from './tokens.codegen';
-```
-
-Like Sass/LESS/PostCSS, this runs through the same Node helper process, so
-it needs Node.js available — the module itself can `require()` anything
-installed in your project.
+Covered in full in [Build-time code generation](./codegen.md) — a `.codegen`
+file is executed as a small Node module at build time, and whatever it
+returns becomes that module's JavaScript source.
 
 ## Import maps, externals & shared dependencies
 

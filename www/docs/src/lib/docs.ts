@@ -30,11 +30,18 @@ const NAV_GROUPS: { label: string; ids: string[] }[] = [
   },
   {
     label: 'Use cases',
-    ids: ['react-and-jsx', 'vue', 'module-federation', 'native-federation', 'styling-and-assets'],
+    ids: [
+      'react-and-jsx',
+      'vue',
+      'module-federation',
+      'native-federation',
+      'styling-and-assets',
+      'images-and-assets',
+    ],
   },
   {
     label: 'Advanced',
-    ids: ['importmaps-and-externals', 'other-features'],
+    ids: ['importmaps-and-externals', 'codegen', 'other-features'],
   },
 ];
 
