@@ -24,8 +24,8 @@ Usage docs for netpack, in addition to the feature overview in the
 - **[Styling & assets](./styling-and-assets.md)** — CSS, CSS Modules, and
   Sass/LESS/PostCSS (incl. Tailwind).
 - **[Images & assets](./images-and-assets.md)** — importing images and other
-  files, the SkiaSharp-based optimization pass, content hashing, and the
-  `public/` folder.
+  files, the SkiaSharp-based optimization pass, on-demand resized/re-encoded
+  image variants, content hashing, and the `public/` folder.
 
 ## Advanced
 

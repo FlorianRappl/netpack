@@ -463,11 +463,11 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
         return dependency.Entry;
     }
 
-    private async Task<Node?> InnerProcess(Bundle? bundle, Node parent, string name)
+    private async Task<Node?> InnerProcess(Bundle? bundle, Node parent, string name, (int? Width, int? Height, string? Format) variant)
     {
         if (_context.Aliases.TryGetValue(name, out var alias))
         {
-            return await InnerProcess(bundle, parent, alias);
+            return await InnerProcess(bundle, parent, alias, variant);
         }
 
         if (_context.Externals.Contains(name))
@@ -481,10 +481,21 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
             return null;
         }
 
+        // Split off a trailing `?...` query string (irrelevant for locating the
+        // file itself) and, from it, any `width=`/`height=`/`format=` params —
+        // this is how a JS/TS import requests an image variant, e.g.
+        // `import img from './logo.png?width=200&height=100&format=webp'`. An
+        // explicitly passed-in `variant` (from an HTML <img> width/height
+        // attribute or a CSS background-size) wins if both are somehow present.
+        var (path, queryVariant) = ParseVariantQuery(name);
+        var width = variant.Width ?? queryVariant.Width;
+        var height = variant.Height ?? queryVariant.Height;
+        var format = variant.Format ?? queryVariant.Format;
+
         try
         {
-            var file = await Resolve(parent.ParentDir, name);
-            var module = await AddToBundle(bundle, file);
+            var file = await Resolve(parent.ParentDir, path);
+            var module = await AddToBundle(bundle, file, width, height, format);
 
             if (bundle is null)
             {
@@ -504,10 +515,74 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
         }
     }
 
+    /// <summary>Image variant output formats accepted in a `?format=` query
+    /// param — the same raster formats <see cref="Assets.ImageAssetProcessor"/>
+    /// can reliably encode to. An unrecognized value is ignored (treated as if
+    /// no format were requested) rather than failing the build.</summary>
+    private static readonly HashSet<string> SupportedVariantFormats = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "png", "jpg", "jpeg", "webp", "gif", "bmp",
+    };
+
+    /// <summary>
+    /// Splits a trailing `?...` query string off a reference/import specifier
+    /// and picks out `width`/`height`/`format` params for an on-the-fly image
+    /// variant. Any other query params are accepted and silently ignored
+    /// (resolution only ever needs the part before the `?`).
+    /// </summary>
+    private static (string Path, (int? Width, int? Height, string? Format) Variant) ParseVariantQuery(string name)
+    {
+        var index = name.IndexOf('?');
+
+        if (index < 0)
+        {
+            return (name, default);
+        }
+
+        var path = name[..index];
+        var query = name[(index + 1)..];
+        int? width = null;
+        int? height = null;
+        string? format = null;
+
+        foreach (var pair in query.Split('&', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var parts = pair.Split('=', 2);
+            var key = parts[0];
+            var value = parts.Length > 1 ? parts[1] : "";
+
+            if (key == "width" && int.TryParse(value, out var w) && w > 0)
+            {
+                width = w;
+            }
+            else if (key == "height" && int.TryParse(value, out var h) && h > 0)
+            {
+                height = h;
+            }
+            else if (key == "format" && SupportedVariantFormats.Contains(value))
+            {
+                format = value.ToLowerInvariant();
+            }
+        }
+
+        return (path, (width, height, format));
+    }
+
     private async Task ProcessAsset(Node current, byte[] bytes)
     {
         using var stream = new MemoryStream(bytes);
         var hash = await Hash.ComputeHash(stream);
+
+        if (current.IsVariant)
+        {
+            // ComputeHash hashes the on-disk (pre-resize/pre-reencode) bytes,
+            // which are identical for the original and every one of its
+            // variants — fold the requested dimensions/format in so each
+            // variant still gets its own hash, and therefore its own output
+            // filename.
+            hash = Hash.Short($"{hash}-w{current.VariantWidth}-h{current.VariantHeight}-f{current.VariantFormat}");
+        }
+
         _context.Assets.TryAdd(current, new Asset(current, current.Type, bytes, hash));
     }
 
@@ -1038,27 +1113,41 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
 
     private Task<Node> AddNewBundle(string fileName) => AddToBundle(null, fileName);
 
-    private async Task<Node> AddToBundle(Bundle? bundle, string fileName)
+    /// <summary>
+    /// The <see cref="BundlerContext.Modules"/> / in-flight <see cref="_reserved"/>
+    /// key for a reference. A plain reference keys on its file path, same as
+    /// always; a variant request (distinct width/height) gets a distinct key so
+    /// it becomes its own <see cref="Node"/> — and, later, its own resized
+    /// <see cref="Asset"/> — instead of collapsing onto the original file's node.
+    /// </summary>
+    private static string GetModuleKey(string fileName, int? variantWidth, int? variantHeight, string? variantFormat)
+        => variantWidth is null && variantHeight is null && variantFormat is null
+            ? fileName
+            : $"{fileName}?w={variantWidth}&h={variantHeight}&f={variantFormat}";
+
+    private async Task<Node> AddToBundle(Bundle? bundle, string fileName, int? variantWidth = null, int? variantHeight = null, string? variantFormat = null)
     {
-        if (!_context.Modules.TryGetValue(fileName, out var node))
+        var key = GetModuleKey(fileName, variantWidth, variantHeight, variantFormat);
+
+        if (!_context.Modules.TryGetValue(key, out var node))
         {
-            if (_reserved.TryGetValue(fileName, out var task))
+            if (_reserved.TryGetValue(key, out var task))
             {
                 return await task;
             }
 
-            node = await _reserved.GetOrAdd(fileName, (_) => AddNewNodeToBundle(bundle, fileName));
-            _reserved.TryRemove(fileName, out _);
+            node = await _reserved.GetOrAdd(key, (_) => AddNewNodeToBundle(bundle, fileName, variantWidth, variantHeight, variantFormat));
+            _reserved.TryRemove(key, out _);
         }
 
         return node;
     }
 
-    private async Task<Node> AddNewNodeToBundle(Bundle? bundle, string fileName)
+    private async Task<Node> AddNewNodeToBundle(Bundle? bundle, string fileName, int? variantWidth = null, int? variantHeight = null, string? variantFormat = null)
     {
         var bytes = await File.ReadAllBytesAsync(fileName);
-        var node = new Node(fileName, bytes.Length);
-        _context.Modules.TryAdd(fileName, node);
+        var node = new Node(fileName, bytes.Length, variantWidth, variantHeight, variantFormat);
+        _context.Modules.TryAdd(GetModuleKey(fileName, variantWidth, variantHeight, variantFormat), node);
 
         if (bundle is null)
         {

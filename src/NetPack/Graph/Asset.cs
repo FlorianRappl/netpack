@@ -14,14 +14,19 @@ public sealed class Asset(Node root, string type, byte[] content, string hash = 
 
     public string GetFileName()
     {
+        var name = Path.GetFileNameWithoutExtension(Root.FileName);
+
+        // A `?format=` variant changes the output extension (e.g. importing a
+        // .png with `?format=webp` emits a .webp file); everything else keeps
+        // the source file's own extension, same as before variants existed.
+        var ext = Root.VariantFormat is not null ? $".{Root.VariantFormat}" : Path.GetExtension(Root.FileName);
+
         if (!string.IsNullOrEmpty(Hash))
         {
-            var name = Path.GetFileNameWithoutExtension(Root.FileName);
-            var ext = Path.GetExtension(Root.FileName);
             return $"{name}.{Hash}{ext}";
         }
 
-        return Path.GetFileName(Root.FileName);
+        return $"{name}{ext}";
     }
 
     public async Task<Stream> CreateStream(OutputOptions options)

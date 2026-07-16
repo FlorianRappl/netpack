@@ -266,7 +266,7 @@ template is parsed as HTML, use kebab-case for child components (`<my-widget>`).
 - [x] Minification
 - [x] DevServer with reload
 - [x] Bundle analyzer (start with `analyze`)
-- [ ] Image / asset variants (e.g., width/height optimized)
+- [x] Image / asset variants (e.g., width/height optimized)
 - [x] Copy public assets ("public" folder below entry-HTML)
 - [x] Externals (`--external react react-dom`; works also automatically if an importmap is present)
 - [x] True HMR (not just refresh)

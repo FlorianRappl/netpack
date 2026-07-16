@@ -15,9 +15,9 @@ using static NetPack.Helpers;
 /// comparisons (e.g. <c>process.env.NODE_ENV</c> after substitution) are not
 /// traversed, so their dependencies are not pulled into the graph.
 /// </summary>
-class JsVisitor(Bundle bundle, GraphNode current, Func<Bundle?, GraphNode, string, Task<GraphNode?>> report) : AstRewriter
+class JsVisitor(Bundle bundle, GraphNode current, Func<Bundle?, GraphNode, string, (int? Width, int? Height, string? Format), Task<GraphNode?>> report) : AstRewriter
 {
-    private readonly Func<Bundle?, GraphNode, string, Task<GraphNode?>> _report = report;
+    private readonly Func<Bundle?, GraphNode, string, (int? Width, int? Height, string? Format), Task<GraphNode?>> _report = report;
     private readonly Bundle _bundle = bundle;
     private readonly GraphNode _current = current;
     private readonly List<string> _exportNames = [];
@@ -59,14 +59,18 @@ class JsVisitor(Bundle bundle, GraphNode current, Func<Bundle?, GraphNode, strin
     protected override AstNode VisitExportAllDeclaration(ExportAllDeclaration node)
     {
         _elements.Add(node);
-        _tasks.Add(_report(_bundle, _current, node.Source.Value));
+        _tasks.Add(_report(_bundle, _current, node.Source.Value, default));
         return base.VisitExportAllDeclaration(node);
     }
 
     protected override AstNode VisitImportDeclaration(ImportDeclaration node)
     {
         _elements.Add(node);
-        _tasks.Add(_report(_bundle, _current, node.Source.Value));
+        // A bare import can request an image variant via a query string, e.g.
+        // `import img from './logo.png?width=200&height=100'` — parsed centrally
+        // in Traverse.InnerProcess (which also strips it before resolving the
+        // file), so nothing extra is passed here.
+        _tasks.Add(_report(_bundle, _current, node.Source.Value, default));
         return base.VisitImportDeclaration(node);
     }
 
@@ -81,7 +85,7 @@ class JsVisitor(Bundle bundle, GraphNode current, Func<Bundle?, GraphNode, strin
         if (node.Source is not null)
         {
             _elements.Add(node);
-            _tasks.Add(_report(_bundle, _current, node.Source.Value));
+            _tasks.Add(_report(_bundle, _current, node.Source.Value, default));
         }
 
         foreach (var specifier in node.Specifiers)
@@ -134,7 +138,7 @@ class JsVisitor(Bundle bundle, GraphNode current, Func<Bundle?, GraphNode, strin
         if (node.Source is StringLiteral str)
         {
             _elements.Add(node);
-            _tasks.Add(_report(null, _current, str.Value));
+            _tasks.Add(_report(null, _current, str.Value, default));
         }
 
         return base.VisitImportExpression(node);
@@ -146,7 +150,7 @@ class JsVisitor(Bundle bundle, GraphNode current, Func<Bundle?, GraphNode, strin
             node.Arguments[0] is StringLiteral str && ident.Name == "require")
         {
             _elements.Add(node);
-            _tasks.Add(_report(_bundle, _current, str.Value));
+            _tasks.Add(_report(_bundle, _current, str.Value, default));
         }
 
         return base.VisitCallExpression(node);

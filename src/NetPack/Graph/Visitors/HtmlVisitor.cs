@@ -7,9 +7,9 @@ using NetPack.Graph.Bundles;
 using NetPack.Json;
 using static NetPack.Helpers;
 
-class HtmlVisitor(Bundle bundle, Graph.Node current, Func<Bundle?, Graph.Node, string, Task<Graph.Node?>> report, Action<string> addExternal)
+class HtmlVisitor(Bundle bundle, Graph.Node current, Func<Bundle?, Graph.Node, string, (int? Width, int? Height, string? Format), Task<Graph.Node?>> report, Action<string> addExternal)
 {
-    private readonly Func<Bundle?, Graph.Node, string, Task<Graph.Node?>> _report = report;
+    private readonly Func<Bundle?, Graph.Node, string, (int? Width, int? Height, string? Format), Task<Graph.Node?>> _report = report;
     private readonly Action<string> _addExternal = addExternal;
     private readonly Bundle _bundle = bundle;
     private readonly Graph.Node _current = current;
@@ -22,9 +22,20 @@ class HtmlVisitor(Bundle bundle, Graph.Node current, Func<Bundle?, Graph.Node, s
         {
             switch (element.LocalName)
             {
+                case "img":
+                    {
+                        var src = element.GetAttribute("src");
+
+                        if (src is not null)
+                        {
+                            _elements.Add(element);
+                            _tasks.Add(_report(null, _current, src, GetImageVariant(element)));
+                        }
+                    }
+
+                    break;
                 case "iframe":
                 case "source":
-                case "img":
                 case "audio":
                 case "video":
                     {
@@ -33,7 +44,7 @@ class HtmlVisitor(Bundle bundle, Graph.Node current, Func<Bundle?, Graph.Node, s
                         if (src is not null)
                         {
                             _elements.Add(element);
-                            _tasks.Add(_report(null, _current, src));
+                            _tasks.Add(_report(null, _current, src, default));
                         }
                     }
 
@@ -45,7 +56,7 @@ class HtmlVisitor(Bundle bundle, Graph.Node current, Func<Bundle?, Graph.Node, s
                         if (src is not null)
                         {
                             _elements.Add(element);
-                            _tasks.Add(_report(null, _current, src));
+                            _tasks.Add(_report(null, _current, src, default));
                         }
 
                         if (element.GetAttribute("type") == "importmap")
@@ -82,7 +93,7 @@ class HtmlVisitor(Bundle bundle, Graph.Node current, Func<Bundle?, Graph.Node, s
                         if (href is not null)
                         {
                             _elements.Add(element);
-                            _tasks.Add(_report(null, _current, href));
+                            _tasks.Add(_report(null, _current, href, default));
                         }
                     }
 
@@ -94,7 +105,7 @@ class HtmlVisitor(Bundle bundle, Graph.Node current, Func<Bundle?, Graph.Node, s
                         if (href is not null)
                         {
                             _elements.Add(element);
-                            _tasks.Add(_report(null, _current, href));
+                            _tasks.Add(_report(null, _current, href, default));
                         }
                     }
 
@@ -113,7 +124,7 @@ class HtmlVisitor(Bundle bundle, Graph.Node current, Func<Bundle?, Graph.Node, s
                                 case "og:video":
                                 case "og:url":
                                     _elements.Add(element);
-                                    _tasks.Add(_report(null, _current, content));
+                                    _tasks.Add(_report(null, _current, content, default));
                                     break;
 
                             }
@@ -127,5 +138,26 @@ class HtmlVisitor(Bundle bundle, Graph.Node current, Func<Bundle?, Graph.Node, s
         var nodes = await Task.WhenAll(_tasks);
         var replacements = GetReplacements(nodes, _elements);
         return new HtmlFragment(_current, document, replacements);
+    }
+
+    /// <summary>
+    /// Reads an <c>&lt;img&gt;</c>'s <c>width</c>/<c>height</c> attributes as a
+    /// requested image variant. Both, either, or neither may be set — when only
+    /// one is given, the asset processor scales the other to match the source
+    /// image's aspect ratio. Only plain unitless pixel integers are understood
+    /// (as HTML width/height attributes are defined); anything else (a stray
+    /// unit, a percentage, "auto") is ignored rather than guessed at.
+    /// </summary>
+    private static (int? Width, int? Height, string? Format) GetImageVariant(IElement element)
+    {
+        // No HTML attribute maps to an output format — that only comes from a
+        // `?format=` query string on the src itself, parsed centrally in
+        // Traverse.InnerProcess (e.g. `<img src="logo.png?format=webp">`).
+        return (ParseDimension(element.GetAttribute("width")), ParseDimension(element.GetAttribute("height")), null);
+    }
+
+    private static int? ParseDimension(string? value)
+    {
+        return int.TryParse(value?.Trim(), out var pixels) && pixels > 0 ? pixels : null;
     }
 }
