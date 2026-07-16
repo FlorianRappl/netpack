@@ -233,7 +233,7 @@ The following items are features or topics that are relevant for bundlers - netp
 ### Frameworks
 
 - [ ] Angular
-- [ ] Astro
+- [x] Astro
 - [x] React
 - [x] Preact
 - [ ] Solid
@@ -259,6 +259,29 @@ Notes / not yet supported: `v-on`/`v-bind` modifiers, `v-model` modifiers, custo
 directives, `<component :is>`, type-only props (`defineProps<T>()`), `defineModel` and
 `<style module>` fall back to runtime compilation or are follow-ups. Because the
 template is parsed as HTML, use kebab-case for child components (`<my-widget>`).
+
+#### Astro components
+
+`.astro` files are compiled natively too. A `---`-fenced frontmatter block is parsed
+as a JS/TS module (imports, top-level `await`, functions, classes — anything valid at
+module scope); the template below it is parsed **as JSX**, not HTML — deliberately,
+since JSX is case-sensitive (`<Layout>` vs `<layout>`) in a way HTML parsing isn't,
+which is exactly the distinction Astro's own component-vs-host-element syntax needs.
+The whole file compiles down to a plain JS module:
+
+```js
+export default async function render(props, slots) {
+  // ...frontmatter, re-executed on every call...
+  return html`...`;
+}
+```
+
+Frontmatter imports are hoisted to the module's top level (so `import Layout from
+'./Layout.astro'` resolves like any other dependency); everything else in the
+frontmatter is relocated into `render`'s body. See
+[Astro components](./docs/astro.md) for the full picture — template expressions,
+components, spread/boolean attributes, and what's deliberately not implemented yet
+(hydration directives, `<style>`/`<script>` blocks in the template, named slots).
 
 ### Bundler Basics
 

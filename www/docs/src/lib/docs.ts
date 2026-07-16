@@ -33,6 +33,7 @@ const NAV_GROUPS: { label: string; ids: string[] }[] = [
     ids: [
       'react-and-jsx',
       'vue',
+      'astro',
       'module-federation',
       'native-federation',
       'styling-and-assets',

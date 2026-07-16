@@ -32,12 +32,15 @@ public readonly record struct ParserOptions
         // A Vue SFC compiles to a virtual JS module whose <script> may be TypeScript
         // (lang="ts"); parse it with TS stripping enabled.
         var vue = fileName.EndsWith(".vue");
+        // Likewise, an Astro SFC's frontmatter may be TypeScript, and AstroSfc
+        // already emits plain (JSX-free) JS/TS by the time this runs.
+        var astro = fileName.EndsWith(".astro");
         // JSX is also commonly used in plain .js files; enable it permissively.
         return new ParserOptions
         {
             Tolerant = true,
             Jsx = jsx || fileName.EndsWith(".js") || fileName.EndsWith(".mjs"),
-            TypeScript = ts || vue,
+            TypeScript = ts || vue || astro,
         };
     }
 }

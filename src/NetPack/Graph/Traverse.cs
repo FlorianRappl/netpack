@@ -661,6 +661,23 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
     }
 
     /// <summary>
+    /// Compiles an Astro single-file component (.astro) into a virtual JavaScript
+    /// module. Unlike Vue's SFC (which is split via AngleSharp/HTML parsing),
+    /// <see cref="AstroSfc"/> parses the template as JSX directly — see its own
+    /// doc comment for why (case-sensitive component-vs-host-element detection).
+    /// The compiled module goes through the same <see cref="ParseJsModule"/> path
+    /// as any other JS module afterwards, so its imports (e.g. another `.astro`
+    /// file used as a component) are resolved exactly like any other dependency.
+    /// </summary>
+    private async Task ProcessAstro(Node current, byte[] bytes, Bundle bundle)
+    {
+        var text = Encoding.UTF8.GetString(bytes);
+        var source = AstroSfc.Generate(text, current.FileName);
+        var fragment = await ParseJsModule(bundle, current, source);
+        _context.JsFragments.TryAdd(current, fragment);
+    }
+
+    /// <summary>
     /// Compiles a Vue single-file component (.vue) into a virtual JavaScript module.
     /// AngleSharp splits the file into its top-level &lt;template&gt;, &lt;script&gt;
     /// and &lt;style&gt; blocks; <see cref="VueSfc"/> then assembles a module that
@@ -1170,6 +1187,13 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
         if (node.Extension == ".vue")
         {
             await ProcessVue(node, bytes, bundle);
+            return node;
+        }
+
+        // Same idea for Astro SFCs: ".astro" also maps to ".js" in ExtensionMap.
+        if (node.Extension == ".astro")
+        {
+            await ProcessAstro(node, bytes, bundle);
             return node;
         }
 
