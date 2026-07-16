@@ -4,7 +4,7 @@ import PageShell from '../components/PageShell.astro';
 import DocsHeader from '../components/DocsHeader.astro';
 import Sidebar from '../components/Sidebar.astro';
 import TableOfContents, { type Heading } from '../components/TableOfContents.astro';
-import { getAllDocs } from '../lib/docs';
+import { getGroupedDocs, getIndexDoc } from '../lib/docs';
 import '../styles/docs-layout.css';
 
 export interface Props {
@@ -17,13 +17,12 @@ export interface Props {
 
 const { current, headings = [], title, description } = Astro.props;
 
-const docs = await getAllDocs();
+const [indexDoc, groups] = await Promise.all([getIndexDoc(), getGroupedDocs()]);
 
-// Every doc page except the index (docs/README.md, served at "/") lives one
-// level deep at "/<id>/". These two facts are all that's needed to compute
-// correct *relative* links regardless of where this site is actually
-// deployed (root domain, a "/docs" subpath, its own subdomain, ...) — see
-// src/lib/docs.ts for the same idea applied to in-content Markdown links.
+// This site is served from the /docs subpath (see astro.config.mjs's
+// `base`), so every route here — including this constant — is anchored to
+// that. src/lib/docs.ts's rewriteMdLinks uses the same prefix for the
+// in-content Markdown cross-links.
 const basePrefix = '/docs';
 
 const tocHeadings = headings.filter((h) => h.depth === 2 || h.depth === 3);
@@ -36,7 +35,7 @@ const tocHeadings = headings.filter((h) => h.depth === 2 || h.depth === 3);
     <div class="docs-scrim" id="docs-scrim"></div>
 
     <div class="docs-grid">
-      <Sidebar docs={docs} current={current} basePrefix={basePrefix} />
+      <Sidebar indexDoc={indexDoc} groups={groups} current={current} basePrefix={basePrefix} />
       <article class="prose docs-main">
         <slot />
       </article>

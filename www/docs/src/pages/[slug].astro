@@ -16,7 +16,7 @@ export async function getStaticPaths() {
 
 const { entry } = Astro.props;
 const { headings } = await render(entry);
-const html = rewriteMdLinks(entry.rendered?.html ?? '', false);
+const html = rewriteMdLinks(entry.rendered?.html ?? '');
 const title = titleFromHeadings(headings, entry.id);
 ---
 

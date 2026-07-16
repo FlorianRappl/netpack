@@ -14,7 +14,7 @@ if (!entry) {
 }
 
 const { headings } = await render(entry);
-const html = rewriteMdLinks(entry.rendered?.html ?? '', true);
+const html = rewriteMdLinks(entry.rendered?.html ?? '');
 const title = titleFromHeadings(headings, entry.id);
 ---
 

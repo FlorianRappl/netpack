@@ -1,50 +1,88 @@
 ---
-import type { DocSummary } from "../lib/docs";
-import { INDEX_ID } from "../lib/docs";
+import type { DocGroup, DocSummary } from '../lib/docs';
 
 export interface Props {
-  docs: DocSummary[];
+  /** docs/README.md, pinned above the grouped sections. */
+  indexDoc?: DocSummary;
+  groups: DocGroup[];
   current: string;
-  /** '' at the site root, '../' from a one-level-deep doc page, etc. —
-   *  see DocsLayout for how this is computed. */
   basePrefix: string;
 }
 
-const { docs, current, basePrefix } = Astro.props;
+const { indexDoc, groups, current, basePrefix } = Astro.props;
 ---
 
 <nav class="docs-sidebar" id="docs-sidebar" aria-label="Documentation">
-  <ul>
-    {
-      docs.map((doc) => {
-        const isIndex = doc.id === INDEX_ID;
-        const href = isIndex ? basePrefix : `${basePrefix}/${doc.id}/`;
-        const isActive = doc.id === current;
+  {
+    indexDoc && (
+      <ul class="top-level">
+        <li>
+          <a
+            href={basePrefix}
+            class:list={['link', 'overview-link', indexDoc.id === current && 'active']}
+            aria-current={indexDoc.id === current ? 'page' : undefined}
+          >
+            Overview
+          </a>
+        </li>
+      </ul>
+    )
+  }
 
-        return (
-          <li>
-            <a
-              href={href}
-              class:list={["link", isActive && "active"]}
-              aria-current={isActive ? "page" : undefined}
-            >
-              {doc.title}
-            </a>
-          </li>
-        );
-      })
-    }
-  </ul>
+  {
+    groups.map((group) => (
+      <div class="group">
+        <div class="group-label">{group.label}</div>
+        <ul>
+          {group.docs.map((doc) => (
+            <li>
+              <a
+                href={`${basePrefix}/${doc.id}/`}
+                class:list={['link', doc.id === current && 'active']}
+                aria-current={doc.id === current ? 'page' : undefined}
+              >
+                {doc.title}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </div>
+    ))
+  }
 </nav>
 
 <style>
-  .docs-sidebar ul {
+  ul {
     list-style: none;
     margin: 0;
     padding: 0;
     display: flex;
     flex-direction: column;
     gap: 2px;
+  }
+
+  .top-level {
+    margin-bottom: 18px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--color-panel-border);
+  }
+
+  .overview-link {
+    font-weight: 600;
+  }
+
+  .group + .group {
+    margin-top: 20px;
+  }
+
+  .group-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--color-text-faint);
+    padding: 0 10px;
+    margin-bottom: 6px;
   }
 
   .link {

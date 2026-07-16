@@ -6,24 +6,36 @@ export interface DocSummary {
   title: string;
 }
 
-/** The id of the doc that becomes the site's index ("/"). */
+export interface DocGroup {
+  label: string;
+  docs: DocSummary[];
+}
+
+/** The id of the doc that becomes the site's index ("/docs/") and the
+ *  pinned "Overview" link at the top of the sidebar (its title comes from
+ *  docs/README.md's own H1, same as every other doc). */
 export const INDEX_ID = 'README';
 
 /**
- * Deliberate reading order for the sidebar. Anything in docs/*.md that
- * isn't listed here still shows up — appended alphabetically after these —
- * so a new file is never silently dropped, it just won't have a considered
- * position until you add it here.
+ * Sidebar sections, in reading order, each listing its docs' ids in the
+ * order they should appear within that section. A doc that exists in
+ * docs/*.md but isn't listed here still shows up — appended to a trailing
+ * "More" section — so a new file is never silently dropped, it just won't
+ * have a considered home until you add it here.
  */
-const NAV_ORDER = [
-  INDEX_ID,
-  'getting-started',
-  'importmaps-and-externals',
-  'module-federation',
-  'react-and-jsx',
-  'vue',
-  'styling-and-assets',
-  'other-features',
+const NAV_GROUPS: { label: string; ids: string[] }[] = [
+  {
+    label: 'General',
+    ids: ['getting-started'],
+  },
+  {
+    label: 'Use cases',
+    ids: ['react-and-jsx', 'vue', 'module-federation', 'native-federation', 'styling-and-assets'],
+  },
+  {
+    label: 'Advanced',
+    ids: ['importmaps-and-externals', 'other-features'],
+  },
 ];
 
 function titleCase(id: string): string {
@@ -42,11 +54,11 @@ export function titleFromHeadings(headings: { depth: number; text: string }[], i
   return h1?.text ?? titleCase(id);
 }
 
-/** All docs, each with a display title — see {@link titleFromHeadings}. */
-export async function getAllDocs(): Promise<DocSummary[]> {
+/** Every doc (including the index), each with a display title. */
+async function getAllDocSummaries(): Promise<DocSummary[]> {
   const entries = await getCollection('docs');
 
-  const withTitles = await Promise.all(
+  return Promise.all(
     entries.map(async (entry) => {
       const { headings } = await render(entry);
       return {
@@ -55,20 +67,45 @@ export async function getAllDocs(): Promise<DocSummary[]> {
       } satisfies DocSummary;
     })
   );
-
-  return sortDocs(withTitles);
 }
 
-export function sortDocs(docs: DocSummary[]): DocSummary[] {
-  return [...docs].sort((a, b) => {
-    const ai = NAV_ORDER.indexOf(a.id);
-    const bi = NAV_ORDER.indexOf(b.id);
+/** The index doc (docs/README.md), for the pinned "Overview" sidebar link. */
+export async function getIndexDoc(): Promise<DocSummary | undefined> {
+  const all = await getAllDocSummaries();
+  return all.find((doc) => doc.id === INDEX_ID);
+}
 
-    if (ai === -1 && bi === -1) return a.id.localeCompare(b.id);
-    if (ai === -1) return 1;
-    if (bi === -1) return -1;
-    return ai - bi;
-  });
+/**
+ * Every non-index doc, grouped into sidebar sections per {@link NAV_GROUPS}.
+ * Anything not covered by NAV_GROUPS lands in a trailing "More" section
+ * (sorted alphabetically) instead of being dropped — see the comment there.
+ */
+export async function getGroupedDocs(): Promise<DocGroup[]> {
+  const all = await getAllDocSummaries();
+  const byId = new Map(all.map((doc) => [doc.id, doc]));
+  const placed = new Set<string>([INDEX_ID]);
+
+  const groups = NAV_GROUPS.map(({ label, ids }): DocGroup => {
+    const docs: DocSummary[] = [];
+    for (const id of ids) {
+      const doc = byId.get(id);
+      if (doc) {
+        docs.push(doc);
+        placed.add(doc.id);
+      }
+    }
+    return { label, docs };
+  }).filter((group) => group.docs.length > 0);
+
+  const rest = all
+    .filter((doc) => !placed.has(doc.id))
+    .sort((a, b) => a.id.localeCompare(b.id));
+
+  if (rest.length > 0) {
+    groups.push({ label: 'More', docs: rest });
+  }
+
+  return groups;
 }
 
 /**
@@ -76,15 +113,12 @@ export function sortDocs(docs: DocSummary[]): DocSummary[] {
  * purpose, so the files are still correctly clickable on GitHub) into
  * routes on this site.
  *
- * - `./other-doc.md` / `./other-doc.md#heading` → a relative link to that
- *   doc's page here, honouring the current page's depth in the site.
+ * - `./other-doc.md` / `./other-doc.md#heading` → that doc's page here
+ *   (`/docs/other-doc/...`).
  * - `../README.md` (or anything reaching outside docs/) → there's no page
  *   for it here, so it's sent to the file on GitHub instead.
- *
- * `isIndexPage` should be true only for the page rendering docs/README.md
- * (served at the site root); every other doc is served one level deep.
  */
-export function rewriteMdLinks(html: string, isIndexPage: boolean): string {
+export function rewriteMdLinks(html: string): string {
   const prefix = '/docs';
 
   return html.replace(
