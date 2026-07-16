@@ -1,0 +1,129 @@
+<!DOCTYPE html><html lang="en"> <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Images &amp; assets — netpack docs</title><meta name="description" content="Usage docs for netpack — the fast, batteries-included bundler for the web, built on C#/.NET with Ahead-of-Time compilation."><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="/docs/_astro/_slug_.YjzD3tp3.css"><script type="module">function d(){const e=document.getElementById("docs-nav-toggle"),t=document.getElementById("docs-scrim"),c=document.getElementById("docs-sidebar"),o=n=>{document.body.classList.toggle("docs-nav-open",n),e?.setAttribute("aria-expanded",String(n))};e?.addEventListener("click",()=>{o(!document.body.classList.contains("docs-nav-open"))}),t?.addEventListener("click",()=>o(!1)),c?.addEventListener("click",n=>{n.target.closest("a")&&o(!1)}),document.addEventListener("keydown",n=>{n.key==="Escape"&&o(!1)})}function s(){document.querySelectorAll(".prose pre.astro-code").forEach(e=>{if(e.querySelector(".code-copy-btn"))return;const t=document.createElement("button");t.type="button",t.className="code-copy-btn",t.textContent="copy",t.addEventListener("click",async()=>{const c=e.textContent??"";try{await navigator.clipboard?.writeText(c)}catch{}t.textContent="copied ✓",setTimeout(()=>{t.textContent="copy"},1600)}),e.appendChild(t)})}d();s();document.addEventListener("astro:page-load",()=>{d(),s()});
+</script></head> <body>  <div class="shell" data-astro-cid-zaqc7ala> <div class="dot-grid" aria-hidden="true" data-astro-cid-tw3ctjfb></div> <div class="glow glow-a" aria-hidden="true" data-astro-cid-tw3ctjfb></div> <div class="glow glow-b" aria-hidden="true" data-astro-cid-tw3ctjfb></div> <div class="scanlines" aria-hidden="true" data-astro-cid-tw3ctjfb></div>  <header class="docs-header" data-astro-cid-l4ysfnjo> <div class="docs-header-inner" data-astro-cid-l4ysfnjo> <button type="button" class="nav-toggle" id="docs-nav-toggle" aria-label="Toggle navigation" aria-controls="docs-sidebar" aria-expanded="false" data-astro-cid-l4ysfnjo> <span data-astro-cid-l4ysfnjo></span> <span data-astro-cid-l4ysfnjo></span> <span data-astro-cid-l4ysfnjo></span> </button> <a href="/docs" class="brand" data-astro-cid-l4ysfnjo> <span class="mark" data-astro-cid-l4ysfnjo> <span data-astro-cid-l4ysfnjo>n</span> </span> <span class="wordmark" data-astro-cid-l4ysfnjo>netpack <span class="wordmark-sub" data-astro-cid-l4ysfnjo>docs</span></span> </a> <nav class="links" aria-label="Site" data-astro-cid-l4ysfnjo> <a href="/" data-astro-cid-l4ysfnjo>Home</a> <a href="https://github.com/FlorianRappl/netpack" target="_blank" rel="noopener noreferrer" data-astro-cid-l4ysfnjo> <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true" data-astro-cid-l4ysfnjo> <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z" data-astro-cid-l4ysfnjo></path> </svg> <span class="github-label" data-astro-cid-l4ysfnjo>GitHub</span> </a> </nav> </div> </header>  <main class="content" data-astro-cid-zaqc7ala>   <div class="docs-scrim" id="docs-scrim"></div> <div class="docs-grid"> <nav class="docs-sidebar" id="docs-sidebar" aria-label="Documentation" data-astro-cid-ssfzsv2f> <ul class="top-level" data-astro-cid-ssfzsv2f> <li data-astro-cid-ssfzsv2f> <a href="/docs" class="link overview-link" data-astro-cid-ssfzsv2f>
+Overview
+</a> </li> </ul> <div class="group" data-astro-cid-ssfzsv2f> <div class="group-label" data-astro-cid-ssfzsv2f>General</div> <ul data-astro-cid-ssfzsv2f> <li data-astro-cid-ssfzsv2f> <a href="/docs/getting-started/" class="link" data-astro-cid-ssfzsv2f> Getting started </a> </li> </ul> </div><div class="group" data-astro-cid-ssfzsv2f> <div class="group-label" data-astro-cid-ssfzsv2f>Use cases</div> <ul data-astro-cid-ssfzsv2f> <li data-astro-cid-ssfzsv2f> <a href="/docs/react-and-jsx/" class="link" data-astro-cid-ssfzsv2f> React &amp; JSX </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/vue/" class="link" data-astro-cid-ssfzsv2f> Vue single-file components </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/astro/" class="link" data-astro-cid-ssfzsv2f> Astro components </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/module-federation/" class="link" data-astro-cid-ssfzsv2f> Module Federation </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/native-federation/" class="link" data-astro-cid-ssfzsv2f> Native Federation </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/styling-and-assets/" class="link" data-astro-cid-ssfzsv2f> Styling &amp; assets </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/images-and-assets/" class="link active" aria-current="page" data-astro-cid-ssfzsv2f> Images &amp; assets </a> </li> </ul> </div><div class="group" data-astro-cid-ssfzsv2f> <div class="group-label" data-astro-cid-ssfzsv2f>Advanced</div> <ul data-astro-cid-ssfzsv2f> <li data-astro-cid-ssfzsv2f> <a href="/docs/importmaps-and-externals/" class="link" data-astro-cid-ssfzsv2f> Import maps &amp; externals </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/codegen/" class="link" data-astro-cid-ssfzsv2f> Build-time code generation (.codegen files) </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/other-features/" class="link" data-astro-cid-ssfzsv2f> Other features </a> </li> </ul> </div> </nav>  <article class="prose docs-main">  <h1 id="images--assets">Images &#x26; assets</h1>
+<p>Anything imported that isn’t JS/TS, CSS, HTML or JSON is treated as an
+asset: content-hashed, copied to the output directory, and handed back to
+your code as a real URL. Images additionally get an optimization pass,
+and can be resized and/or re-encoded into on-demand variants based on how
+they’re used. None of this needs configuration.</p>
+<h2 id="importing-an-asset">Importing an asset</h2>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="js"><code><span class="line"><span style="color:#4D9375">import</span><span style="color:#BD976A"> logoUrl</span><span style="color:#4D9375"> from</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">./logo.png</span><span style="color:#C98A7D77">'</span><span style="color:#666666">;</span></span>
+<span class="line"></span></code></pre>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="js"><code><span class="line"><span style="color:#758575DD">// what that compiles to, roughly:</span></span>
+<span class="line"><span style="color:#CB7676">const</span><span style="color:#BD976A"> logoUrl</span><span style="color:#666666"> =</span><span style="color:#CB7676"> new</span><span style="color:#80A665"> URL</span><span style="color:#666666">(</span><span style="color:#C98A7D77">'</span><span style="color:#C98A7D">./logo.a1b2c3.png</span><span style="color:#C98A7D77">'</span><span style="color:#666666">,</span><span style="color:#4D9375"> import</span><span style="color:#666666">.</span><span style="color:#B8A965">meta</span><span style="color:#666666">.</span><span style="color:#BD976A">url</span><span style="color:#666666">).</span><span style="color:#BD976A">href</span><span style="color:#666666">;</span></span>
+<span class="line"></span></code></pre>
+<p><code>logoUrl</code> is a real string, usable directly as <code>&#x3C;img src={logoUrl}></code>. It’s
+resolved <strong>at runtime, relative to the importing module’s own URL</strong> rather
+than baked in as an absolute path — so it keeps working regardless of
+where the final build ends up deployed (a subpath, a CDN, whatever). This
+works for any file type netpack doesn’t otherwise understand, not just
+images — fonts, video, PDFs, and so on all import the same way.</p>
+<h2 id="content-hashing">Content hashing</h2>
+<p>The emitted file name is <code>&#x3C;original-name>.&#x3C;hash>&#x3C;ext></code> — e.g. <code>logo.png</code>
+becomes <code>logo.a1b2c3.png</code>. The hash is SHA-256 over the file’s contents,
+truncated to the first 6 hex characters: deterministic, and it changes
+whenever the file’s contents change, so emitted assets are safe to cache
+aggressively.</p>
+<p>Files copied from a <code>public/</code> folder (see below) are the one exception —
+they keep their original name, unhashed.</p>
+<h2 id="image-optimization">Image optimization</h2>
+<p>Whenever a build is optimized — <code>--minify</code> on <code>bundle</code>/<code>serve</code>, or
+<code>analyze</code> (which always optimizes) — netpack re-encodes images through
+<a href="https://github.com/mono/SkiaSharp">SkiaSharp</a> as part of processing them.
+Today that covers:</p>
+<ul>
+<li><strong>Optimized</strong>: <code>.png</code>, <code>.jpg</code>/<code>.jpeg</code>, <code>.webp</code>, <code>.gif</code>, <code>.bmp</code>, <code>.exif</code>.</li>
+<li><strong>Not (yet) optimized</strong>: <code>.avif</code> and <code>.ico</code> currently pass through
+unmodified, copied like any other generic asset.</li>
+<li><strong>SVG is never touched</strong> — it’s always a generic hashed asset (copied
+byte-for-byte). netpack doesn’t rasterize it or do anything
+SVGR-style (importing it as a component); if you want that, you’d bring
+your own tooling for it today.</li>
+</ul>
+<p>Worth setting expectations correctly: on its own, this pass is a
+<strong>re-encode at a fixed quality (90) in the same format</strong> — not a resizing
+or format-conversion pipeline. For that, see the next section: variants
+are always resized/re-encoded on demand, independent of <code>--minify</code>.</p>
+<h2 id="image-variants">Image variants</h2>
+<p>Beyond the blanket optimization pass above, netpack can produce a
+<strong>resized and/or re-encoded variant</strong> of an image, generated on demand
+from how it’s actually used — no config file, no separate CLI flag. Three
+places trigger it:</p>
+<ul>
+<li>
+<p><strong>HTML</strong> — <code>width</code>/<code>height</code> attributes on an <code>&#x3C;img></code>:</p>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="html"><code><span class="line"><span style="color:#666666">&#x3C;</span><span style="color:#4D9375">img</span><span style="color:#BD976A"> src</span><span style="color:#666666">=</span><span style="color:#C98A7D77">"</span><span style="color:#C98A7D">./logo.png</span><span style="color:#C98A7D77">"</span><span style="color:#BD976A"> width</span><span style="color:#666666">=</span><span style="color:#C98A7D77">"</span><span style="color:#C98A7D">200</span><span style="color:#C98A7D77">"</span><span style="color:#BD976A"> height</span><span style="color:#666666">=</span><span style="color:#C98A7D77">"</span><span style="color:#C98A7D">100</span><span style="color:#C98A7D77">"</span><span style="color:#666666">></span></span>
+<span class="line"></span></code></pre>
+</li>
+<li>
+<p><strong>CSS</strong> — a <code>background-size</code> declared in the same rule as a
+<code>background-image</code>/<code>background</code> that uses <code>url(...)</code>:</p>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="css"><code><span class="line"><span style="color:#666666">.</span><span style="color:#BD976A">logo</span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#B8A965">  background-image</span><span style="color:#666666">:</span><span style="color:#B8A965"> url</span><span style="color:#666666">(</span><span style="color:#C98A7D77">'</span><span style="color:#C98A7D">./logo.png</span><span style="color:#C98A7D77">'</span><span style="color:#666666">);</span></span>
+<span class="line"><span style="color:#B8A965">  background-size</span><span style="color:#666666">:</span><span style="color:#4C9A91"> 200</span><span style="color:#CB7676">px</span><span style="color:#4C9A91"> 100</span><span style="color:#CB7676">px</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#666666">}</span></span>
+<span class="line"></span></code></pre>
+<p>Only literal <code>px</code> values are understood here. Keywords (<code>cover</code>,
+<code>contain</code>) and relative units (<code>%</code>, <code>vw</code>, …) can’t be resolved to an
+absolute pixel size at build time, so a rule using those keeps the
+image at its original size.</p>
+</li>
+<li>
+<p><strong>JS/TS</strong> — query parameters on the import specifier itself:</p>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="js"><code><span class="line"><span style="color:#4D9375">import</span><span style="color:#BD976A"> logoUrl</span><span style="color:#4D9375"> from</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">./logo.png?width=200&#x26;height=100</span><span style="color:#C98A7D77">'</span><span style="color:#666666">;</span></span>
+<span class="line"></span></code></pre>
+<p>The query string is irrelevant for locating the file (it’s stripped
+before resolution) but tells the asset pipeline which variant to
+produce. This also works on an <code>&#x3C;img src="..."></code> or CSS <code>url(...)</code>
+directly, for the same reason.</p>
+</li>
+</ul>
+<p>In every case, <strong>omitting one dimension scales the other automatically</strong>,
+preserving the source image’s aspect ratio — <code>width="200"</code> alone on an
+<code>&#x3C;img></code> behaves like the browser’s own single-attribute scaling. Giving
+both dimensions uses them exactly as specified (no aspect-ratio
+correction).</p>
+<h3 id="switching-the-output-format">Switching the output format</h3>
+<p>The same query-parameter mechanism also accepts <code>format</code>, independent of
+width/height:</p>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="js"><code><span class="line"><span style="color:#4D9375">import</span><span style="color:#BD976A"> heroWebp</span><span style="color:#4D9375"> from</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">./hero.png?format=webp</span><span style="color:#C98A7D77">'</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#4D9375">import</span><span style="color:#BD976A"> heroSmallJpeg</span><span style="color:#4D9375"> from</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">./hero.png?width=400&#x26;format=jpeg</span><span style="color:#C98A7D77">'</span><span style="color:#666666">;</span></span>
+<span class="line"></span></code></pre>
+<p>Recognized values: <strong><code>png</code></strong>, <strong><code>jpg</code></strong>/<strong><code>jpeg</code></strong>, <strong><code>webp</code></strong>, <strong><code>gif</code></strong>,
+<strong><code>bmp</code></strong>. An unrecognized value is ignored (treated as if no <code>format</code>
+were given) rather than failing the build. The output file’s extension
+follows the requested format, so <code>./hero.png?format=webp</code> emits a
+<code>hero.&#x3C;hash>.webp</code> — a genuine <code>.png</code> → <code>.webp</code> conversion, not just a
+renamed copy.</p>
+<p>As with plain optimization, format conversion is only available for the
+source types netpack already knows how to decode (<code>.png</code>, <code>.jpg</code>/<code>.jpeg</code>,
+<code>.webp</code>, <code>.gif</code>, <code>.bmp</code>, <code>.exif</code>) — <code>.avif</code>/<code>.ico</code> sources and SVG are
+unaffected by <code>?format=</code>/<code>?width=</code>/<code>?height=</code>, same as in plain
+optimization above. <code>avif</code> and <code>ico</code> also aren’t offered as <strong>target</strong>
+formats, since encoder support for them is less reliably available than
+for the five formats above.</p>
+<h3 id="how-variants-are-named-and-deduplicated">How variants are named and deduplicated</h3>
+<p>A variant is content-hashed like any other asset, but the hash also folds
+in the requested width/height/format — so <code>logo.png</code>, <code>logo.png?width=200</code>,
+and <code>logo.png?width=200&#x26;format=webp</code> each get their own distinct output
+file (<code>logo.a1b2c3.png</code>, <code>logo.d4e5f6.png</code>, <code>logo.7a8b9c.webp</code>, …) instead
+of colliding. Requesting the exact same variant from multiple places in
+the app reuses the one generated file rather than duplicating it.</p>
+<h2 id="no-inlining-threshold">No inlining threshold</h2>
+<p>Unlike Vite or webpack’s asset modules, netpack never inlines a small
+asset as a base64 data URI — every import always becomes a real emitted
+file plus a URL, regardless of size. If you specifically want a data URI
+for something tiny, you’d construct that yourself rather than relying on
+an automatic threshold.</p>
+<h2 id="json">JSON</h2>
+<p>Not an “asset” in the sense above, but the same “just works” spirit
+applies:</p>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="js"><code><span class="line"><span style="color:#4D9375">import</span><span style="color:#BD976A"> config</span><span style="color:#4D9375"> from</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">./config.json</span><span style="color:#C98A7D77">'</span><span style="color:#666666">;</span></span>
+<span class="line"></span></code></pre>
+<p>Imported directly as a parsed module — no plugin required.</p>
+<h2 id="static-files-public">Static files: <code>public/</code></h2>
+<p>For an HTML entry point, a <code>public/</code> folder next to it is copied verbatim
+into the output directory — the same convention as Vite/Parcel/CRA, useful
+for a <code>favicon.ico</code>, <code>robots.txt</code>, or anything else that shouldn’t go
+through the bundler (and shouldn’t get a content hash) at all.</p>  </article> <nav class="docs-toc" aria-label="On this page" data-astro-cid-xvrfupwn><div class="toc-label" data-astro-cid-xvrfupwn>On this page</div><ul data-astro-cid-xvrfupwn><li class="depth-2" data-astro-cid-xvrfupwn><a href="#importing-an-asset" data-astro-cid-xvrfupwn>Importing an asset</a></li><li class="depth-2" data-astro-cid-xvrfupwn><a href="#content-hashing" data-astro-cid-xvrfupwn>Content hashing</a></li><li class="depth-2" data-astro-cid-xvrfupwn><a href="#image-optimization" data-astro-cid-xvrfupwn>Image optimization</a></li><li class="depth-2" data-astro-cid-xvrfupwn><a href="#image-variants" data-astro-cid-xvrfupwn>Image variants</a></li><li class="depth-3" data-astro-cid-xvrfupwn><a href="#switching-the-output-format" data-astro-cid-xvrfupwn>Switching the output format</a></li><li class="depth-3" data-astro-cid-xvrfupwn><a href="#how-variants-are-named-and-deduplicated" data-astro-cid-xvrfupwn>How variants are named and deduplicated</a></li><li class="depth-2" data-astro-cid-xvrfupwn><a href="#no-inlining-threshold" data-astro-cid-xvrfupwn>No inlining threshold</a></li><li class="depth-2" data-astro-cid-xvrfupwn><a href="#json" data-astro-cid-xvrfupwn>JSON</a></li><li class="depth-2" data-astro-cid-xvrfupwn><a href="#static-files-public" data-astro-cid-xvrfupwn>Static files: public/</a></li></ul></nav> </div>  </main> </div>   </body></html> 

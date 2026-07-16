@@ -1,0 +1,115 @@
+<!DOCTYPE html><html lang="en"> <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Astro components — netpack docs</title><meta name="description" content="Usage docs for netpack — the fast, batteries-included bundler for the web, built on C#/.NET with Ahead-of-Time compilation."><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="/docs/_astro/_slug_.YjzD3tp3.css"><script type="module">function d(){const e=document.getElementById("docs-nav-toggle"),t=document.getElementById("docs-scrim"),c=document.getElementById("docs-sidebar"),o=n=>{document.body.classList.toggle("docs-nav-open",n),e?.setAttribute("aria-expanded",String(n))};e?.addEventListener("click",()=>{o(!document.body.classList.contains("docs-nav-open"))}),t?.addEventListener("click",()=>o(!1)),c?.addEventListener("click",n=>{n.target.closest("a")&&o(!1)}),document.addEventListener("keydown",n=>{n.key==="Escape"&&o(!1)})}function s(){document.querySelectorAll(".prose pre.astro-code").forEach(e=>{if(e.querySelector(".code-copy-btn"))return;const t=document.createElement("button");t.type="button",t.className="code-copy-btn",t.textContent="copy",t.addEventListener("click",async()=>{const c=e.textContent??"";try{await navigator.clipboard?.writeText(c)}catch{}t.textContent="copied ✓",setTimeout(()=>{t.textContent="copy"},1600)}),e.appendChild(t)})}d();s();document.addEventListener("astro:page-load",()=>{d(),s()});
+</script></head> <body>  <div class="shell" data-astro-cid-zaqc7ala> <div class="dot-grid" aria-hidden="true" data-astro-cid-tw3ctjfb></div> <div class="glow glow-a" aria-hidden="true" data-astro-cid-tw3ctjfb></div> <div class="glow glow-b" aria-hidden="true" data-astro-cid-tw3ctjfb></div> <div class="scanlines" aria-hidden="true" data-astro-cid-tw3ctjfb></div>  <header class="docs-header" data-astro-cid-l4ysfnjo> <div class="docs-header-inner" data-astro-cid-l4ysfnjo> <button type="button" class="nav-toggle" id="docs-nav-toggle" aria-label="Toggle navigation" aria-controls="docs-sidebar" aria-expanded="false" data-astro-cid-l4ysfnjo> <span data-astro-cid-l4ysfnjo></span> <span data-astro-cid-l4ysfnjo></span> <span data-astro-cid-l4ysfnjo></span> </button> <a href="/docs" class="brand" data-astro-cid-l4ysfnjo> <span class="mark" data-astro-cid-l4ysfnjo> <span data-astro-cid-l4ysfnjo>n</span> </span> <span class="wordmark" data-astro-cid-l4ysfnjo>netpack <span class="wordmark-sub" data-astro-cid-l4ysfnjo>docs</span></span> </a> <nav class="links" aria-label="Site" data-astro-cid-l4ysfnjo> <a href="/" data-astro-cid-l4ysfnjo>Home</a> <a href="https://github.com/FlorianRappl/netpack" target="_blank" rel="noopener noreferrer" data-astro-cid-l4ysfnjo> <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true" data-astro-cid-l4ysfnjo> <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z" data-astro-cid-l4ysfnjo></path> </svg> <span class="github-label" data-astro-cid-l4ysfnjo>GitHub</span> </a> </nav> </div> </header>  <main class="content" data-astro-cid-zaqc7ala>   <div class="docs-scrim" id="docs-scrim"></div> <div class="docs-grid"> <nav class="docs-sidebar" id="docs-sidebar" aria-label="Documentation" data-astro-cid-ssfzsv2f> <ul class="top-level" data-astro-cid-ssfzsv2f> <li data-astro-cid-ssfzsv2f> <a href="/docs" class="link overview-link" data-astro-cid-ssfzsv2f>
+Overview
+</a> </li> </ul> <div class="group" data-astro-cid-ssfzsv2f> <div class="group-label" data-astro-cid-ssfzsv2f>General</div> <ul data-astro-cid-ssfzsv2f> <li data-astro-cid-ssfzsv2f> <a href="/docs/getting-started/" class="link" data-astro-cid-ssfzsv2f> Getting started </a> </li> </ul> </div><div class="group" data-astro-cid-ssfzsv2f> <div class="group-label" data-astro-cid-ssfzsv2f>Use cases</div> <ul data-astro-cid-ssfzsv2f> <li data-astro-cid-ssfzsv2f> <a href="/docs/react-and-jsx/" class="link" data-astro-cid-ssfzsv2f> React &amp; JSX </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/vue/" class="link" data-astro-cid-ssfzsv2f> Vue single-file components </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/astro/" class="link active" aria-current="page" data-astro-cid-ssfzsv2f> Astro components </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/module-federation/" class="link" data-astro-cid-ssfzsv2f> Module Federation </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/native-federation/" class="link" data-astro-cid-ssfzsv2f> Native Federation </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/styling-and-assets/" class="link" data-astro-cid-ssfzsv2f> Styling &amp; assets </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/images-and-assets/" class="link" data-astro-cid-ssfzsv2f> Images &amp; assets </a> </li> </ul> </div><div class="group" data-astro-cid-ssfzsv2f> <div class="group-label" data-astro-cid-ssfzsv2f>Advanced</div> <ul data-astro-cid-ssfzsv2f> <li data-astro-cid-ssfzsv2f> <a href="/docs/importmaps-and-externals/" class="link" data-astro-cid-ssfzsv2f> Import maps &amp; externals </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/codegen/" class="link" data-astro-cid-ssfzsv2f> Build-time code generation (.codegen files) </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/other-features/" class="link" data-astro-cid-ssfzsv2f> Other features </a> </li> </ul> </div> </nav>  <article class="prose docs-main">  <h1 id="astro-components">Astro components</h1>
+<p>netpack compiles <code>.astro</code> single-file components natively — no Node round-trip.
+A <code>.astro</code> file has two parts: a <code>---</code>-fenced <strong>frontmatter</strong> (plain JS/TS,
+executed on every render) and a <strong>template</strong> (JSX-like markup) below it. The
+whole file compiles down to a JS module with one export:</p>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="js"><code><span class="line"><span style="color:#4D9375">export</span><span style="color:#4D9375"> default</span><span style="color:#CB7676"> async</span><span style="color:#CB7676"> function</span><span style="color:#80A665"> render</span><span style="color:#666666">(</span><span style="color:#BD976A">props</span><span style="color:#666666">,</span><span style="color:#BD976A"> slots</span><span style="color:#666666">)</span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#758575DD">  // ...frontmatter...</span></span>
+<span class="line"><span style="color:#4D9375">  return</span><span style="color:#80A665"> html</span><span style="color:#C98A7D77">`</span><span style="color:#C98A7D">...</span><span style="color:#C98A7D77">`</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#666666">}</span></span>
+<span class="line"></span></code></pre>
+<p>Importing a <code>.astro</code> file gets you that <code>render</code> function directly — call it
+yourself (<code>await render(props, slots)</code>) to get the rendered HTML back as a
+string. netpack doesn’t (yet) execute this itself at build time to produce a
+static <code>.html</code> file; see <a href="#scope">Scope</a> below.</p>
+<h2 id="the-frontmatter">The frontmatter</h2>
+<p>Everything between the two <code>---</code> lines is parsed as an ordinary module body —
+imports, exports, top-level <code>await</code>, functions, classes, TypeScript types, or
+any other statement:</p>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="astro"><code><span class="line"><span style="color:#758575DD">---</span></span>
+<span class="line"><span style="color:#4D9375">import</span><span style="color:#BD976A"> Layout</span><span style="color:#4D9375"> from</span><span style="color:#C98A7D77"> "</span><span style="color:#C98A7D">./Layout.astro</span><span style="color:#C98A7D77">"</span><span style="color:#666666">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#CB7676">const </span><span style="color:#BD976A">title</span><span style="color:#666666"> =</span><span style="color:#C98A7D77"> "</span><span style="color:#C98A7D">Hello</span><span style="color:#C98A7D77">"</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#CB7676">const </span><span style="color:#BD976A">posts</span><span style="color:#666666"> =</span><span style="color:#4D9375"> await</span><span style="color:#80A665"> getPosts</span><span style="color:#666666">();</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#CB7676">function</span><span style="color:#80A665"> greet</span><span style="color:#666666">(</span><span style="color:#BD976A">name</span><span style="color:#666666">)</span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#4D9375">  return</span><span style="color:#C98A7D77"> `</span><span style="color:#C98A7D">Hello </span><span style="color:#4D9375">${</span><span style="color:#C98A7D">name</span><span style="color:#4D9375">}</span><span style="color:#C98A7D77">`</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#666666">}</span></span>
+<span class="line"><span style="color:#758575DD">---</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#666666">&#x3C;</span><span style="color:#B8A965">Layout</span><span style="color:#BD976A"> title</span><span style="color:#666666">=</span><span style="color:#C98A7D">{title}</span><span style="color:#666666">></span></span>
+<span class="line"><span style="color:#666666">  &#x3C;</span><span style="color:#4D9375">h1</span><span style="color:#666666">></span><span style="color:#DBD7CAEE">{greet("World")}&#x3C;/h1></span></span>
+<span class="line"><span style="color:#666666">&#x3C;/</span><span style="color:#B8A965">Layout</span><span style="color:#666666">></span></span>
+<span class="line"></span></code></pre>
+<p>Imports are hoisted to the compiled module’s top level, so <code>import Layout from './Layout.astro'</code> is resolved exactly like any other import — this is how
+<code>.astro</code> files import and use each other as components. Everything else in
+the frontmatter (the <code>const</code>s, the function, the top-level <code>await</code>) is moved
+into the generated <code>render</code> function’s body, so it re-runs on every call
+rather than once at module load.</p>
+<p>A file doesn’t need frontmatter at all — a template-only <code>.astro</code> file (no
+leading <code>---</code> block) is perfectly valid.</p>
+<h2 id="the-template">The template</h2>
+<p>The template is parsed <strong>as JSX</strong>, not as HTML. This is deliberate: JSX is
+case-sensitive in exactly the way Astro’s own syntax needs — <code>&#x3C;Layout></code>
+(capitalized) is a reference to the imported <code>Layout</code> component, while
+<code>&#x3C;div></code> (lowercase) is a literal HTML element. An HTML parser would silently
+lowercase <code>&#x3C;Layout></code> to <code>&#x3C;layout></code>, losing that distinction entirely. Since
+the template is a genuine JSX parse, it follows JSX’s own rules, not lenient
+HTML5 ones — most notably, void elements need an explicit self-close
+(<code>&#x3C;img /></code>, not <code>&#x3C;img></code>), same as in React.</p>
+<h3 id="expressions">Expressions</h3>
+<p><code>{expr}</code> works in text and attribute position, evaluated fresh on every
+render:</p>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="astro"><code><span class="line"><span style="color:#666666">&#x3C;</span><span style="color:#4D9375">h1</span><span style="color:#666666">></span><span style="color:#DBD7CAEE">{title}&#x3C;/h1></span></span>
+<span class="line"><span style="color:#666666">&#x3C;</span><span style="color:#4D9375">img</span><span style="color:#BD976A"> src</span><span style="color:#666666">=</span><span style="color:#C98A7D">{imageUrl}</span><span style="color:#BD976A"> width</span><span style="color:#666666">=</span><span style="color:#C98A7D">{200}</span><span style="color:#666666"> /></span></span>
+<span class="line"></span></code></pre>
+<p>Values are HTML-escaped by default — a <code>title</code> containing <code>&#x3C;</code> or <code>&#x26;</code>
+renders safely rather than being interpreted as markup.</p>
+<h3 id="components">Components</h3>
+<p>A capitalized (or dotted, e.g. <code>Astro.Self</code>-style) tag is a component
+reference — the imported binding is called directly as a function (an
+imported <code>.astro</code> file’s default export <em>is</em> its <code>render</code> function), awaited,
+and its already-rendered output is inlined without being re-escaped:</p>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="astro"><code><span class="line"><span style="color:#666666">&#x3C;</span><span style="color:#B8A965">Layout</span><span style="color:#BD976A"> title</span><span style="color:#666666">=</span><span style="color:#C98A7D">{title}</span><span style="color:#666666">></span></span>
+<span class="line"><span style="color:#666666">  &#x3C;</span><span style="color:#4D9375">h1</span><span style="color:#666666">></span><span style="color:#DBD7CAEE">Hello</span><span style="color:#666666">&#x3C;/</span><span style="color:#4D9375">h1</span><span style="color:#666666">></span></span>
+<span class="line"><span style="color:#666666">&#x3C;/</span><span style="color:#B8A965">Layout</span><span style="color:#666666">></span></span>
+<span class="line"></span></code></pre>
+<p>A component’s children become <code>slots.default</code> — a single pre-rendered HTML
+value the component can interpolate whenever it likes. Only the default slot
+is supported; there’s no named-slot syntax yet.</p>
+<h3 id="attributes">Attributes</h3>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="astro"><code><span class="line"><span style="color:#666666">&#x3C;</span><span style="color:#4D9375">input</span><span style="color:#BD976A"> disabled</span><span style="color:#666666"> /></span></span>
+<span class="line"><span style="color:#666666">&#x3C;</span><span style="color:#4D9375">div</span><span style="color:#BD976A"> class</span><span style="color:#666666">=</span><span style="color:#C98A7D">{active</span><span style="color:#DBD7CAEE"> ? "</span><span style="color:#BD976A">on</span><span style="color:#DBD7CAEE">" : "</span><span style="color:#BD976A">off</span><span style="color:#DBD7CAEE">"} </span><span style="color:#666666">/></span></span>
+<span class="line"><span style="color:#666666">&#x3C;</span><span style="color:#4D9375">div</span><span style="color:#DBD7CAEE"> {...</span><span style="color:#BD976A">rest</span><span style="color:#DBD7CAEE">} </span><span style="color:#666666">/></span></span>
+<span class="line"></span></code></pre>
+<p>A bare attribute (<code>disabled</code>) renders as a boolean HTML attribute. An
+expression attribute (<code>class={...}</code>) is escaped and interpolated. A spread
+(<code>{...rest}</code>) expands an object into <code>key="value"</code> pairs at render time —
+<code>null</code>/<code>undefined</code>/<code>false</code> entries are dropped, and <code>true</code> renders the key
+alone (matching how JSX/React treat boolean props).</p>
+<h3 id="directives">Directives</h3>
+<p>Attribute names with a colon — <code>client:load</code>, <code>client:visible</code>, <code>set:html</code>,
+and so on — parse fine (JSX has always supported namespaced attribute names
+like <code>xlink:href</code>), but none of them carry special meaning yet. They’re
+emitted as inert, literal HTML attributes. There is no hydration/islands
+runtime in netpack today, so a <code>client:*</code> directive doesn’t cause anything to
+ship to the client beyond the attribute itself.</p>
+<h2 id="scope">Scope</h2>
+<p>What’s implemented: frontmatter execution, component composition, expressions,
+attributes (including spread and boolean), and default-by-escaped /
+opt-in-raw HTML output.</p>
+<p>What’s deliberately not (yet):</p>
+<ul>
+<li><strong>No build-time static HTML generation.</strong> netpack compiles <code>.astro</code> files
+to importable <code>render</code> functions; actually calling one to produce a static
+page is left to you (or a future netpack feature) rather than happening
+automatically during <code>bundle</code>.</li>
+<li><strong>No hydration/islands.</strong> <code>client:*</code> directives are inert, as noted above.</li>
+<li><strong>No <code>&#x3C;style></code>/<code>&#x3C;script></code> blocks inside the template.</strong> Unlike
+<a href="/docs/vue">Vue SFCs</a>, which get real block-splitting and scoped styles,
+a <code>.astro</code> file’s own <code>&#x3C;style></code>/<code>&#x3C;script></code> tags are stripped during
+compilation rather than given special handling.</li>
+<li><strong>No named slots</strong> — only <code>slots.default</code>.</li>
+<li><strong>No <code>Astro.*</code> global</strong> (<code>Astro.props</code>, <code>Astro.request</code>, etc.) — <code>props</code>
+and <code>slots</code> are the generated function’s own parameters instead.</li>
+</ul>
+<h2 id="how-rendering-composes-safely">How rendering composes safely</h2>
+<p>Every compiled <code>.astro</code> module gets a small inline runtime (a handful of
+lines, private to that module — nothing shared or importable). Its <code>html</code>
+tag function escapes each interpolated value by default; a nested component
+call’s output is a marked “already HTML” value that’s inlined as-is instead
+of being escaped a second time. This is what lets <code>&#x3C;Layout>&#x3C;h1>{title}&#x3C;/h1> &#x3C;/Layout></code> compose correctly: <code>title</code> gets escaped, <code>Layout</code>’s own rendered
+markup doesn’t.</p>  </article> <nav class="docs-toc" aria-label="On this page" data-astro-cid-xvrfupwn><div class="toc-label" data-astro-cid-xvrfupwn>On this page</div><ul data-astro-cid-xvrfupwn><li class="depth-2" data-astro-cid-xvrfupwn><a href="#the-frontmatter" data-astro-cid-xvrfupwn>The frontmatter</a></li><li class="depth-2" data-astro-cid-xvrfupwn><a href="#the-template" data-astro-cid-xvrfupwn>The template</a></li><li class="depth-3" data-astro-cid-xvrfupwn><a href="#expressions" data-astro-cid-xvrfupwn>Expressions</a></li><li class="depth-3" data-astro-cid-xvrfupwn><a href="#components" data-astro-cid-xvrfupwn>Components</a></li><li class="depth-3" data-astro-cid-xvrfupwn><a href="#attributes" data-astro-cid-xvrfupwn>Attributes</a></li><li class="depth-3" data-astro-cid-xvrfupwn><a href="#directives" data-astro-cid-xvrfupwn>Directives</a></li><li class="depth-2" data-astro-cid-xvrfupwn><a href="#scope" data-astro-cid-xvrfupwn>Scope</a></li><li class="depth-2" data-astro-cid-xvrfupwn><a href="#how-rendering-composes-safely" data-astro-cid-xvrfupwn>How rendering composes safely</a></li></ul></nav> </div>  </main> </div>   </body></html> 
