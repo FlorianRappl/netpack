@@ -304,7 +304,7 @@ components, spread/boolean attributes, and what's deliberately not implemented y
 - [x] Custom JSX factory
 - [ ] Platforms (web, npm, deno)
 - [x] Tree shaking
-- [ ] Other formats (esm, cjs, systemjs, umd)
+- [x] Other formats (esm, cjs, umd, systemjs; `--format`)
 - [ ] Presets / configuration system
 
 ## Idea Stash

@@ -37,6 +37,9 @@ Usage docs for netpack, in addition to the feature overview in the
   and wire it up itself with `--shared`.
 - **[Build-time code generation](./codegen.md)** — `.codegen` files: the
   loader context, async support, and the current watch-mode limitations.
+- **[Output formats](./output-formats.md)** — emitting ESM (default),
+  CommonJS, UMD or SystemJS with `--format`, their trade-offs, and why ESM is
+  the best choice.
 - **[Other features](./other-features.md)** — tree shaking, source maps,
   minification, and the bundle analyzer.
 

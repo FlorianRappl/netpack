@@ -11,24 +11,43 @@ using Xunit;
 
 public class ModuleFormatTests
 {
-    [Fact]
-    public void Factory_returns_the_esm_format()
+    [Theory]
+    [InlineData(ModuleFormat.Esm, typeof(EsmModuleFormat))]
+    [InlineData(ModuleFormat.CommonJs, typeof(CommonJsModuleFormat))]
+    [InlineData(ModuleFormat.Umd, typeof(UmdModuleFormat))]
+    [InlineData(ModuleFormat.SystemJs, typeof(SystemJsModuleFormat))]
+    public void Factory_returns_the_matching_format(ModuleFormat format, Type expected)
     {
-        Assert.IsType<EsmModuleFormat>(JsModuleFormats.For(ModuleFormat.Esm));
+        Assert.IsType(expected, JsModuleFormats.For(format));
     }
 
     [Theory]
-    [InlineData(ModuleFormat.CommonJs)]
-    [InlineData(ModuleFormat.Umd)]
-    [InlineData(ModuleFormat.SystemJs)]
-    public void Factory_rejects_formats_that_are_not_implemented_yet(ModuleFormat format)
+    [InlineData(ModuleFormat.Esm, "export default")]
+    [InlineData(ModuleFormat.CommonJs, "module.exports")]
+    [InlineData(ModuleFormat.Umd, "define.amd")]
+    [InlineData(ModuleFormat.SystemJs, "System.register")]
+    public async Task Each_format_bundles_to_valid_js(ModuleFormat format, string marker)
     {
-        var ex = Assert.Throws<NotSupportedException>(() => JsModuleFormats.For(format));
-        Assert.Contains("not supported yet", ex.Message);
+        var output = await Bundle(format, "export const value = 1 + 2;\nexport default value;");
+
+        Assert.Contains(marker, output);
+        Assert.Empty(Parser.ParseModule(output, "out.js", new ParserOptions { Tolerant = true }).Diagnostics);
     }
 
-    [Fact]
-    public async Task Esm_format_bundles_and_exports_through_the_abstraction()
+    [Theory]
+    [InlineData(ModuleFormat.CommonJs, "require(\"react\")")]
+    [InlineData(ModuleFormat.Umd, "define([\"react\"], factory)")]
+    [InlineData(ModuleFormat.SystemJs, "System.register([\"react\"]")]
+    public async Task External_dependencies_are_linked_per_format(ModuleFormat format, string marker)
+    {
+        // `react` is external, so it stays a bare dependency the envelope wires up.
+        var output = await Bundle(format, "import React from 'react';\nexport default React;", externals: "react");
+
+        Assert.Contains(marker, output);
+        Assert.Empty(Parser.ParseModule(output, "out.js", new ParserOptions { Tolerant = true }).Diagnostics);
+    }
+
+    private static async Task<string> Bundle(ModuleFormat format, string entry, string? externals = null)
     {
         var dir = Path.Combine(Path.GetTempPath(), "netpack-fmt-" + Path.GetRandomFileName());
         Directory.CreateDirectory(dir);
@@ -36,22 +55,13 @@ public class ModuleFormatTests
         try
         {
             await File.WriteAllTextAsync(Path.Combine(dir, "package.json"), "{}");
-            await File.WriteAllTextAsync(Path.Combine(dir, "main.js"),
-                "export const value = 1 + 2;\nexport default value;");
+            await File.WriteAllTextAsync(Path.Combine(dir, "main.js"), entry);
 
-            using var graph = await Traverse.From(Path.Combine(dir, "main.js"));
+            var external = externals is null ? Array.Empty<string>() : new[] { externals };
+            using var graph = await Traverse.From(Path.Combine(dir, "main.js"), external, Array.Empty<string>());
             var bundle = graph.Context.Bundles.Values.OfType<JsBundle>().First(b => b.IsPrimary);
-            var output = bundle.Stringify(new OutputOptions
-            {
-                IsOptimizing = false,
-                IsReloading = false,
-                Format = ModuleFormat.Esm,
-            });
 
-            // The ESM envelope still emits the root exports and stays valid JS.
-            Assert.Contains("export default", output);
-            Assert.Contains("export {", output);
-            Assert.Empty(Parser.ParseModule(output, "out.js", new ParserOptions { Tolerant = true }).Diagnostics);
+            return bundle.Stringify(new OutputOptions { IsOptimizing = false, IsReloading = false, Format = format });
         }
         finally
         {

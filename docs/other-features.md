@@ -2,6 +2,13 @@
 
 Assorted things netpack does today that don't warrant their own page yet.
 
+## Output formats
+
+By default netpack emits ES modules; `--format` (`esm`, `cjs`, `umd`, `systemjs`)
+picks the envelope each JavaScript bundle is wrapped in. See
+[Output formats](./output-formats.md) for the details, limitations, and why ESM
+is the best choice.
+
 ## Tree shaking
 
 netpack computes which exports of each module are actually used across the
