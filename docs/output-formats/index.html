@@ -1,0 +1,206 @@
+<!DOCTYPE html><html lang="en"> <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Output formats — netpack docs</title><meta name="description" content="Usage docs for netpack — the fast, batteries-included bundler for the web, built on C#/.NET with Ahead-of-Time compilation."><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="/docs/_astro/_slug_.YjzD3tp3.css"><script type="module">function d(){const e=document.getElementById("docs-nav-toggle"),t=document.getElementById("docs-scrim"),c=document.getElementById("docs-sidebar"),o=n=>{document.body.classList.toggle("docs-nav-open",n),e?.setAttribute("aria-expanded",String(n))};e?.addEventListener("click",()=>{o(!document.body.classList.contains("docs-nav-open"))}),t?.addEventListener("click",()=>o(!1)),c?.addEventListener("click",n=>{n.target.closest("a")&&o(!1)}),document.addEventListener("keydown",n=>{n.key==="Escape"&&o(!1)})}function s(){document.querySelectorAll(".prose pre.astro-code").forEach(e=>{if(e.querySelector(".code-copy-btn"))return;const t=document.createElement("button");t.type="button",t.className="code-copy-btn",t.textContent="copy",t.addEventListener("click",async()=>{const c=e.textContent??"";try{await navigator.clipboard?.writeText(c)}catch{}t.textContent="copied ✓",setTimeout(()=>{t.textContent="copy"},1600)}),e.appendChild(t)})}d();s();document.addEventListener("astro:page-load",()=>{d(),s()});
+</script></head> <body>  <div class="shell" data-astro-cid-zaqc7ala> <div class="dot-grid" aria-hidden="true" data-astro-cid-tw3ctjfb></div> <div class="glow glow-a" aria-hidden="true" data-astro-cid-tw3ctjfb></div> <div class="glow glow-b" aria-hidden="true" data-astro-cid-tw3ctjfb></div> <div class="scanlines" aria-hidden="true" data-astro-cid-tw3ctjfb></div>  <header class="docs-header" data-astro-cid-l4ysfnjo> <div class="docs-header-inner" data-astro-cid-l4ysfnjo> <button type="button" class="nav-toggle" id="docs-nav-toggle" aria-label="Toggle navigation" aria-controls="docs-sidebar" aria-expanded="false" data-astro-cid-l4ysfnjo> <span data-astro-cid-l4ysfnjo></span> <span data-astro-cid-l4ysfnjo></span> <span data-astro-cid-l4ysfnjo></span> </button> <a href="/docs" class="brand" data-astro-cid-l4ysfnjo> <span class="mark" data-astro-cid-l4ysfnjo> <span data-astro-cid-l4ysfnjo>n</span> </span> <span class="wordmark" data-astro-cid-l4ysfnjo>netpack <span class="wordmark-sub" data-astro-cid-l4ysfnjo>docs</span></span> </a> <nav class="links" aria-label="Site" data-astro-cid-l4ysfnjo> <a href="/" data-astro-cid-l4ysfnjo>Home</a> <a href="https://github.com/FlorianRappl/netpack" target="_blank" rel="noopener noreferrer" data-astro-cid-l4ysfnjo> <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true" data-astro-cid-l4ysfnjo> <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z" data-astro-cid-l4ysfnjo></path> </svg> <span class="github-label" data-astro-cid-l4ysfnjo>GitHub</span> </a> </nav> </div> </header>  <main class="content" data-astro-cid-zaqc7ala>   <div class="docs-scrim" id="docs-scrim"></div> <div class="docs-grid"> <nav class="docs-sidebar" id="docs-sidebar" aria-label="Documentation" data-astro-cid-ssfzsv2f> <ul class="top-level" data-astro-cid-ssfzsv2f> <li data-astro-cid-ssfzsv2f> <a href="/docs" class="link overview-link" data-astro-cid-ssfzsv2f>
+Overview
+</a> </li> </ul> <div class="group" data-astro-cid-ssfzsv2f> <div class="group-label" data-astro-cid-ssfzsv2f>General</div> <ul data-astro-cid-ssfzsv2f> <li data-astro-cid-ssfzsv2f> <a href="/docs/getting-started/" class="link" data-astro-cid-ssfzsv2f> Getting started </a> </li> </ul> </div><div class="group" data-astro-cid-ssfzsv2f> <div class="group-label" data-astro-cid-ssfzsv2f>Use cases</div> <ul data-astro-cid-ssfzsv2f> <li data-astro-cid-ssfzsv2f> <a href="/docs/react-and-jsx/" class="link" data-astro-cid-ssfzsv2f> React &amp; JSX </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/vue/" class="link" data-astro-cid-ssfzsv2f> Vue single-file components </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/astro/" class="link" data-astro-cid-ssfzsv2f> Astro components </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/module-federation/" class="link" data-astro-cid-ssfzsv2f> Module Federation </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/native-federation/" class="link" data-astro-cid-ssfzsv2f> Native Federation </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/styling-and-assets/" class="link" data-astro-cid-ssfzsv2f> Styling &amp; assets </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/images-and-assets/" class="link" data-astro-cid-ssfzsv2f> Images &amp; assets </a> </li> </ul> </div><div class="group" data-astro-cid-ssfzsv2f> <div class="group-label" data-astro-cid-ssfzsv2f>Advanced</div> <ul data-astro-cid-ssfzsv2f> <li data-astro-cid-ssfzsv2f> <a href="/docs/importmaps-and-externals/" class="link" data-astro-cid-ssfzsv2f> Import maps &amp; externals </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/codegen/" class="link" data-astro-cid-ssfzsv2f> Build-time code generation (.codegen files) </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/other-features/" class="link" data-astro-cid-ssfzsv2f> Other features </a> </li> </ul> </div><div class="group" data-astro-cid-ssfzsv2f> <div class="group-label" data-astro-cid-ssfzsv2f>More</div> <ul data-astro-cid-ssfzsv2f> <li data-astro-cid-ssfzsv2f> <a href="/docs/output-formats/" class="link active" aria-current="page" data-astro-cid-ssfzsv2f> Output formats </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/svelte/" class="link" data-astro-cid-ssfzsv2f> Svelte components </a> </li> </ul> </div> </nav>  <article class="prose docs-main">  <h1 id="output-formats">Output formats</h1>
+<p>A netpack build is a graph of modules wrapped in a single runtime. What changes
+between formats is only the <strong>envelope</strong> — the linkage at the module boundary:
+how a bundle imports its externals and shared siblings, how it exports the entry
+module, and how it resolves dynamic imports and asset URLs. The module graph,
+tree-shaking, shared-chunk splitting and dynamic-import code-splitting are
+identical regardless of format.</p>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="sh"><code><span class="line"><span style="color:#80A665">npx</span><span style="color:#C98A7D"> netpack</span><span style="color:#C98A7D"> bundle</span><span style="color:#C98A7D"> src/main.js</span><span style="color:#C99076"> --format</span><span style="color:#C98A7D"> esm</span><span style="color:#758575DD">      # default</span></span>
+<span class="line"><span style="color:#80A665">npx</span><span style="color:#C98A7D"> netpack</span><span style="color:#C98A7D"> bundle</span><span style="color:#C98A7D"> src/main.js</span><span style="color:#C99076"> --format</span><span style="color:#C98A7D"> cjs</span></span>
+<span class="line"><span style="color:#80A665">npx</span><span style="color:#C98A7D"> netpack</span><span style="color:#C98A7D"> bundle</span><span style="color:#C98A7D"> src/main.js</span><span style="color:#C99076"> --format</span><span style="color:#C98A7D"> umd</span></span>
+<span class="line"><span style="color:#80A665">npx</span><span style="color:#C98A7D"> netpack</span><span style="color:#C98A7D"> bundle</span><span style="color:#C98A7D"> src/main.js</span><span style="color:#C99076"> --format</span><span style="color:#C98A7D"> systemjs</span></span>
+<span class="line"></span></code></pre>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th><code>--format</code></th><th>Envelope</th><th>Primary target</th></tr></thead><tbody><tr><td><code>esm</code> (default)</td><td>Native ES modules</td><td>Browsers, modern bundlers, Node ESM</td></tr><tr><td><code>cjs</code></td><td><code>require</code> / <code>module.exports</code></td><td>Node (CommonJS)</td></tr><tr><td><code>umd</code></td><td>IIFE adapting to CJS / AMD / global</td><td><code>&#x3C;script></code> libraries, legacy loaders</td></tr><tr><td><code>systemjs</code></td><td><code>System.register(…)</code></td><td>The SystemJS loader</td></tr></tbody></table>
+<p>Everything below assumes a shared mental model: each module becomes a factory
+<code>(module, exports, require) => { … }</code> in a registry <code>__m</code>, and a tiny <code>__r</code>
+runtime instantiates them lazily. Only the code <em>around</em> that registry differs.</p>
+<h2 id="esm----format-esm-default-recommended">ESM — <code>--format esm</code> (default, recommended)</h2>
+<p>The native ECMAScript module format, and what netpack is built around.</p>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="js"><code><span class="line"><span style="color:#4D9375">import</span><span style="color:#BD976A"> __s0</span><span style="color:#4D9375"> from</span><span style="color:#C98A7D77"> "</span><span style="color:#C98A7D">./common.4f2a.js</span><span style="color:#C98A7D77">"</span><span style="color:#666666">;</span><span style="color:#758575DD">       // shared sibling bundle</span></span>
+<span class="line"><span style="color:#4D9375">import</span><span style="color:#666666"> {</span><span style="color:#BD976A"> render</span><span style="color:#666666"> }</span><span style="color:#4D9375"> from</span><span style="color:#C98A7D77"> "</span><span style="color:#C98A7D">react-dom</span><span style="color:#C98A7D77">"</span><span style="color:#666666">;</span><span style="color:#758575DD">         // external, left bare</span></span>
+<span class="line"><span style="color:#CB7676">const</span><span style="color:#BD976A"> __m</span><span style="color:#666666"> =</span><span style="color:#666666"> {</span><span style="color:#758575DD"> /* … module factories … */</span><span style="color:#666666"> };</span></span>
+<span class="line"><span style="color:#BD976A">Object</span><span style="color:#666666">.</span><span style="color:#80A665">assign</span><span style="color:#666666">(</span><span style="color:#BD976A">__m</span><span style="color:#666666">,</span><span style="color:#BD976A"> __s0</span><span style="color:#666666">);</span></span>
+<span class="line"><span style="color:#758575DD">// … __r runtime …</span></span>
+<span class="line"><span style="color:#4D9375">export</span><span style="color:#4D9375"> default</span><span style="color:#80A665"> __r</span><span style="color:#666666">(</span><span style="color:#4C9A91">0</span><span style="color:#666666">);</span></span>
+<span class="line"><span style="color:#4D9375">export</span><span style="color:#666666"> {</span><span style="color:#BD976A"> value</span><span style="color:#666666"> };</span></span>
+<span class="line"></span></code></pre>
+<ul>
+<li><strong>Imports</strong> — externals and shared chunks are real <code>import</code> statements the
+platform resolves (a browser, an import map, or Node).</li>
+<li><strong>Exports</strong> — the entry’s exports are real <code>export</code> / <code>export default</code>, so
+consumers get live, statically-analysable named bindings.</li>
+<li><strong>Dynamic imports</strong> — <code>import(new URL("./chunk.js", import.meta.url).href)</code>:
+the spec-standard dynamic import, resolved relative to the module via
+<code>import.meta.url</code>. The same expression gives asset URLs.</li>
+<li><strong>No wrapper</strong> — the bundle <em>is</em> a module; nothing is added around it.</li>
+</ul>
+<p><strong>Why it’s the best choice.</strong> ESM is the only format here that is a language
+feature rather than a convention layered on top of one:</p>
+<ul>
+<li><strong>Static structure.</strong> <code>import</code>/<code>export</code> are analysable without running code, so
+tree-shaking, <code>import.meta</code>, top-level <code>await</code> and live bindings all work
+naturally. The other formats erase that structure into function calls.</li>
+<li><strong>No interop guesswork.</strong> There is no default-vs-namespace ambiguity to paper
+over — CJS and UMD need an interop shim (below) precisely because ESM’s shape
+has to be reconstructed at runtime.</li>
+<li><strong>First-class everywhere.</strong> Browsers (<code>&#x3C;script type="module"></code> and import
+maps), Node, Deno, CDNs and every modern bundler consume ESM directly. It is
+also the substrate for <a href="/docs/native-federation">native federation</a> and
+<a href="/docs/importmaps-and-externals">import maps</a>.</li>
+<li><strong>Smallest, cleanest output.</strong> No envelope, no adapter branches, no injected
+interop helpers — just the modules.</li>
+</ul>
+<p>Reach for another format only when a specific consumer <em>cannot</em> load ESM.</p>
+<h2 id="commonjs----format-cjs">CommonJS — <code>--format cjs</code></h2>
+<p>For Node consumers that use <code>require()</code>.</p>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="js"><code><span class="line"><span style="color:#CB7676">function</span><span style="color:#80A665"> __cjsInterop</span><span style="color:#666666">(</span><span style="color:#BD976A">m</span><span style="color:#666666">)</span><span style="color:#666666"> {</span><span style="color:#4D9375"> return</span><span style="color:#BD976A"> m</span><span style="color:#CB7676"> &#x26;&#x26;</span><span style="color:#BD976A"> m</span><span style="color:#666666">.</span><span style="color:#BD976A">__esModule</span><span style="color:#CB7676"> ?</span><span style="color:#BD976A"> m</span><span style="color:#CB7676"> :</span><span style="color:#BD976A"> Object</span><span style="color:#666666">.</span><span style="color:#80A665">assign</span><span style="color:#666666">({</span><span style="color:#B8A965"> default</span><span style="color:#666666">:</span><span style="color:#BD976A"> m</span><span style="color:#666666"> },</span><span style="color:#BD976A"> m</span><span style="color:#666666">);</span><span style="color:#666666"> }</span></span>
+<span class="line"><span style="color:#CB7676">const</span><span style="color:#BD976A"> __nurl</span><span style="color:#666666"> =</span><span style="color:#80A665"> require</span><span style="color:#666666">(</span><span style="color:#C98A7D77">"</span><span style="color:#C98A7D">url</span><span style="color:#C98A7D77">"</span><span style="color:#666666">).</span><span style="color:#80A665">pathToFileURL</span><span style="color:#666666">(</span><span style="color:#BD976A">__filename</span><span style="color:#666666">).</span><span style="color:#BD976A">href</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#CB7676">const</span><span style="color:#BD976A"> __s0</span><span style="color:#666666"> =</span><span style="color:#80A665"> require</span><span style="color:#666666">(</span><span style="color:#C98A7D77">"</span><span style="color:#C98A7D">./common.4f2a.js</span><span style="color:#C98A7D77">"</span><span style="color:#666666">);</span></span>
+<span class="line"><span style="color:#CB7676">const</span><span style="color:#666666"> {</span><span style="color:#BD976A"> default</span><span style="color:#666666">:</span><span style="color:#BD976A"> React</span><span style="color:#666666"> }</span><span style="color:#666666"> =</span><span style="color:#80A665"> __cjsInterop</span><span style="color:#666666">(</span><span style="color:#80A665">require</span><span style="color:#666666">(</span><span style="color:#C98A7D77">"</span><span style="color:#C98A7D">react</span><span style="color:#C98A7D77">"</span><span style="color:#666666">));</span></span>
+<span class="line"><span style="color:#CB7676">const</span><span style="color:#BD976A"> __m</span><span style="color:#666666"> =</span><span style="color:#666666"> {</span><span style="color:#758575DD"> /* … */</span><span style="color:#666666"> };</span></span>
+<span class="line"><span style="color:#758575DD">// … __r runtime …</span></span>
+<span class="line"><span style="color:#B8A965">module</span><span style="color:#666666">.</span><span style="color:#B8A965">exports</span><span style="color:#666666"> =</span><span style="color:#80A665"> __r</span><span style="color:#666666">(</span><span style="color:#4C9A91">0</span><span style="color:#666666">);</span></span>
+<span class="line"></span></code></pre>
+<ul>
+<li><strong>Imports</strong> — <code>require(…)</code>. Externals are wrapped in <code>__cjsInterop</code> so a
+default import (<code>import React from "react"</code>) still works against a CommonJS
+package that has no <code>.default</code>.</li>
+<li><strong>Exports</strong> — <code>module.exports = &#x3C;entry></code>. All named exports and <code>default</code>
+become properties of <code>module.exports</code>.</li>
+<li><strong>Dynamic imports</strong> — native <code>import()</code> (supported in Node CommonJS), targeting
+a <code>file:</code> URL built from <code>__filename</code>.</li>
+<li><strong>Asset URLs</strong> — resolved against <code>__filename</code> (a <code>file:</code> URL).</li>
+</ul>
+<p><strong>Limitations.</strong></p>
+<ul>
+<li><strong>Node-only.</strong> It relies on <code>require</code>, <code>module</code>, <code>__filename</code> and
+<code>require("url")</code>; it does not run in a browser as-is.</li>
+<li><strong>Interop is heuristic.</strong> <code>__cjsInterop</code> reconstructs a default export by
+convention (<code>__esModule</code> or “the module <em>is</em> the default”). This matches how
+bundlers generally interop, but pathological packages can still surprise it.</li>
+<li><strong>No live bindings.</strong> Exports are a plain snapshot object, not ESM live
+bindings.</li>
+</ul>
+<h2 id="umd----format-umd">UMD — <code>--format umd</code></h2>
+<p>One file that loads as CommonJS, AMD, or a browser global — handy for shipping a
+library consumed by unknown/legacy toolchains.</p>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="js"><code><span class="line"><span style="color:#666666">(</span><span style="color:#CB7676">function</span><span style="color:#666666"> (</span><span style="color:#BD976A">root</span><span style="color:#666666">,</span><span style="color:#BD976A"> factory</span><span style="color:#666666">)</span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#4D9375">  if</span><span style="color:#666666"> (</span><span style="color:#CB7676">typeof</span><span style="color:#B8A965"> exports</span><span style="color:#CB7676"> ===</span><span style="color:#C98A7D77"> "</span><span style="color:#C98A7D">object</span><span style="color:#C98A7D77">"</span><span style="color:#CB7676"> &#x26;&#x26;</span><span style="color:#CB7676"> typeof</span><span style="color:#B8A965"> module</span><span style="color:#CB7676"> !==</span><span style="color:#C98A7D77"> "</span><span style="color:#C98A7D">undefined</span><span style="color:#C98A7D77">"</span><span style="color:#666666">)</span><span style="color:#B8A965"> module</span><span style="color:#666666">.</span><span style="color:#B8A965">exports</span><span style="color:#666666"> =</span><span style="color:#80A665"> factory</span><span style="color:#666666">(</span><span style="color:#80A665">require</span><span style="color:#666666">(</span><span style="color:#C98A7D77">"</span><span style="color:#C98A7D">react</span><span style="color:#C98A7D77">"</span><span style="color:#666666">));</span></span>
+<span class="line"><span style="color:#4D9375">  else</span><span style="color:#4D9375"> if</span><span style="color:#666666"> (</span><span style="color:#CB7676">typeof</span><span style="color:#BD976A"> define</span><span style="color:#CB7676"> ===</span><span style="color:#C98A7D77"> "</span><span style="color:#C98A7D">function</span><span style="color:#C98A7D77">"</span><span style="color:#CB7676"> &#x26;&#x26;</span><span style="color:#BD976A"> define</span><span style="color:#666666">.</span><span style="color:#BD976A">amd</span><span style="color:#666666">)</span><span style="color:#80A665"> define</span><span style="color:#666666">([</span><span style="color:#C98A7D77">"</span><span style="color:#C98A7D">react</span><span style="color:#C98A7D77">"</span><span style="color:#666666">],</span><span style="color:#BD976A"> factory</span><span style="color:#666666">);</span></span>
+<span class="line"><span style="color:#4D9375">  else</span><span style="color:#BD976A"> root</span><span style="color:#666666">[</span><span style="color:#C98A7D77">"</span><span style="color:#C98A7D">main</span><span style="color:#C98A7D77">"</span><span style="color:#666666">]</span><span style="color:#666666"> =</span><span style="color:#80A665"> factory</span><span style="color:#666666">(</span><span style="color:#BD976A">root</span><span style="color:#666666">[</span><span style="color:#C98A7D77">"</span><span style="color:#C98A7D">react</span><span style="color:#C98A7D77">"</span><span style="color:#666666">]);</span></span>
+<span class="line"><span style="color:#666666">})(</span><span style="color:#CB7676">typeof</span><span style="color:#BD976A"> self</span><span style="color:#CB7676"> !==</span><span style="color:#C98A7D77"> "</span><span style="color:#C98A7D">undefined</span><span style="color:#C98A7D77">"</span><span style="color:#CB7676"> ?</span><span style="color:#BD976A"> self</span><span style="color:#CB7676"> :</span><span style="color:#C99076"> this</span><span style="color:#666666">,</span><span style="color:#CB7676"> function</span><span style="color:#666666"> (</span><span style="color:#BD976A">__dep_0</span><span style="color:#666666">)</span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#CB7676">  function</span><span style="color:#80A665"> __umdInterop</span><span style="color:#666666">(</span><span style="color:#BD976A">m</span><span style="color:#666666">)</span><span style="color:#666666"> {</span><span style="color:#4D9375"> return</span><span style="color:#BD976A"> m</span><span style="color:#CB7676"> &#x26;&#x26;</span><span style="color:#BD976A"> m</span><span style="color:#666666">.</span><span style="color:#BD976A">__esModule</span><span style="color:#CB7676"> ?</span><span style="color:#BD976A"> m</span><span style="color:#CB7676"> :</span><span style="color:#BD976A"> Object</span><span style="color:#666666">.</span><span style="color:#80A665">assign</span><span style="color:#666666">({</span><span style="color:#B8A965"> default</span><span style="color:#666666">:</span><span style="color:#BD976A"> m</span><span style="color:#666666"> },</span><span style="color:#BD976A"> m</span><span style="color:#666666">);</span><span style="color:#666666"> }</span></span>
+<span class="line"><span style="color:#CB7676">  const</span><span style="color:#666666"> {</span><span style="color:#BD976A"> default</span><span style="color:#666666">:</span><span style="color:#BD976A"> React</span><span style="color:#666666"> }</span><span style="color:#666666"> =</span><span style="color:#80A665"> __umdInterop</span><span style="color:#666666">(</span><span style="color:#BD976A">__dep_0</span><span style="color:#666666">);</span></span>
+<span class="line"><span style="color:#CB7676">  const</span><span style="color:#BD976A"> __m</span><span style="color:#666666"> =</span><span style="color:#666666"> {</span><span style="color:#758575DD"> /* … */</span><span style="color:#666666"> };</span></span>
+<span class="line"><span style="color:#758575DD">  // … __r runtime …</span></span>
+<span class="line"><span style="color:#4D9375">  return</span><span style="color:#80A665"> __r</span><span style="color:#666666">(</span><span style="color:#4C9A91">0</span><span style="color:#666666">);</span></span>
+<span class="line"><span style="color:#666666">});</span></span>
+<span class="line"></span></code></pre>
+<ul>
+<li><strong>Imports</strong> — externals and shared chunks become <strong>factory parameters</strong>,
+resolved three ways: <code>require(spec)</code> (CommonJS), a <code>define([spec], …)</code>
+dependency (AMD), or <code>root[spec]</code> (browser global). Default interop is applied,
+as in CommonJS.</li>
+<li><strong>Exports</strong> — the factory <code>return</code>s the entry; the header assigns it to
+<code>module.exports</code>, the AMD module, or <code>root[&#x3C;global>]</code>.</li>
+<li><strong>Global name</strong> — derived from the entry file name (e.g. <code>main.js</code> → <code>main</code>).</li>
+<li><strong>Dynamic imports / assets</strong> — best-effort base URL: the running script’s URL
+(<code>document.currentScript.src</code>) in the browser, else <code>__filename</code>.</li>
+</ul>
+<p><strong>Limitations.</strong></p>
+<ul>
+<li><strong>Global names are literal specifiers.</strong> A browser-global dependency is looked
+up as <code>root["react"]</code>, not <code>root.React</code> — netpack has no package-name → global
+map, so the host must expose externals under their specifier name.</li>
+<li><strong>The global export name is derived, not configured.</strong> It comes from the file
+name.</li>
+<li><strong>Base-URL resolution is best-effort.</strong> Dynamic imports and asset URLs assume a
+browser <code>document.currentScript</code> or a Node <code>__filename</code>; other loaders (bare
+AMD) may not resolve them.</li>
+<li><strong>Largest envelope.</strong> The three-way adapter and interop helper add overhead
+ESM/CJS don’t have.</li>
+</ul>
+<h2 id="systemjs----format-systemjs">SystemJS — <code>--format systemjs</code></h2>
+<p>For apps loaded through the <a href="https://github.com/systemjs/systemjs">SystemJS</a>
+loader, which polyfills modules (and import maps) on older browsers.</p>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="js"><code><span class="line"><span style="color:#BD976A">System</span><span style="color:#666666">.</span><span style="color:#80A665">register</span><span style="color:#666666">([</span><span style="color:#C98A7D77">"</span><span style="color:#C98A7D">./common.4f2a.js</span><span style="color:#C98A7D77">"</span><span style="color:#666666">,</span><span style="color:#C98A7D77"> "</span><span style="color:#C98A7D">react</span><span style="color:#C98A7D77">"</span><span style="color:#666666">],</span><span style="color:#CB7676"> function</span><span style="color:#666666"> (</span><span style="color:#BD976A">_export</span><span style="color:#666666">,</span><span style="color:#BD976A"> _context</span><span style="color:#666666">)</span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#CB7676">  var</span><span style="color:#BD976A"> __dep_0</span><span style="color:#666666">,</span><span style="color:#BD976A"> __dep_1</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#4D9375">  return</span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#B8A965">    setters</span><span style="color:#666666">:</span><span style="color:#666666"> [</span></span>
+<span class="line"><span style="color:#CB7676">      function</span><span style="color:#666666"> (</span><span style="color:#BD976A">m</span><span style="color:#666666">)</span><span style="color:#666666"> {</span><span style="color:#BD976A"> __dep_0</span><span style="color:#666666"> =</span><span style="color:#BD976A"> m</span><span style="color:#666666">;</span><span style="color:#666666"> },</span></span>
+<span class="line"><span style="color:#CB7676">      function</span><span style="color:#666666"> (</span><span style="color:#BD976A">m</span><span style="color:#666666">)</span><span style="color:#666666"> {</span><span style="color:#BD976A"> __dep_1</span><span style="color:#666666"> =</span><span style="color:#BD976A"> m</span><span style="color:#666666">;</span><span style="color:#666666"> }</span></span>
+<span class="line"><span style="color:#666666">    ],</span></span>
+<span class="line"><span style="color:#80A665">    execute</span><span style="color:#666666">:</span><span style="color:#CB7676"> function</span><span style="color:#666666"> ()</span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#CB7676">      const</span><span style="color:#BD976A"> __s0</span><span style="color:#666666"> =</span><span style="color:#BD976A"> __dep_0</span><span style="color:#666666">.</span><span style="color:#BD976A">default</span><span style="color:#666666">;</span><span style="color:#758575DD">          // shared registry (default export)</span></span>
+<span class="line"><span style="color:#CB7676">      const</span><span style="color:#666666"> {</span><span style="color:#BD976A"> default</span><span style="color:#666666">:</span><span style="color:#BD976A"> React</span><span style="color:#666666"> }</span><span style="color:#666666"> =</span><span style="color:#BD976A"> __dep_1</span><span style="color:#666666">;</span><span style="color:#758575DD">    // external</span></span>
+<span class="line"><span style="color:#CB7676">      const</span><span style="color:#BD976A"> __m</span><span style="color:#666666"> =</span><span style="color:#666666"> {</span><span style="color:#758575DD"> /* … */</span><span style="color:#666666"> };</span></span>
+<span class="line"><span style="color:#758575DD">      // … __r runtime …</span></span>
+<span class="line"><span style="color:#80A665">      _export</span><span style="color:#666666">(</span><span style="color:#80A665">__r</span><span style="color:#666666">(</span><span style="color:#4C9A91">0</span><span style="color:#666666">));</span></span>
+<span class="line"><span style="color:#666666">    }</span></span>
+<span class="line"><span style="color:#666666">  };</span></span>
+<span class="line"><span style="color:#666666">});</span></span>
+<span class="line"></span></code></pre>
+<ul>
+<li><strong>Imports</strong> — every dependency is declared in the <code>System.register</code> array and
+delivered through a <strong>setter</strong>; the loader handles interop, so <code>.default</code> and
+named members are already correct.</li>
+<li><strong>Exports</strong> — published with <code>_export(&#x3C;entry>)</code>.</li>
+<li><strong>Dynamic imports</strong> — <code>_context.import(…)</code>, the loader’s dynamic import.</li>
+<li><strong>Asset URLs</strong> — resolved against <code>_context.meta.url</code>.</li>
+</ul>
+<p><strong>Limitations.</strong></p>
+<ul>
+<li><strong>Requires the SystemJS runtime.</strong> The output is inert without the loader on
+the page; it is not a standalone module.</li>
+<li><strong>Loader-specific.</strong> It targets SystemJS’s semantics rather than a platform
+standard.</li>
+</ul>
+<h2 id="externals-and-shared-chunks">Externals and shared chunks</h2>
+<p>External dependencies (see <a href="/docs/importmaps-and-externals">Import maps &#x26; externals</a>)
+stay bare in every format and are wired up the format’s way — a <code>require("react")</code>
+in CJS, a <code>define(["react"], …)</code> dependency in UMD, a setter in SystemJS, a real
+<code>import</code> in ESM. Shared chunks (<code>--shared</code>, or automatic common chunks) are
+emitted in the <em>same</em> format as the bundle that imports them, and linked the same
+way, so a CommonJS build’s shared chunks are themselves CommonJS, and so on.</p>
+<h2 id="choosing-a-format">Choosing a format</h2>
+<ul>
+<li><strong>Default to <code>esm</code>.</strong> It is the standard, produces the smallest and cleanest
+output, and is what every modern target consumes.</li>
+<li><strong><code>cjs</code></strong> when you publish for Node consumers still on <code>require()</code>.</li>
+<li><strong><code>umd</code></strong> when you ship a browser library for unknown/legacy loaders and need
+one file that “just works” via a <code>&#x3C;script></code> tag.</li>
+<li><strong><code>systemjs</code></strong> when your app is already loaded through the SystemJS loader.</li>
+</ul>  </article> <nav class="docs-toc" aria-label="On this page" data-astro-cid-xvrfupwn><div class="toc-label" data-astro-cid-xvrfupwn>On this page</div><ul data-astro-cid-xvrfupwn><li class="depth-2" data-astro-cid-xvrfupwn><a href="#esm----format-esm-default-recommended" data-astro-cid-xvrfupwn>ESM — --format esm (default, recommended)</a></li><li class="depth-2" data-astro-cid-xvrfupwn><a href="#commonjs----format-cjs" data-astro-cid-xvrfupwn>CommonJS — --format cjs</a></li><li class="depth-2" data-astro-cid-xvrfupwn><a href="#umd----format-umd" data-astro-cid-xvrfupwn>UMD — --format umd</a></li><li class="depth-2" data-astro-cid-xvrfupwn><a href="#systemjs----format-systemjs" data-astro-cid-xvrfupwn>SystemJS — --format systemjs</a></li><li class="depth-2" data-astro-cid-xvrfupwn><a href="#externals-and-shared-chunks" data-astro-cid-xvrfupwn>Externals and shared chunks</a></li><li class="depth-2" data-astro-cid-xvrfupwn><a href="#choosing-a-format" data-astro-cid-xvrfupwn>Choosing a format</a></li></ul></nav> </div>  </main> </div>   </body></html> 
