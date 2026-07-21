@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="460" height="132" viewBox="0 0 460 132" fill="none" role="img" aria-label="netpack">
+  <defs>
+    <linearGradient id="np-mark" x1="18" y1="18" x2="114" y2="114" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#8b5cf6"/>
+      <stop offset="1" stop-color="#5b21b6"/>
+    </linearGradient>
+  </defs>
+  <rect x="18" y="18" width="96" height="96" rx="24" fill="url(#np-mark)"/>
+  <text x="66" y="70" font-family="'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace" font-size="60" font-weight="800" fill="#ffffff" text-anchor="middle" dominant-baseline="central">n</text>
+  <text x="138" y="68" font-family="'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace" font-size="58" font-weight="700" fill="#7c3aed" dominant-baseline="central">netpack</text>
+</svg>

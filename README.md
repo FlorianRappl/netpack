@@ -1,12 +1,34 @@
-![netpack](./art/logo.svg)
+<div align="center">
 
-# netpack
+![netpack](./art/netpack.svg)
 
-🍭 netpack is an experiment to see if .NET written tooling can perform on an equal level to tools written in Rust or Go. Get more information at [netpack.anglevisions.com](https://netpack.anglevisions.com).
+**The fast, batteries-included bundler for the web — written in C#/.NET.**
 
-Right now netpack is not production ready and the likelihood that it works for your project is low.
+[Homepage](https://netpack.anglevisions.com) · [Documentation](./docs) · [Issues](https://github.com/FlorianRappl/netpack/issues) · [Sponsor](https://github.com/sponsors/FlorianRappl)
 
-If you like the idea and want to see this become a real thing then either support the project via code contributions or by [sponsoring me](https://github.com/sponsors/FlorianRappl) 🍻.
+</div>
+
+netpack is an experiment to see whether .NET tooling can compete with bundlers
+written in Rust or Go. Thanks to Ahead-of-Time (AoT) compilation it starts at
+native speed — no JIT to warm up, no runtime to install — while staying arguably
+more readable than Rust and more capable than Go.
+
+> [!WARNING]
+> netpack is pre-1.0 and experimental. It is **not** production ready, and the
+> chance it works end-to-end for your project today is low. If you like the idea,
+> contribute code or [sponsor the project](https://github.com/sponsors/FlorianRappl) 🍻.
+
+## Highlights
+
+- **Zero-config** — point it at an `index.html` (like Vite or Parcel) or a `.js`/`.ts` entry directly.
+- **Native startup** — an AoT-compiled CLI; competitive with esbuild and faster than rspack/Vite on the [benchmarks](#performance) below.
+- **Batteries included** — TypeScript, JSX, CSS & CSS Modules, Sass/LESS/PostCSS (incl. Tailwind), images (optimized with SkiaSharp), JSON, HTML and arbitrary assets, out of the box.
+- **Frameworks** — React (with Fast Refresh), Preact, Vue (a native SFC compiler), Svelte, Astro and vanilla.
+- **A real bundler** — tree-shaking, minification, source maps, code-splitting, a dev server with true HMR, and a bundle analyzer.
+- **Flexible output** — ESM / CommonJS / UMD / SystemJS (`--format`), web / Node / Deno targets (`--platform`), import maps, externals, shared dependencies, and Module + Native Federation.
+- **Its own toolchain** — a hand-written JavaScript/TypeScript/JSX tokenizer, parser, printer, mangler and tree-shaker in C# — no Acornima, Babel or SWC.
+
+See the [documentation](./docs) for the details behind each of these.
 
 ## Performance
 
@@ -171,9 +193,7 @@ Benchmark 1: npx rspack build --config rspack.large.mjs
 
 ## Installation
 
-Right now `netpack` is highly experimental and definitely **not** production ready.
-
-You can add `netpack` to your Node.js project via your favorite package manager, e.g.:
+Add `netpack` to your Node.js project via your favorite package manager, e.g.:
 
 ```sh
 npm i netpack --save-dev
@@ -197,7 +217,9 @@ You can start the dev server with the `serve` command:
 npx netpack serve src/index.html
 ```
 
-Right now this watches the file system - but it does not incrementally build nor does it hot-reload. Instead, it will just rebuild everything and reload the browser.
+The dev server watches the file system and rebuilds on change. It hot-reloads
+modules where it can (with React Fast Refresh when `react-refresh` is installed)
+and falls back to a full browser reload otherwise.
 
 ### Supported Architectures
 
@@ -208,6 +230,43 @@ Right now this watches the file system - but it does not incrementally build nor
 - [x] Linux ARM64 (`linux-arm64`) [npm package](https://www.npmjs.com/package/@netpack/linux-arm64)
 - [ ] MacOS x64 (`osx-x64`)
 - [x] MacOS ARM64 (`osx-arm64`) [npm package](https://www.npmjs.com/package/@netpack/osx-arm64)
+
+## Documentation
+
+Usage documentation lives in the [`docs/`](./docs) folder (and powers the docs
+site at [netpack.anglevisions.com/docs](https://netpack.anglevisions.com/docs/)):
+
+- [Getting started](./docs/getting-started.md) — entry points and the `bundle` / `serve` / `analyze` commands.
+- [React & JSX](./docs/react-and-jsx.md), [Vue](./docs/vue.md), [Astro](./docs/astro.md), [Svelte](./docs/svelte.md) — framework integrations.
+- [Styling & assets](./docs/styling-and-assets.md) and [images & assets](./docs/images-and-assets.md).
+- [Output formats](./docs/output-formats.md) and [platforms](./docs/platforms.md) — `--format` and `--platform`.
+- [Import maps & externals](./docs/importmaps-and-externals.md), [Module Federation](./docs/module-federation.md), [Native Federation](./docs/native-federation.md).
+- [Build-time code generation](./docs/codegen.md) and [other features](./docs/other-features.md).
+
+## Repository structure
+
+```
+src/                      the .NET solution (NetPack.sln)
+  NetPack/                the bundler and CLI
+    Syntax/               hand-written JS/TS/JSX tokenizer, parser, printer, mangler, tree-shaker
+    Graph/                module graph, resolution, bundles, output formats, platforms
+    Commands/             the bundle / serve / analyze CLI verbs
+    Assets/               image optimization (SkiaSharp) and other asset handling
+    Server/               the dev server (watch + reload/HMR)
+    NodeJs.cs             Node IPC bridge for JS-only tools (Sass, LESS, PostCSS, Svelte)
+  NetPack.Tests/          the xUnit test suite
+  npm/                    npm packaging: the `netpack` wrapper and per-platform `@netpack/*` binaries
+  resources/              embedded runtime assets (bundle analyzer UI, federation remote)
+docs/                     user documentation (source for the docs site)
+www/                      the marketing site (www/home) and docs site (www/docs), both Astro
+data/                     example projects used for manual testing and benchmarks
+art/                      logo and brand assets
+.github/workflows/        CI (build + test) and the release pipeline
+```
+
+netpack compiles to a single native, AoT-published binary per platform; the npm
+`netpack` package is a thin wrapper that picks the right `@netpack/<platform>`
+binary at install time.
 
 ## Overview
 
@@ -241,47 +300,10 @@ The following items are features or topics that are relevant for bundlers - netp
 - [x] Vanilla
 - [x] Vue (single-file components; see notes below)
 
-#### Vue single-file components
-
-`.vue` files are compiled natively (no Node round-trip). AngleSharp — already used
-for HTML — splits the SFC into its top-level `<template>`, `<script>` and `<style>`
-blocks, which are assembled into a virtual JS module: the `<script>` default export
-becomes the component, the template is attached as a string, and `<style>` blocks are
-injected at runtime. Supported today:
-
-- `<template>`, classic `<script>`, `<script setup>`, and one or more `<style>` blocks (JS or `lang="ts"`).
-- **Build-time template precompilation**: templates are compiled to a native render function (`h`-based), so the runtime template compiler is *not* required. Covered: text interpolation, `v-bind`/`:`, `v-on`/`@`, `v-if`/`v-else-if`/`v-else`, `v-for`, `v-show`, `v-html`, `v-text`, `v-model` (native and component), `key`/`ref`, components, default and named slots, and `<slot>` outlets. Any construct outside this subset transparently falls back to Vue's runtime compiler (the raw template string).
-- `<script setup>`: imports are hoisted, top-level bindings are exposed to the template, and the `defineProps` / `withDefaults` / `defineEmits` / `defineExpose` / `defineOptions` macros are expanded. A classic `<script>` alongside it contributes base options. Imported components used in the template are auto-registered so `resolveComponent` finds them.
-- `<style scoped>` (adds a `data-v-*` scope id and rewrites selectors) and `<style lang="scss|less">` (when SASS/LESS is enabled).
-- `src` attributes on any block (`<template src="./tpl.html">`, `<script src>`, `<style src>`).
-
-Notes / not yet supported: `v-on`/`v-bind` modifiers, `v-model` modifiers, custom
-directives, `<component :is>`, type-only props (`defineProps<T>()`), `defineModel` and
-`<style module>` fall back to runtime compilation or are follow-ups. Because the
-template is parsed as HTML, use kebab-case for child components (`<my-widget>`).
-
-#### Astro components
-
-`.astro` files are compiled natively too. A `---`-fenced frontmatter block is parsed
-as a JS/TS module (imports, top-level `await`, functions, classes — anything valid at
-module scope); the template below it is parsed **as JSX**, not HTML — deliberately,
-since JSX is case-sensitive (`<Layout>` vs `<layout>`) in a way HTML parsing isn't,
-which is exactly the distinction Astro's own component-vs-host-element syntax needs.
-The whole file compiles down to a plain JS module:
-
-```js
-export default async function render(props, slots) {
-  // ...frontmatter, re-executed on every call...
-  return html`...`;
-}
-```
-
-Frontmatter imports are hoisted to the module's top level (so `import Layout from
-'./Layout.astro'` resolves like any other dependency); everything else in the
-frontmatter is relocated into `render`'s body. See
-[Astro components](./docs/astro.md) for the full picture — template expressions,
-components, spread/boolean attributes, and what's deliberately not implemented yet
-(hydration directives, `<style>`/`<script>` blocks in the template, named slots).
+**Vue** and **Astro** components are compiled natively (no Node round-trip);
+**Svelte** is compiled by the installed Svelte compiler over the Node bridge. See
+[Vue](./docs/vue.md), [Astro](./docs/astro.md) and [Svelte](./docs/svelte.md) for
+exactly what's supported and the current limitations.
 
 ### Bundler Basics
 
