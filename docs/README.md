@@ -43,6 +43,9 @@ Usage docs for netpack, in addition to the feature overview in the
 - **[Output formats](./output-formats.md)** — emitting ESM (default),
   CommonJS, UMD or SystemJS with `--format`, their trade-offs, and why ESM is
   the best choice.
+- **[Platforms](./platforms.md)** — targeting web, Node or Deno with
+  `--platform`: which modules stay external as runtime built-ins and how entry
+  points are chosen.
 - **[Other features](./other-features.md)** — tree shaking, source maps,
   minification, and the bundle analyzer.
 

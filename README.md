@@ -302,7 +302,7 @@ components, spread/boolean attributes, and what's deliberately not implemented y
 - [x] Native Federation support (`federation.json` with `"kind": "native"`)
 - [x] React Fast Refresh support (dev server; requires `react-refresh` installed)
 - [x] Custom JSX factory
-- [ ] Platforms (web, npm, deno)
+- [x] Platforms (web, node, deno; `--platform`)
 - [x] Tree shaking
 - [x] Other formats (esm, cjs, umd, systemjs; `--format`)
 - [ ] Presets / configuration system

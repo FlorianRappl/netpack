@@ -10,6 +10,10 @@ public sealed class BundlerContext(string root, FeatureFlags features, ModuleIdM
 
     public FeatureFlags Features => features;
 
+    /// <summary>The target runtime, which decides the built-in modules that stay
+    /// external and how dependency entry points are chosen. Defaults to the web.</summary>
+    internal PlatformTarget Platform { get; set; } = new WebPlatform();
+
     /// <summary>
     /// True when React Fast Refresh instrumentation is enabled for this build
     /// (dev server + <c>react-refresh</c> resolvable).

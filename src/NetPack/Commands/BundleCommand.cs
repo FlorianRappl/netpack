@@ -29,8 +29,11 @@ public class BundleCommand : ICommand
     [Option("shared", HelpText = "Indicates if a dependency should be shared.")]
     public IEnumerable<string> Shared { get; set; } = [];
 
-    [Option("format", Default = "esm", HelpText = "The output module format (esm, cjs, umd, systemjs). Currently only esm is implemented.")]
+    [Option("format", Default = "esm", HelpText = "The output module format (esm, cjs, umd, systemjs).")]
     public string Format { get; set; } = "esm";
+
+    [Option("platform", Default = "web", HelpText = "The target runtime (web, node, deno). Decides which modules stay external as runtime built-ins.")]
+    public string Platform { get; set; } = "web";
 
     private static ModuleFormat ParseFormat(string format) => format.ToLowerInvariant() switch
     {
@@ -39,6 +42,14 @@ public class BundleCommand : ICommand
         "umd" => ModuleFormat.Umd,
         "system" or "systemjs" => ModuleFormat.SystemJs,
         _ => throw new InvalidOperationException($"Unknown output format '{format}'. Available: esm, cjs, umd, systemjs."),
+    };
+
+    private static NetPack.Graph.Platform ParsePlatform(string platform) => platform.ToLowerInvariant() switch
+    {
+        "web" or "browser" => NetPack.Graph.Platform.Web,
+        "node" => NetPack.Graph.Platform.Node,
+        "deno" => NetPack.Graph.Platform.Deno,
+        _ => throw new InvalidOperationException($"Unknown platform '{platform}'. Available: web, node, deno."),
     };
 
     public async Task Run()
@@ -58,7 +69,7 @@ public class BundleCommand : ICommand
         var watch = Stopwatch.StartNew();
 
         Console.WriteLine("[netpack] Bundling '{0}' ...", FilePath);
-        using var graph = await Traverse.From(file, Externals, Shared);
+        using var graph = await Traverse.From(file, Externals, Shared, platform: ParsePlatform(Platform));
         var result = new DiskResultWriter(graph.Context, outdir);
         var options = new OutputOptions
         {

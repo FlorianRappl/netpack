@@ -4,7 +4,7 @@ using System.Text.Json;
 
 using static NetPack.Helpers;
 
-public sealed class Dependency(string location, JsonElement meta)
+public sealed class Dependency(string location, JsonElement meta, bool useBrowserField = true)
 {
     private readonly JsonElement sideEffects = meta.TryGetProperty("sideEffects", out var element) ? element : default;
 
@@ -13,8 +13,8 @@ public sealed class Dependency(string location, JsonElement meta)
     public string Name => meta.GetProperty("name").GetString()!;
 
     public string Version => meta.GetProperty("version").GetString()!;
-    
-    public string Entry => CombinePath(Path.GetDirectoryName(location)!, GetEntry(meta));
+
+    public string Entry => CombinePath(Path.GetDirectoryName(location)!, GetEntry(meta, useBrowserField));
 
     public bool HasSideEffects(string file)
     {
@@ -51,9 +51,9 @@ public sealed class Dependency(string location, JsonElement meta)
         return true;
     }
 
-    private static string GetEntry(JsonElement jsonObj)
+    private static string GetEntry(JsonElement jsonObj, bool useBrowserField)
     {
-        if (jsonObj.TryGetProperty("browser", out var browserProperty) && browserProperty.ValueKind == JsonValueKind.String)
+        if (useBrowserField && jsonObj.TryGetProperty("browser", out var browserProperty) && browserProperty.ValueKind == JsonValueKind.String)
         {
             return browserProperty.GetString()!;
         }

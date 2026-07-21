@@ -57,12 +57,13 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
 
     public static Task<Traverse> From(string path) => From(path, [], []);
 
-    public static async Task<Traverse> From(string path, IEnumerable<string> externals, IEnumerable<string> shared, ModuleIdMap? moduleIds = null, bool devServer = false)
+    public static async Task<Traverse> From(string path, IEnumerable<string> externals, IEnumerable<string> shared, ModuleIdMap? moduleIds = null, bool devServer = false, Platform platform = Platform.Web)
     {
         var root = Path.GetDirectoryName(path)!;
         var packageRoot = FindRoot(root);
         var features = await FindFeatures(packageRoot);
         var traverse = new Traverse(packageRoot ?? root, features, moduleIds) { _devServer = devServer };
+        traverse.Context.Platform = PlatformTargets.For(platform);
         var (jsxFactory, jsxFragmentFactory) = await FindJsxFactories(packageRoot);
         var (defaultJsxFactory, defaultJsxFragmentFactory, defaultJsxImportModule, defaultJsxImportIdentifier) = await FindDefaultJsxRuntime(packageRoot);
         traverse.Context.JsxFactory = jsxFactory;
@@ -452,7 +453,7 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
             var jsonDoc = await JsonDocument.ParseAsync(packageJson);
             var jsonObj = jsonDoc.RootElement;
 
-            dependency = new Dependency(packageJsonPath, jsonObj);
+            dependency = new Dependency(packageJsonPath, jsonObj, _context.Platform.UseBrowserField);
 
             if (!_context.Dependencies.Any(m => m.Location == packageJsonPath))
             {
@@ -471,6 +472,13 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
         }
 
         if (_context.Externals.Contains(name))
+        {
+            return AddExternalReference(parent, name);
+        }
+
+        // Runtime built-ins for the target platform (e.g. `node:fs` / `fs` on Node,
+        // `npm:`/`jsr:` on Deno) are provided by the runtime — keep them external.
+        if (_context.Platform.IsBuiltin(name))
         {
             return AddExternalReference(parent, name);
         }
