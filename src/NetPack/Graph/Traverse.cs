@@ -678,6 +678,24 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
     }
 
     /// <summary>
+    /// Compiles a Svelte component (.svelte) by handing it to the Svelte compiler
+    /// over the Node bridge (<see cref="NodeJs"/>) — the same IPC used for Sass /
+    /// LESS / PostCSS. The compiler emits an ES module that imports Svelte's runtime
+    /// (bundled normally) and injects the component's styles at runtime, so the
+    /// result is parsed like any other JavaScript module. Requires <c>svelte</c> to
+    /// be installed in the project.
+    /// </summary>
+    private async Task ProcessSvelte(Node current, byte[] bytes, Bundle bundle)
+    {
+        var content = Encoding.UTF8.GetString(bytes);
+        var response = await _njs.RunCommand("svelte", content, current.FileName);
+        var result = response.Deserialize(SourceGenerationContext.Default.SvelteCommandResult);
+        var source = result?.Js ?? "";
+        var fragment = await ParseJsModule(bundle, current, source);
+        _context.JsFragments.TryAdd(current, fragment);
+    }
+
+    /// <summary>
     /// Compiles a Vue single-file component (.vue) into a virtual JavaScript module.
     /// AngleSharp splits the file into its top-level &lt;template&gt;, &lt;script&gt;
     /// and &lt;style&gt; blocks; <see cref="VueSfc"/> then assembles a module that
@@ -1194,6 +1212,13 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
         if (node.Extension == ".astro")
         {
             await ProcessAstro(node, bytes, bundle);
+            return node;
+        }
+
+        // Svelte components are compiled by the Svelte compiler over the Node bridge.
+        if (node.Extension == ".svelte")
+        {
+            await ProcessSvelte(node, bytes, bundle);
             return node;
         }
 

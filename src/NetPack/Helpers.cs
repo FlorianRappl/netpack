@@ -23,6 +23,7 @@ public static class Helpers
         { ".js", ".js" },
         { ".cjs", ".js" },
         { ".vue", ".js" },
+        { ".svelte", ".js" },
         { ".astro", ".js" },
         { ".html", ".html" },
         { ".htm", ".html" },

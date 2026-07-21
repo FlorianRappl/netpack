@@ -40,6 +40,17 @@ const commands = {
     const instance = postcss(config.plugins);
     return instance.process(content, { to: file, from: file });
   },
+  svelte: (content, file) => {
+    const { compile, VERSION } = require('svelte/compiler');
+    const major = parseInt(VERSION, 10);
+    const base = basename(file).replace(/\.svelte$/, '').replace(/[^A-Za-z0-9_$]/g, '_') || 'Component';
+    const name = /^[A-Z]/.test(base) ? base : 'C' + base;
+    const options = major >= 5
+      ? { filename: file, name, generate: 'client', css: 'injected', dev: false }
+      : { filename: file, name, generate: 'dom', format: 'esm', css: 'injected', dev: false };
+    const result = compile(content, options);
+    return { js: result.js.code, css: (result.css && result.css.code) || '' };
+  },
   codegen: async (file) => {
     const context = { name: file, options: {}, addDependency() {} };
     const res = await require(file).call(context);
@@ -48,14 +59,21 @@ const commands = {
 };
 
 rl.on('line', async (data) => {
-  const cmd = JSON.parse(data);
-  const command = commands[cmd.type];
-  const result = await command(...cmd.args);
-  
-  if (result) {
-    client.write(JSON.stringify(result));
-    client.write('\n');
+  let result = null;
+  let type = '?';
+  try {
+    const cmd = JSON.parse(data);
+    type = cmd.type;
+    const command = commands[cmd.type];
+    if (!command) throw new Error('unknown command: ' + cmd.type);
+    result = await command(...cmd.args);
+  } catch (err) {
+    console.error('[netpack] ' + type + ' command failed: ' + (err && err.stack || err));
+    result = null;
   }
+  // Always respond so the bundler never blocks waiting for a line.
+  client.write(JSON.stringify(result === undefined ? null : result));
+  client.write('\n');
 });
 ";
 

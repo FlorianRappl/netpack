@@ -237,7 +237,7 @@ The following items are features or topics that are relevant for bundlers - netp
 - [x] React
 - [x] Preact
 - [ ] Solid
-- [ ] Svelte
+- [x] Svelte (requires `svelte` installed; compiled via the Node bridge)
 - [x] Vanilla
 - [x] Vue (single-file components; see notes below)
 

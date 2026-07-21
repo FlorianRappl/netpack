@@ -19,6 +19,9 @@ Usage docs for netpack, in addition to the feature overview in the
 - **[Astro components](./astro.md)** — native `.astro` compilation:
   frontmatter execution, the JSX-parsed template, components and slots, and
   the current scope (no hydration, no build-time static HTML generation yet).
+- **[Svelte components](./svelte.md)** — `.svelte` compilation via the Svelte
+  compiler over the Node bridge (requires `svelte` installed), with runtime
+  style injection.
 - **[Module Federation](./module-federation.md)** — exposing and consuming
   federated modules via a `federation.json` entry point.
 - **[Native Federation](./native-federation.md)** — the same `federation.json`

@@ -16,3 +16,14 @@ public sealed class SassCommandResult
     [JsonPropertyName("css")]
     public string? Css { get; set; }
 }
+
+public sealed class SvelteCommandResult
+{
+    /// <summary>The compiled ES module for the component.</summary>
+    [JsonPropertyName("js")]
+    public string? Js { get; set; }
+
+    /// <summary>Extracted CSS, when not injected by the compiled JS.</summary>
+    [JsonPropertyName("css")]
+    public string? Css { get; set; }
+}

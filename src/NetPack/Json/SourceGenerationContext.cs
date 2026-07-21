@@ -27,6 +27,7 @@ using NetPack.Graph;
 [JsonSerializable(typeof(RemoteEntry))]
 [JsonSerializable(typeof(CommandDefinition))]
 [JsonSerializable(typeof(SassCommandResult))]
+[JsonSerializable(typeof(SvelteCommandResult))]
 [JsonSerializable(typeof(Dictionary<string, string>))]
 [JsonSerializable(typeof(List<string>))]
 [JsonSerializable(typeof(string))]
