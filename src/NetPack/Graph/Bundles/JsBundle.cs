@@ -9,7 +9,11 @@ using Ast = NetPack.Syntax.Ast;
 using GraphNode = NetPack.Graph.Node;
 
 /// <summary>
-/// Bundles a JavaScript module graph into a single ES module.
+/// Bundles a JavaScript module graph into a single module. The linkage at the
+/// module boundary — how the bundle imports its shared siblings and externals,
+/// exports the entry/registry, resolves dynamic imports and asset URLs, and is
+/// wrapped — is delegated to a <see cref="JsModuleFormat"/> chosen from
+/// <see cref="OutputOptions.Format"/> (ESM by default).
 ///
 /// Every module is lowered into a factory <c>(module, exports, require) =&gt; { … }</c>
 /// stored in a registry keyed by a compact integer id. A tiny <c>require</c>
@@ -45,7 +49,8 @@ public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags
     {
         SourceMap = null;
 
-        var transpiler = new JsxToJavaScriptTranspiler(this, options.IsReloading);
+        var format = JsModuleFormats.For(options.Format);
+        var transpiler = new JsxToJavaScriptTranspiler(this, options.IsReloading, format);
         var ast = transpiler.Transpile();
 
         if (options.IsOptimizing)
@@ -108,10 +113,11 @@ public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags
 
     private static Ast.StringLiteral MakeString(string text) => new(text, text);
 
-    internal sealed class JsxToJavaScriptTranspiler(JsBundle bundle, bool reloading) : Ast.AstRewriter
+    internal sealed class JsxToJavaScriptTranspiler(JsBundle bundle, bool reloading, JsModuleFormat format) : Ast.AstRewriter
     {
         private readonly JsBundle _bundle = bundle;
         private readonly bool _reloading = reloading;
+        private readonly JsModuleFormat _format = format;
         private JsFragment? _current;
         private bool _currentUsesJsx;
 
@@ -132,9 +138,7 @@ public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags
             foreach (var reference in referenced)
             {
                 var name = $"__s{index++}";
-                imports.Add(new Ast.ImportDeclaration(
-                    new List<Ast.ImportSpecifierBase> { new Ast.ImportDefaultSpecifier(new Ast.Identifier(name)) },
-                    MakeString($"./{reference.GetFileName()}"), false));
+                imports.Add(_format.ImportSharedBundle(new Ast.Identifier(name), reference.GetFileName()));
                 sharedNames.Add(name);
             }
 
@@ -157,11 +161,12 @@ public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags
                     {
                         // erased
                     }
-                    else if (statement is Ast.ImportDeclaration)
+                    else if (statement is Ast.ImportDeclaration importDeclaration)
                     {
                         // Hoist real ESM imports (e.g. externals) to the bundle top;
-                        // factories close over them.
-                        imports.Add(statement);
+                        // factories close over them. The format decides how the
+                        // import is expressed.
+                        imports.Add(_format.RewriteExternalImport(importDeclaration));
                     }
                     else if (statement is Ast.ExportNamedDeclaration decl && decl.Declaration is not null)
                     {
@@ -211,11 +216,14 @@ public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags
 
             if (_bundle.IsShared)
             {
-                trailer.Add(new Ast.ExportDefaultDeclaration(new Ast.Identifier(Registry)));
+                trailer.AddRange(_format.ExportRegistry(new Ast.Identifier(Registry)));
             }
             else if (fragments.TryGetValue(_bundle.Root, out var rootFragment))
             {
-                BuildRootExports(rootFragment, trailer);
+                var rootRequire = new Ast.CallExpression(
+                    new Ast.Identifier(Require),
+                    new List<Ast.Expression> { IdLiteral(GetId(rootFragment.Root)) }, false);
+                trailer.AddRange(_format.ExportRoot(rootRequire, rootFragment.ExportNames));
             }
 
             var runtime = BuildRuntime(sharedNames);
@@ -232,7 +240,8 @@ public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags
             all.Add(registry);
             all.AddRange(runtime);
             all.AddRange(trailer);
-            return new Ast.SourceFile(_bundle.Root.FileName, all, System.Array.Empty<Diagnostic>());
+            var module = new Ast.SourceFile(_bundle.Root.FileName, all, System.Array.Empty<Diagnostic>());
+            return _format.Wrap(module);
         }
 
         private int GetId(GraphNode node) => _bundle._context.GetModuleId(node);
@@ -268,51 +277,6 @@ public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags
             var options = new ParserOptions { Tolerant = true, Jsx = false, TypeScript = false };
             var module = Parser.ParseModule(source, "netpack:runtime", options);
             return new List<Ast.Statement>(module.Body);
-        }
-
-        private void BuildRootExports(JsFragment fragment, List<Ast.Statement> trailer)
-        {
-            var id = GetId(fragment.Root);
-            var call = new Ast.CallExpression(new Ast.Identifier(Require), new List<Ast.Expression> { IdLiteral(id) }, false);
-            var exportNames = fragment.ExportNames;
-
-            if (exportNames.Length == 0)
-            {
-                trailer.Add(new Ast.ExportDefaultDeclaration(call));
-                return;
-            }
-
-            var offset = 0;
-            // A fresh node per bundle (bundles are stringified/mangled in parallel,
-            // so a shared mutable Identifier would be raced across them).
-            var defaultLocal = new Ast.Identifier("_default");
-            var properties = new List<Ast.Node>();
-            foreach (var m in exportNames)
-            {
-                properties.Add(m == "default"
-                    ? new Ast.Property(new Ast.Identifier(m), defaultLocal, Ast.PropertyKind.Init, false, false, false)
-                    : new Ast.Property(new Ast.Identifier(m), new Ast.Identifier(m), Ast.PropertyKind.Init, false, true, false));
-            }
-
-            trailer.Add(new Ast.VariableStatement(Ast.VariableKind.Const, new List<Ast.VariableDeclarator>
-            {
-                new Ast.VariableDeclarator(new Ast.ObjectExpression(properties), call),
-            }));
-
-            if (exportNames.Contains("default"))
-            {
-                offset = 1;
-                trailer.Add(new Ast.ExportDefaultDeclaration(defaultLocal));
-            }
-
-            if (exportNames.Length > offset)
-            {
-                var names = exportNames
-                    .Where(m => m != "default")
-                    .Select(m => new Ast.ExportSpecifier(new Ast.Identifier(m), new Ast.Identifier(m), false))
-                    .ToList();
-                trailer.Add(new Ast.ExportNamedDeclaration(null, names, null, false));
-            }
         }
 
         private static Ast.Parameter Param(Ast.Identifier id) => new(id, null, false);
@@ -353,7 +317,7 @@ public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags
             if (_current?.Replacements.TryGetValue(node, out var referenceNode) ?? false)
             {
                 var reference = _bundle.GetReference(referenceNode);
-                return new Ast.ImportExpression(MakeAutoReference(reference));
+                return _format.DynamicImport(_format.AutoReference(reference));
             }
 
             return base.VisitImportExpression(node);
@@ -383,7 +347,7 @@ public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags
                 {
                     var local = specifier.Local;
                     var file = asset.GetFileName();
-                    var declarator = new Ast.VariableDeclarator(local, MakeAutoReference(file));
+                    var declarator = new Ast.VariableDeclarator(local, _format.AutoReference(file));
                     return new Ast.VariableStatement(Ast.VariableKind.Const, new List<Ast.VariableDeclarator> { declarator });
                 }
 
@@ -526,16 +490,6 @@ public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags
         private static Ast.CallExpression RequireCall(int id)
             => new(new Ast.Identifier("require"), new List<Ast.Expression> { IdLiteral(id) }, false);
 
-        private static Ast.MemberExpression MakeAutoReference(string reference)
-        {
-            var import = new Ast.Identifier("import");
-            var importMeta = new Ast.MemberExpression(import, new Ast.Identifier("meta"), false, false);
-            var importMetaUrl = new Ast.MemberExpression(importMeta, new Ast.Identifier("url"), false, false);
-            var urlParse = new Ast.MemberExpression(new Ast.Identifier("URL"), new Ast.Identifier("parse"), false, false);
-            var relative = new Ast.CallExpression(urlParse, new List<Ast.Expression> { MakeString($"./{reference}"), importMetaUrl }, false);
-            return new Ast.MemberExpression(relative, new Ast.Identifier("href"), false, false);
-        }
-
         protected override Ast.Node VisitCallExpression(Ast.CallExpression node)
         {
             if (node.Callee is Ast.Identifier ident && node.Arguments.Count == 1 && ident.Name == "require" &&
@@ -544,7 +498,7 @@ public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags
                 if (_bundle._context.Assets.TryGetValue(reference, out var asset))
                 {
                     var file = asset.GetFileName();
-                    return MakeAutoReference(file);
+                    return _format.AutoReference(file);
                 }
 
                 return new Ast.CallExpression(node.Callee, new List<Ast.Expression> { IdLiteral(GetId(reference)) }, false);

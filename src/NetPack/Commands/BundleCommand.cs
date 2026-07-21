@@ -29,6 +29,18 @@ public class BundleCommand : ICommand
     [Option("shared", HelpText = "Indicates if a dependency should be shared.")]
     public IEnumerable<string> Shared { get; set; } = [];
 
+    [Option("format", Default = "esm", HelpText = "The output module format (esm, cjs, umd, systemjs). Currently only esm is implemented.")]
+    public string Format { get; set; } = "esm";
+
+    private static ModuleFormat ParseFormat(string format) => format.ToLowerInvariant() switch
+    {
+        "esm" or "es" or "module" => ModuleFormat.Esm,
+        "cjs" or "commonjs" => ModuleFormat.CommonJs,
+        "umd" => ModuleFormat.Umd,
+        "system" or "systemjs" => ModuleFormat.SystemJs,
+        _ => throw new InvalidOperationException($"Unknown output format '{format}'. Available: esm, cjs, umd, systemjs."),
+    };
+
     public async Task Run()
     {
         if (string.IsNullOrEmpty(FilePath))
@@ -53,6 +65,7 @@ public class BundleCommand : ICommand
             IsOptimizing = Minify,
             IsReloading = false,
             WithSourceMaps = SourceMap,
+            Format = ParseFormat(Format),
         };
 
         if (Clean && Directory.Exists(outdir))
