@@ -33,6 +33,63 @@ npx netpack bundle src/index.html --minify
 Optimizes JS, CSS and the HTML shell for size. `bundle`'s summary table
 shows the effect directly — compare a build with and without `--minify`.
 
+## Compile-time constants (`--define`)
+
+Replaces a global identifier or member expression with a constant expression
+before parsing — the value is inlined, so dead branches tree-shake away.
+
+```sh
+npx netpack bundle src/index.html --define __VERSION__=\"1.4.0\" --define DEBUG=false
+```
+
+The replacement text must be valid JavaScript, so a string constant keeps its
+quotes (`--define API=\"/v2\"`). `process.env.NODE_ENV` is defined for you
+(`development` under `serve`, `production` for an optimized build); a `--define`
+of your own overrides it. Both `bundle` and `serve` accept the flag, repeatably.
+
+## Import aliases (`--alias`)
+
+Rewrites an import specifier to another package or a local file.
+
+```sh
+npx netpack bundle src/index.html --alias react=preact/compat --alias @=./src
+```
+
+A bare target (`preact/compat`) is resolved like any dependency; a path target
+(`./src`) is resolved from the working directory. Matching is on the specifier,
+so `import "@"` picks up the alias.
+
+## Loaders (`--loader`)
+
+Overrides how a file extension is turned into a module, replacing the built-in
+handling.
+
+```sh
+npx netpack bundle src/index.html --loader .svg=text --loader .frag=text
+```
+
+Available loaders: `js`, `jsx`, `ts`, `tsx`, `json`, `css`, `text` (import the
+file's contents as a string), `base64`, `dataurl` (inline as a `data:` URI),
+`file`/`copy` (emit the file and import its URL), and `empty`. The
+inline loaders (`text`/`base64`/`dataurl`/`empty`) produce a JS module, so they
+apply to files imported from JavaScript.
+
+## Cache-busting file names (`--entry-names`)
+
+Adds a content hash to emitted bundle names so they can be served with a
+long-lived cache. References from the HTML entry (and between bundles) are
+rewritten to the hashed names automatically.
+
+```sh
+npx netpack bundle src/index.html --entry-names [name]-[hash]
+```
+
+The template understands `[name]` and `[hash]`; the default is `[name]` (no
+hash). The entry HTML document keeps its own name so it stays linkable.
+Imported assets are content-hashed already, independently of this flag. The hash
+reflects each bundle's own contents, so a change confined to a shared bundle
+re-hashes that bundle but not the entries that import it.
+
 ## Watch mode & HMR
 
 `netpack serve` watches the filesystem and recompiles on every change with

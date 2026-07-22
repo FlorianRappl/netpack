@@ -288,6 +288,7 @@ The following items are features or topics that are relevant for bundlers - netp
 - [x] Handle HTML
 - [x] Handle JSON
 - [x] Handle codegen
+- [x] Handle custom file types with loaders
 
 ### Frameworks
 
@@ -333,7 +334,4 @@ exactly what's supported and the current limitations.
 
 Integration ideas / explorations:
 
-- [Evaluate SASS from its official lib](https://github.com/Taritsyn/LibSassHost)
-- [Port Acornima to support streaming + TypeScript](https://github.com/adams85/acornima/)
 - [Make native Node.js module using Microsoft.JavaScript.NodeApi](https://microsoft.github.io/node-api-dotnet/)
-- [TypeScript only features](https://www.totaltypescript.com/books/total-typescript-essentials/typescript-only-features)
