@@ -65,6 +65,14 @@ class JsVisitor(Bundle bundle, GraphNode current, Func<Bundle?, GraphNode, strin
 
     protected override AstNode VisitImportDeclaration(ImportDeclaration node)
     {
+        // `import type ...` has no runtime module to load — it is erased at print
+        // time, so it must not be resolved or bundled (mirrors the Astro/Vue SFC
+        // handling of type-only imports).
+        if (node.TypeOnly)
+        {
+            return base.VisitImportDeclaration(node);
+        }
+
         _elements.Add(node);
         // A bare import can request an image variant via a query string, e.g.
         // `import img from './logo.png?width=200&height=100'` — parsed centrally
@@ -82,6 +90,13 @@ class JsVisitor(Bundle bundle, GraphNode current, Func<Bundle?, GraphNode, strin
 
     protected override AstNode VisitExportNamedDeclaration(ExportNamedDeclaration node)
     {
+        // `export type { ... }` (optionally `from '...'`) is type-only — no runtime
+        // re-export, no module to resolve.
+        if (node.TypeOnly)
+        {
+            return base.VisitExportNamedDeclaration(node);
+        }
+
         if (node.Source is not null)
         {
             _elements.Add(node);

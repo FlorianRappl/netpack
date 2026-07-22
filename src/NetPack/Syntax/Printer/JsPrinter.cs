@@ -263,8 +263,14 @@ public sealed class JsPrinter
                 Space();
                 PrintStatement(s.Body);
                 break;
+            case ImportDeclaration s when s.TypeOnly:
+                // `import type ...` — type-only, erased entirely.
+                break;
             case ImportDeclaration s:
                 PrintImportDeclaration(s);
+                break;
+            case ExportNamedDeclaration s when s.TypeOnly:
+                // `export type { ... }` — type-only, erased entirely.
                 break;
             case ExportNamedDeclaration s:
                 PrintExportNamed(s);
@@ -1023,19 +1029,28 @@ public sealed class JsPrinter
         Space();
         Write("=>");
         Space();
-        if (e.Body is BlockStatement block)
+
+        // Unwrap any redundant parentheses the source placed around the body; we
+        // re-add them below only where they are semantically required.
+        var body = e.Body;
+        while (body is ParenthesizedExpression paren)
+        {
+            body = paren.Expression;
+        }
+
+        if (body is BlockStatement block)
         {
             PrintBlock(block);
         }
-        else if (e.Body is ObjectExpression obj)
+        else if (body is Expression expr)
         {
-            Write('(');
-            PrintObject(obj);
-            Write(')');
-        }
-        else if (e.Body is Expression expr)
-        {
+            // A concise body that begins with `{` (an object literal, or a larger
+            // expression starting with one) must be parenthesized, otherwise it is
+            // parsed as a block statement — `() => ({ a: 1 })`, not `() => { a: 1 }`.
+            var needsParens = StartsWithProblematicToken(expr);
+            if (needsParens) Write('(');
             PrintExpression(expr, Prec.Assignment);
+            if (needsParens) Write(')');
         }
     }
 
