@@ -1210,7 +1210,9 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
         _context.JsFragments.TryAdd(current, fragment);
     }
 
-    private static string JsonString(string value) => JsonSerializer.Serialize(value);
+    // Uses the source-generated type info (not the reflection-based overload) so
+    // the AoT build stays trim/native-AoT safe.
+    private static string JsonString(string value) => JsonSerializer.Serialize(value, SourceGenerationContext.Default.String);
 
     private static string GetMimeType(string extension) => extension.ToLowerInvariant() switch
     {

@@ -12,6 +12,14 @@
     <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
     <EnableRequestDelegateGenerator>true</EnableRequestDelegateGenerator>
     <InterceptorsNamespaces>$(InterceptorsNamespaces);Microsoft.AspNetCore.Http.Generated</InterceptorsNamespaces>
+    <!-- IL2104 / IL3053 are the per-assembly roll-up warnings the linker emits for
+         a *referenced* dependency (here CommandLineParser). We only use that
+         library's non-reflection parsing path, which works under native AOT.
+         These two codes are only ever raised for pre-compiled dependency
+         assemblies, so suppressing them silences the third-party noise while
+         netpack's own source still reports its per-site trim/AOT warnings
+         (IL2026, IL3050, IL2075, …). -->
+    <NoWarn>$(NoWarn);IL2104;IL3053</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
