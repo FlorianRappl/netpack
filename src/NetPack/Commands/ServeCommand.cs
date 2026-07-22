@@ -41,11 +41,23 @@ public class ServeCommand : ICommand
     [Option("shared", HelpText = "Indicates if a dependency should be shared.")]
     public IEnumerable<string> Shared { get; set; } = [];
 
+    [Option("define", HelpText = "Replace a global identifier with a constant expression, e.g. --define process.env.NODE_ENV=\"production\".")]
+    public IEnumerable<string> Define { get; set; } = [];
+
+    [Option("alias", HelpText = "Rewrite an import specifier, e.g. --alias react=preact/compat or --alias @=./src.")]
+    public IEnumerable<string> Alias { get; set; } = [];
+
+    [Option("loader", HelpText = "Override how a file extension is handled, e.g. --loader .svg=text.")]
+    public IEnumerable<string> Loader { get; set; } = [];
+
     private async Task<(MemoryResultWriter Writer, Dictionary<int, string> Factories)> Compile()
     {
         var file = Path.Combine(Environment.CurrentDirectory, FilePath);
+        var defines = BundleCommand.ParseKeyValues(Define, "define");
+        var aliases = BundleCommand.ParseKeyValues(Alias, "alias");
+        var loaders = BundleCommand.ParseKeyValues(Loader, "loader");
         Console.WriteLine("[netpack] Starting build ...");
-        using var graph = await Traverse.From(file, Externals, Shared, _moduleIds, devServer: true);
+        using var graph = await Traverse.From(file, Externals, Shared, _moduleIds, devServer: true, defines: defines, aliases: aliases, loaders: loaders);
         var compilation = new MemoryResultWriter(graph.Context);
         var options = new OutputOptions
         {

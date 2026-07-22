@@ -22,10 +22,6 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
     private readonly NodeJs _njs = new(root);
     private bool _devServer;
 
-    // The dev server builds in development mode (React dev warnings, Fast
-    // Refresh); production bundles inline the production NODE_ENV.
-    private string NodeEnvLiteral => _devServer ? "'development'" : "'production'";
-
     private async Task<string> TranspileSass(string content, string file)
     {
         var result = await _njs.RunCommand("sass", content, file);
@@ -57,13 +53,16 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
 
     public static Task<Traverse> From(string path) => From(path, [], []);
 
-    public static async Task<Traverse> From(string path, IEnumerable<string> externals, IEnumerable<string> shared, ModuleIdMap? moduleIds = null, bool devServer = false, Platform platform = Platform.Web)
+    public static async Task<Traverse> From(string path, IEnumerable<string> externals, IEnumerable<string> shared, ModuleIdMap? moduleIds = null, bool devServer = false, Platform platform = Platform.Web, IReadOnlyDictionary<string, string>? defines = null, IReadOnlyDictionary<string, string>? aliases = null, IReadOnlyDictionary<string, string>? loaders = null)
     {
         var root = Path.GetDirectoryName(path)!;
         var packageRoot = FindRoot(root);
         var features = await FindFeatures(packageRoot);
         var traverse = new Traverse(packageRoot ?? root, features, moduleIds) { _devServer = devServer };
         traverse.Context.Platform = PlatformTargets.For(platform);
+        traverse.Context.Defines = BuildDefines(defines, devServer);
+        traverse.Context.Loaders = NormalizeLoaders(loaders);
+        ApplyAliases(traverse.Context, aliases);
         var (jsxFactory, jsxFragmentFactory) = await FindJsxFactories(packageRoot);
         var (defaultJsxFactory, defaultJsxFragmentFactory, defaultJsxImportModule, defaultJsxImportIdentifier) = await FindDefaultJsxRuntime(packageRoot);
         traverse.Context.JsxFactory = jsxFactory;
@@ -76,6 +75,65 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
         traverse.Context.Shared = [.. shared];
         await traverse.Run([path, .. shared]);
         return traverse;
+    }
+
+    /// <summary>
+    /// Builds the effective <c>--define</c> table: the built-in
+    /// <c>process.env.NODE_ENV</c> default (development on the dev server,
+    /// production otherwise) overlaid with the user's entries, then ordered
+    /// longest-key-first for safe sequential text replacement.
+    /// </summary>
+    private static IReadOnlyList<KeyValuePair<string, string>> BuildDefines(IReadOnlyDictionary<string, string>? defines, bool devServer)
+    {
+        var map = new Dictionary<string, string>
+        {
+            ["process.env.NODE_ENV"] = devServer ? "'development'" : "'production'",
+        };
+
+        if (defines is not null)
+        {
+            foreach (var (key, value) in defines)
+            {
+                map[key] = value;
+            }
+        }
+
+        return [.. map.OrderByDescending(kv => kv.Key.Length)];
+    }
+
+    private static IReadOnlyDictionary<string, string> NormalizeLoaders(IReadOnlyDictionary<string, string>? loaders)
+    {
+        var map = new Dictionary<string, string>();
+
+        if (loaders is not null)
+        {
+            foreach (var (extension, loader) in loaders)
+            {
+                var key = extension.StartsWith('.') ? extension : "." + extension;
+                map[key.ToLowerInvariant()] = loader.ToLowerInvariant();
+            }
+        }
+
+        return map;
+    }
+
+    private static void ApplyAliases(BundlerContext context, IReadOnlyDictionary<string, string>? aliases)
+    {
+        if (aliases is null)
+        {
+            return;
+        }
+
+        foreach (var (from, to) in aliases)
+        {
+            // A path target (relative or absolute) resolves from the working
+            // directory so it is importer-independent; a bare specifier is left
+            // as-is to go through normal package resolution.
+            var target = to.StartsWith('.') || Path.IsPathRooted(to)
+                ? CombinePath(Environment.CurrentDirectory, to)
+                : to;
+            context.Aliases[from] = target;
+        }
     }
 
     private async Task Run(params IEnumerable<string> entryPoints)
@@ -1064,12 +1122,107 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
         var content = await reader.ReadToEndAsync();
 
         // TypeScript is stripped natively by the parser (see ParserOptions.ForFile),
-        // so .ts/.tsx no longer need an external `tsc` pass. The one remaining
-        // source transform is the build-time NODE_ENV define.
-        var newContent = content.Replace("process.env.NODE_ENV", NodeEnvLiteral);
+        // so .ts/.tsx no longer need an external `tsc` pass. The remaining source
+        // transform is compile-time constant substitution (--define), which
+        // includes the built-in process.env.NODE_ENV default.
+        var newContent = content;
+
+        foreach (var (key, replacement) in _context.Defines)
+        {
+            newContent = newContent.Replace(key, replacement);
+        }
+
         var fragment = await ParseJsModule(bundle, current, newContent);
         _context.JsFragments.TryAdd(current, fragment);
     }
+
+    /// <summary>The <c>--loader</c> override for a node's extension, or null when
+    /// the built-in handling applies.</summary>
+    private string? ResolveLoader(Node current)
+        => _context.Loaders.TryGetValue(current.Extension.ToLowerInvariant(), out var loader) ? loader : null;
+
+    /// <summary>
+    /// Processes a file according to an explicit <c>--loader</c>, overriding the
+    /// extension-based default. JS-producing loaders (text/base64/dataurl/empty)
+    /// only apply inside a JS bundle; elsewhere they fall back to emitting a file.
+    /// </summary>
+    private async Task ProcessWithLoader(string loader, Node current, byte[] bytes, Bundle bundle)
+    {
+        switch (loader)
+        {
+            case "js" or "jsx" or "ts" or "tsx":
+                await ProcessJavaScript(current, bytes, bundle);
+                break;
+            case "json":
+                await ProcessJson(current, bytes, bundle);
+                break;
+            case "css":
+                await ProcessStyleSheet(current, bytes, bundle);
+                break;
+            case "text":
+                await ProcessInlineModule(current, bytes, JsonString(Encoding.UTF8.GetString(bytes)), bundle);
+                break;
+            case "base64":
+                await ProcessInlineModule(current, bytes, JsonString(Convert.ToBase64String(bytes)), bundle);
+                break;
+            case "dataurl":
+                var dataUrl = $"data:{GetMimeType(current.Extension)};base64,{Convert.ToBase64String(bytes)}";
+                await ProcessInlineModule(current, bytes, JsonString(dataUrl), bundle);
+                break;
+            case "empty":
+                await ProcessInlineModule(current, bytes, "{}", bundle);
+                break;
+            case "file" or "copy":
+                await ProcessAsset(current, bytes);
+                break;
+            default:
+                throw new InvalidOperationException($"Unknown loader '{loader}'. Available: js, jsx, ts, tsx, json, css, text, base64, dataurl, file, copy, empty.");
+        }
+    }
+
+    /// <summary>
+    /// Emits a synthetic JS module whose default export is
+    /// <paramref name="expression"/> (already valid JS source). Used by the
+    /// text/base64/dataurl/empty loaders. Falls back to a plain asset when the
+    /// importer isn't a JS bundle.
+    /// </summary>
+    private async Task ProcessInlineModule(Node current, byte[] bytes, string expression, Bundle bundle)
+    {
+        if (bundle is not JsBundle)
+        {
+            await ProcessAsset(current, bytes);
+            return;
+        }
+
+        var newContent = $"export default ({expression})";
+        var ast = Parser.ParseModule(newContent, current.FileName, ParserOptions.ForFile(current.FileName));
+        var visitor = new JsVisitor(bundle, current, InnerProcess);
+        var fragment = await visitor.FindChildren(ast);
+        _context.JsFragments.TryAdd(current, fragment);
+    }
+
+    private static string JsonString(string value) => JsonSerializer.Serialize(value);
+
+    private static string GetMimeType(string extension) => extension.ToLowerInvariant() switch
+    {
+        ".png" => "image/png",
+        ".jpg" or ".jpeg" => "image/jpeg",
+        ".gif" => "image/gif",
+        ".svg" => "image/svg+xml",
+        ".webp" => "image/webp",
+        ".avif" => "image/avif",
+        ".bmp" => "image/bmp",
+        ".ico" => "image/x-icon",
+        ".woff" => "font/woff",
+        ".woff2" => "font/woff2",
+        ".ttf" => "font/ttf",
+        ".otf" => "font/otf",
+        ".json" => "application/json",
+        ".txt" => "text/plain",
+        ".css" => "text/css",
+        ".wasm" => "application/wasm",
+        _ => "application/octet-stream",
+    };
 
     private async Task ProcessHtml(Node current, byte[] bytes, Bundle bundle)
     {
@@ -1289,6 +1442,15 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
         if (node.Extension == ".svelte")
         {
             await ProcessSvelte(node, bytes, bundle);
+            return node;
+        }
+
+        // An explicit --loader for this extension overrides the built-in handling.
+        var loader = ResolveLoader(node);
+
+        if (loader is not null)
+        {
+            await ProcessWithLoader(loader, node, bytes, bundle);
             return node;
         }
 

@@ -29,4 +29,13 @@ public record OutputOptions
     /// <summary>The output module format each JS bundle is wrapped in
     /// (default <see cref="ModuleFormat.Esm"/>).</summary>
     public ModuleFormat Format { get; init; } = ModuleFormat.Esm;
+
+    /// <summary>
+    /// The naming template for emitted JS/CSS bundles, with <c>[name]</c> and
+    /// <c>[hash]</c> placeholders (the <c>--entry-names</c> option). The default
+    /// <c>[name]</c> keeps the entry's own name. Including <c>[hash]</c> appends a
+    /// content hash for cache-busting, e.g. <c>[name]-[hash]</c> →
+    /// <c>app-1a2b3c.js</c>. The entry HTML document keeps its name regardless.
+    /// </summary>
+    public string EntryNames { get; init; } = "[name]";
 }

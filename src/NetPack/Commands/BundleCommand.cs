@@ -35,6 +35,39 @@ public class BundleCommand : ICommand
     [Option("platform", Default = "web", HelpText = "The target runtime (web, node, deno). Decides which modules stay external as runtime built-ins.")]
     public string Platform { get; set; } = "web";
 
+    [Option("define", HelpText = "Replace a global identifier with a constant expression, e.g. --define process.env.NODE_ENV=\"production\".")]
+    public IEnumerable<string> Define { get; set; } = [];
+
+    [Option("alias", HelpText = "Rewrite an import specifier, e.g. --alias react=preact/compat or --alias @=./src.")]
+    public IEnumerable<string> Alias { get; set; } = [];
+
+    [Option("loader", HelpText = "Override how a file extension is handled, e.g. --loader .svg=text (js, jsx, ts, tsx, json, css, text, base64, dataurl, file, copy, empty).")]
+    public IEnumerable<string> Loader { get; set; } = [];
+
+    [Option("entry-names", Default = "[name]", HelpText = "Naming template for emitted bundles with [name]/[hash] placeholders, e.g. [name]-[hash] for cache-busting.")]
+    public string EntryNames { get; set; } = "[name]";
+
+    /// <summary>Parses repeated <c>key=value</c> option entries (split on the
+    /// first <c>=</c>) into a dictionary; later entries win on duplicate keys.</summary>
+    internal static IReadOnlyDictionary<string, string> ParseKeyValues(IEnumerable<string> entries, string optionName)
+    {
+        var map = new Dictionary<string, string>();
+
+        foreach (var entry in entries)
+        {
+            var index = entry.IndexOf('=');
+
+            if (index <= 0)
+            {
+                throw new InvalidOperationException($"Invalid --{optionName} '{entry}'. Expected key=value.");
+            }
+
+            map[entry[..index]] = entry[(index + 1)..];
+        }
+
+        return map;
+    }
+
     private static ModuleFormat ParseFormat(string format) => format.ToLowerInvariant() switch
     {
         "esm" or "es" or "module" => ModuleFormat.Esm,
@@ -68,8 +101,12 @@ public class BundleCommand : ICommand
         var outdir = Path.Combine(Environment.CurrentDirectory, OutDir);
         var watch = Stopwatch.StartNew();
 
+        var defines = ParseKeyValues(Define, "define");
+        var aliases = ParseKeyValues(Alias, "alias");
+        var loaders = ParseKeyValues(Loader, "loader");
+
         Console.WriteLine("[netpack] Bundling '{0}' ...", FilePath);
-        using var graph = await Traverse.From(file, Externals, Shared, platform: ParsePlatform(Platform));
+        using var graph = await Traverse.From(file, Externals, Shared, platform: ParsePlatform(Platform), defines: defines, aliases: aliases, loaders: loaders);
         var result = new DiskResultWriter(graph.Context, outdir);
         var options = new OutputOptions
         {
@@ -77,6 +114,7 @@ public class BundleCommand : ICommand
             IsReloading = false,
             WithSourceMaps = SourceMap,
             Format = ParseFormat(Format),
+            EntryNames = EntryNames,
         };
 
         if (Clean && Directory.Exists(outdir))

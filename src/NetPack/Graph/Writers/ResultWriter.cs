@@ -1,6 +1,7 @@
 namespace NetPack.Graph.Writers;
 
 using System.Collections.Concurrent;
+using NetPack.Graph.Bundles;
 
 abstract class ResultWriter(BundlerContext context)
 {
@@ -24,6 +25,8 @@ abstract class ResultWriter(BundlerContext context)
             // side-effect-free modules before anything is rendered.
             TreeShakePass.Run(_context);
         }
+
+        await AssignHashedNames(options);
 
         var emitted = new ConcurrentBag<EmittedFile>();
 
@@ -66,6 +69,50 @@ abstract class ResultWriter(BundlerContext context)
 
         Finished?.Invoke(this, EventArgs.Empty);
         return emitted.OrderBy(f => f.Name, StringComparer.Ordinal).ToArray();
+    }
+
+    /// <summary>
+    /// When the naming template requests a content hash, renders every JS/CSS
+    /// bundle once to hash its output, then assigns hashed <see cref="Bundle.OutputName"/>s
+    /// so the real render (and every reference to a bundle) uses the hashed name.
+    /// Hashes are computed against the un-hashed references uniformly (a two-phase
+    /// pass), so the result is deterministic. The entry HTML keeps its own name.
+    /// Note: a hash reflects a bundle's own content, so a change confined to a
+    /// referenced (e.g. shared) bundle re-hashes that bundle but not its
+    /// dependents.
+    /// </summary>
+    private async Task AssignHashedNames(OutputOptions options)
+    {
+        if (!options.EntryNames.Contains("[hash]", StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        var hashes = new List<(Bundle Bundle, string Hash)>();
+
+        foreach (var bundle in _context.Bundles.Values)
+        {
+            // The HTML document is the stable entry point; leave its name alone
+            // (it still picks up the hashed names of the bundles it references).
+            if (bundle.Type == ".html")
+            {
+                continue;
+            }
+
+            using var buffer = new MemoryStream();
+
+            using (var src = await bundle.CreateStream(options))
+            {
+                await src.CopyToAsync(buffer);
+            }
+
+            hashes.Add((bundle, await Hash.ComputeHash(buffer)));
+        }
+
+        foreach (var (bundle, hash) in hashes)
+        {
+            bundle.AssignOutputName(options.EntryNames, hash);
+        }
     }
 
     protected abstract Stream OpenWrite(string name);

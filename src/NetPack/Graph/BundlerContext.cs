@@ -71,6 +71,24 @@ public sealed class BundlerContext(string root, FeatureFlags features, ModuleIdM
 
     public ConcurrentDictionary<string, string> Aliases = [];
 
+    /// <summary>
+    /// Compile-time constant substitutions applied to JS/TS source before
+    /// parsing (the <c>--define</c> option), e.g. <c>process.env.NODE_ENV</c> →
+    /// <c>"production"</c>. Ordered longest-key-first so a more specific key
+    /// (<c>process.env.NODE_ENV</c>) is replaced before a shorter overlapping one
+    /// (<c>process</c>). Each value is the raw replacement text (already a valid
+    /// JS expression, so string constants include their quotes).
+    /// </summary>
+    public IReadOnlyList<KeyValuePair<string, string>> Defines { get; set; } = [];
+
+    /// <summary>
+    /// Per-extension loader overrides (the <c>--loader</c> option), keyed by a
+    /// lowercase extension including the leading dot (e.g. <c>.svg</c> →
+    /// <c>text</c>). Decides how a file of that type is turned into a module or
+    /// asset, overriding netpack's built-in handling.
+    /// </summary>
+    public IReadOnlyDictionary<string, string> Loaders { get; set; } = new Dictionary<string, string>();
+
     public ConcurrentBag<string> Externals = [];
 
     public ConcurrentBag<string> Shared = [];
