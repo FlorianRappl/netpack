@@ -51,8 +51,24 @@ in CommonJS, and so on.
 
 ## Entry-point selection
 
-The platform also controls whether the `browser` field of a dependency's
-`package.json` is honoured when picking its entry point:
+When a dependency declares an [`exports`](https://nodejs.org/api/packages.html#package-entry-points)
+field, that field is authoritative: only the subpaths it lists are importable,
+and the legacy `browser` / `module` / `main` fields are ignored. netpack resolves
+`exports` following Node's algorithm — subpath maps (`"."`, `"./feature"`),
+`"*"` wildcard patterns, fallback arrays, and `null` blocking — selecting a
+target from the active conditions, which vary by platform:
+
+- **`web`** — `import`, `module`, `browser`, `default`.
+- **`node`** — `import`, `module`, `node`, `default`.
+- **`deno`** — `import`, `module`, `deno`, `node`, `default`.
+
+netpack is ESM-first, so `import` / `module` lead and `require` is deliberately
+omitted: a dual package resolves to its ESM entry (better tree-shaking), while a
+CJS-only package still resolves through the always-matched `default` condition or
+the legacy fallback below.
+
+Packages **without** an `exports` field fall back to top-level field selection,
+which the platform also governs:
 
 - **`web`** prefers `browser`, then `module`, then `main` — so a package that
   ships a browser-specific build is used on the web.
@@ -61,9 +77,9 @@ The platform also controls whether the `browser` field of a dependency's
 
 ## Not covered yet
 
-- **Conditional `exports`.** netpack selects an entry from the top-level
-  `browser` / `module` / `main` fields; it does not yet evaluate the
-  `exports` map's `import` / `require` / `browser` / `node` conditions.
+- **`development` / `production` conditions.** The active condition set is
+  platform-derived; netpack does not yet toggle `development` / `production`
+  `exports` conditions from the build mode.
 - **Platform globals / defines.** A platform does not (yet) inject or gate
   runtime globals (for example service-worker or `Deno.*` APIs) beyond the
   built-in resolution described here; netpack does not type-check, so these are

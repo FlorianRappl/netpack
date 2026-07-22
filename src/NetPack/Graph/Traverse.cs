@@ -396,21 +396,67 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
 
     private async Task<string?> ResolveFromNodeModules(string? currentDir, string packageName)
     {
+        var (package, subpath) = SplitPackageSpecifier(packageName);
+
         while (currentDir is not null)
         {
+            // The package root is the directory that owns package.json; its
+            // "exports" field (when present) is the authoritative resolver.
+            var packageRoot = CombinePath(currentDir, "node_modules", package);
+            var packageJsonPath = CombinePath(packageRoot, "package.json");
+
+            if (File.Exists(packageJsonPath))
+            {
+                var dependency = await LoadDependency(packageJsonPath);
+
+                if (dependency.HasExports)
+                {
+                    var exported = dependency.ResolveExport(subpath, _context.Platform.Conditions);
+
+                    if (exported is not null)
+                    {
+                        if (File.Exists(exported))
+                        {
+                            return exported;
+                        }
+
+                        // Rare: an exports target without an explicit extension.
+                        var viaFs = ResolveFromFileSystem(exported);
+
+                        if (viaFs is not null)
+                        {
+                            return viaFs;
+                        }
+                    }
+
+                    // With "exports" present but the subpath unexported we do not
+                    // fall through to legacy fields for this package — but keep
+                    // walking up in case a shadowing copy higher in the tree does.
+                }
+                else if (subpath == ".")
+                {
+                    if (File.Exists(dependency.Entry))
+                    {
+                        return dependency.Entry;
+                    }
+                }
+            }
+
+            // Legacy filesystem resolution: subpaths of packages without
+            // "exports", nested packages, and bare file references.
             var nodeModulesPath = CombinePath(currentDir, "node_modules", packageName);
 
             if (Directory.Exists(nodeModulesPath))
             {
-                var packageJsonPath = CombinePath(nodeModulesPath, "package.json");
+                var subPackageJsonPath = CombinePath(nodeModulesPath, "package.json");
 
-                if (File.Exists(packageJsonPath))
+                if (File.Exists(subPackageJsonPath))
                 {
-                    var mainEntry = await GetMainEntryFromPackageJson(packageJsonPath);
+                    var dependency = await LoadDependency(subPackageJsonPath);
 
-                    if (File.Exists(mainEntry))
+                    if (File.Exists(dependency.Entry))
                     {
-                        return mainEntry;
+                        return dependency.Entry;
                     }
                 }
                 else
@@ -443,7 +489,23 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
         return null;
     }
 
-    private async Task<string> GetMainEntryFromPackageJson(string packageJsonPath)
+    /// <summary>
+    /// Splits a bare specifier into its package name and an <c>exports</c>-style
+    /// subpath. <c>"react"</c> → (<c>react</c>, <c>.</c>);
+    /// <c>"react-dom/client"</c> → (<c>react-dom</c>, <c>./client</c>);
+    /// <c>"@angular/common/http"</c> → (<c>@angular/common</c>, <c>./http</c>).
+    /// </summary>
+    private static (string Package, string Subpath) SplitPackageSpecifier(string specifier)
+    {
+        var segments = specifier.Split('/');
+        var nameSegments = specifier.StartsWith('@') && segments.Length >= 2 ? 2 : 1;
+        var package = string.Join('/', segments.Take(nameSegments));
+        var rest = segments.Skip(nameSegments).ToArray();
+        var subpath = rest.Length > 0 ? "./" + string.Join('/', rest) : ".";
+        return (package, subpath);
+    }
+
+    private async Task<Dependency> LoadDependency(string packageJsonPath)
     {
         var dependency = _context.Dependencies.FirstOrDefault(m => m.Location == packageJsonPath);
 
@@ -461,7 +523,7 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
             }
         }
 
-        return dependency.Entry;
+        return dependency;
     }
 
     private async Task<Node?> InnerProcess(Bundle? bundle, Node parent, string name, (int? Width, int? Height, string? Format) variant)

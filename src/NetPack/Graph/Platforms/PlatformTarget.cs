@@ -31,6 +31,15 @@ abstract class PlatformTarget
     /// <summary>Whether the <c>browser</c> field of a dependency's package.json is
     /// honoured when picking its entry point.</summary>
     public virtual bool UseBrowserField => false;
+
+    /// <summary>
+    /// The condition names honoured when resolving a package's <c>exports</c> map,
+    /// in addition to the always-matched <c>default</c>. netpack is ESM-first, so
+    /// <c>import</c>/<c>module</c> lead and <c>require</c> is intentionally omitted:
+    /// a CJS-only package still resolves through the legacy <c>main</c> fallback,
+    /// but a dual package yields its ESM entry for better tree-shaking.
+    /// </summary>
+    public virtual IReadOnlyList<string> Conditions { get; } = ["import", "module", "default"];
 }
 
 /// <summary>Browser / web-worker target — no bare-module built-ins; the
@@ -40,6 +49,8 @@ sealed class WebPlatform : PlatformTarget
     public override bool IsBuiltin(string specifier) => false;
 
     public override bool UseBrowserField => true;
+
+    public override IReadOnlyList<string> Conditions { get; } = ["import", "module", "browser", "default"];
 }
 
 /// <summary>Node.js target — the <c>node:</c> scheme and every Node core module
@@ -48,6 +59,8 @@ sealed class NodePlatform : PlatformTarget
 {
     public override bool IsBuiltin(string specifier)
         => specifier.StartsWith("node:", StringComparison.Ordinal) || PlatformTargets.IsNodeCore(specifier);
+
+    public override IReadOnlyList<string> Conditions { get; } = ["import", "module", "node", "default"];
 }
 
 /// <summary>Deno target — the <c>node:</c>, <c>npm:</c> and <c>jsr:</c> schemes are
@@ -58,6 +71,8 @@ sealed class DenoPlatform : PlatformTarget
         => specifier.StartsWith("node:", StringComparison.Ordinal)
             || specifier.StartsWith("npm:", StringComparison.Ordinal)
             || specifier.StartsWith("jsr:", StringComparison.Ordinal);
+
+    public override IReadOnlyList<string> Conditions { get; } = ["import", "module", "deno", "node", "default"];
 }
 
 static class PlatformTargets
