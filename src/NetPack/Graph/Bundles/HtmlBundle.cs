@@ -39,30 +39,30 @@ public sealed class HtmlBundle(BundlerContext context, Graph.Node root, BundleFl
             {
                 var element = replacement.Key;
                 var node = replacement.Value;
-                var reference = GetReference(node);
+                var url = Helpers.PublicUrl(options.PublicPath, GetReference(node));
 
                 switch (element.LocalName)
                 {
                     case "link":
                     case "a":
-                        element.SetAttribute("href", $"./{reference}");
+                        element.SetAttribute("href", url);
                         break;
                     case "script":
                         element.SetAttribute("type", "module");
-                        element.SetAttribute("src", $"./{reference}");
+                        element.SetAttribute("src", url);
                         break;
                     case "img":
                     case "video":
                     case "audio":
                     case "source":
                     case "iframe":
-                        element.SetAttribute("src", $"./{reference}");
+                        element.SetAttribute("src", url);
                         break;
                     case "object":
-                        element.SetAttribute("data", $"./{reference}");
+                        element.SetAttribute("data", url);
                         break;
                     case "meta":
-                        element.SetAttribute("content", $"./{reference}");
+                        element.SetAttribute("content", url);
                         break;
                 }
             }
@@ -83,7 +83,7 @@ public sealed class HtmlBundle(BundlerContext context, Graph.Node root, BundleFl
                 foreach (var dependency in _context.Shared)
                 {
                     var name = Helpers.ToFileName(dependency);
-                    content.Imports!.Add(dependency, $"./{name}.js");
+                    content.Imports!.Add(dependency, Helpers.PublicUrl(options.PublicPath, $"{name}.js"));
                 }
 
                 WriteImportmap(importmap, content);

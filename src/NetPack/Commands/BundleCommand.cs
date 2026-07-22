@@ -1,9 +1,11 @@
 namespace NetPack.Commands;
 
 using System.Diagnostics;
+using System.Threading;
 using CommandLine;
 using NetPack.Graph;
 using NetPack.Graph.Writers;
+using NetPack.Server;
 
 [Verb("bundle", HelpText = "Bundles the code starting at the given entry point.")]
 public class BundleCommand : ICommand
@@ -46,6 +48,25 @@ public class BundleCommand : ICommand
 
     [Option("entry-names", Default = "[name]", HelpText = "Naming template for emitted bundles with [name]/[hash] placeholders, e.g. [name]-[hash] for cache-busting.")]
     public string EntryNames { get; set; } = "[name]";
+
+    [Option("public-path", Default = "", HelpText = "Base path/URL prepended to references to emitted files, e.g. https://cdn.example.com/app or /static.")]
+    public string PublicPath { get; set; } = "";
+
+    [Option("conditions", HelpText = "Extra package.json 'exports' conditions to honour, on top of the platform defaults (e.g. --conditions development).")]
+    public IEnumerable<string> Conditions { get; set; } = [];
+
+    [Option("packages", Default = "bundle", HelpText = "Set to 'external' to keep every node_modules import external instead of bundling it.")]
+    public string Packages { get; set; } = "bundle";
+
+    [Option("watch", Default = false, HelpText = "Rebuild and write to the output directory whenever a source file changes (no dev server).")]
+    public bool Watch { get; set; } = false;
+
+    private static bool ParsePackages(string packages) => packages.ToLowerInvariant() switch
+    {
+        "external" => true,
+        "bundle" or "" => false,
+        _ => throw new InvalidOperationException($"Unknown --packages '{packages}'. Available: bundle, external."),
+    };
 
     /// <summary>Parses repeated <c>key=value</c> option entries (split on the
     /// first <c>=</c>) into a dictionary; later entries win on duplicate keys.</summary>
@@ -99,15 +120,11 @@ public class BundleCommand : ICommand
 
         var file = Path.Combine(Environment.CurrentDirectory, FilePath);
         var outdir = Path.Combine(Environment.CurrentDirectory, OutDir);
-        var watch = Stopwatch.StartNew();
 
         var defines = ParseKeyValues(Define, "define");
         var aliases = ParseKeyValues(Alias, "alias");
         var loaders = ParseKeyValues(Loader, "loader");
-
-        Console.WriteLine("[netpack] Bundling '{0}' ...", FilePath);
-        using var graph = await Traverse.From(file, Externals, Shared, platform: ParsePlatform(Platform), defines: defines, aliases: aliases, loaders: loaders);
-        var result = new DiskResultWriter(graph.Context, outdir);
+        var externalPackages = ParsePackages(Packages);
         var options = new OutputOptions
         {
             IsOptimizing = Minify,
@@ -115,6 +132,7 @@ public class BundleCommand : ICommand
             WithSourceMaps = SourceMap,
             Format = ParseFormat(Format),
             EntryNames = EntryNames,
+            PublicPath = PublicPath,
         };
 
         if (Clean && Directory.Exists(outdir))
@@ -123,10 +141,36 @@ public class BundleCommand : ICommand
         }
 
         Directory.CreateDirectory(outdir);
+
+        var writer = await BuildOnce(file, outdir, options, defines, aliases, loaders, externalPackages);
+
+        if (Watch)
+        {
+            using var watcher = new FileWatcher<DiskResultWriter>(writer);
+            watcher.Install(() => BuildOnce(file, outdir, options, defines, aliases, loaders, externalPackages));
+            Console.WriteLine();
+            Console.WriteLine("[netpack] Watching for changes — press Ctrl+C to stop.");
+            await Task.Delay(Timeout.Infinite);
+        }
+    }
+
+    private async Task<DiskResultWriter> BuildOnce(
+        string file, string outdir, OutputOptions options,
+        IReadOnlyDictionary<string, string> defines, IReadOnlyDictionary<string, string> aliases,
+        IReadOnlyDictionary<string, string> loaders, bool externalPackages)
+    {
+        var watch = Stopwatch.StartNew();
+        Console.WriteLine("[netpack] Bundling '{0}' ...", FilePath);
+        using var graph = await Traverse.From(
+            file, Externals, Shared, platform: ParsePlatform(Platform),
+            defines: defines, aliases: aliases, loaders: loaders,
+            conditions: Conditions, externalPackages: externalPackages);
+        var result = new DiskResultWriter(graph.Context, outdir);
         var emitted = await result.WriteOut(options);
         watch.Stop();
 
         PrintSummary(emitted, OutDir, watch.ElapsedMilliseconds, Minify, SourceMap);
+        return result;
     }
 
     private void PrintSummary(IReadOnlyList<EmittedFile> files, string outDir, long elapsedMs, bool minified, bool sourceMaps)

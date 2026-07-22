@@ -27,6 +27,14 @@ abstract class JsModuleFormat
 {
     protected static Ast.StringLiteral MakeString(string text) => new(text, text);
 
+    /// <summary>The <c>--public-path</c> prefix applied to every emitted-file
+    /// reference this format writes (see <see cref="Ref"/>). Empty by default.</summary>
+    public string PublicPath { get; set; } = "";
+
+    /// <summary>The runtime specifier for an emitted sibling file — document
+    /// relative by default, or under <see cref="PublicPath"/> when set.</summary>
+    protected string Ref(string fileName) => Helpers.PublicUrl(PublicPath, fileName);
+
     /// <summary>Imports a sibling bundle netpack emitted (a shared chunk), binding
     /// its registry to <paramref name="local"/>.</summary>
     public abstract Ast.Statement ImportSharedBundle(Ast.Identifier local, string fileName);

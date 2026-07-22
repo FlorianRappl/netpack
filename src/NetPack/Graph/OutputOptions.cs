@@ -38,4 +38,11 @@ public record OutputOptions
     /// <c>app-1a2b3c.js</c>. The entry HTML document keeps its name regardless.
     /// </summary>
     public string EntryNames { get; init; } = "[name]";
+
+    /// <summary>
+    /// A base path/URL prepended to every reference to an emitted file — bundle
+    /// chunks, assets, and the script/link/img targets in the HTML shell (the
+    /// <c>--public-path</c> option). Empty keeps references document-relative.
+    /// </summary>
+    public string PublicPath { get; init; } = "";
 }

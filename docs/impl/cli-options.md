@@ -40,11 +40,11 @@
 9. JSX controls: `--jsx=automatic|transform`, `--jsx-import-source`, `--jsx-dev`,
    `--jsx-factory`/`--jsx-fragment` (derived from tsconfig/heuristics only today).
 10. `--outfile` / `--outbase` (only `--outdir` exists).
-11. `--public-path` (asset URL base for CDN/subpath).
-12. `--packages=external` (mark all `node_modules` external in one shot).
-13. `--conditions` (user `exports` conditions atop the platform defaults).
-14. `bundle --watch` (watch-to-disk without a server) and richer `serve`
-    (`--servedir`, host binding, HTTPS `--certfile`/`--keyfile`).
+11. ~~`--public-path`~~ — **done** (asset/chunk/HTML URL base for CDN/subpath).
+12. ~~`--packages=external`~~ — **done** (mark all `node_modules` external).
+13. ~~`--conditions`~~ — **done** (user `exports` conditions atop platform ones).
+14. `bundle --watch` — **done** (watch-to-disk, no server). Richer `serve`
+    (`--servedir`, host binding, HTTPS `--certfile`/`--keyfile`) still open.
 
 ### Tier 3 — nice-to-have / advanced
 
@@ -75,4 +75,21 @@ requires a syntax-lowering pass. Tier 2 follows.
   `InnerProcess`); path targets resolve from the CWD, bare targets stay bare.
 
 Documented for users in `docs/other-features.md`. Tests in
-`NetPack.Tests/CliOptionsTests.cs`. Next: Tier 2.
+`NetPack.Tests/CliOptionsTests.cs`.
+
+Tier 2 batch (done): `--public-path`, `--conditions`, `--packages=external`, and
+`bundle --watch`.
+
+- `--public-path` — `OutputOptions.PublicPath` + `Helpers.PublicUrl`; a `Ref()`
+  helper on `JsModuleFormat` applied across all four formats, plus HTML/CSS URL
+  building.
+- `--conditions` — `context.UserConditions` + `ActiveConditions` (user-first),
+  threaded into `Dependency.ResolveExport`.
+- `--packages=external` — `context.ExternalPackages`; `InnerProcess`
+  externalizes any bare specifier before resolution.
+- `bundle --watch` — `DiskResultWriter : IFileLocator`; `BundleCommand` reuses
+  the dev-server `FileWatcher` to rebuild+write on change, no HTTP server.
+
+Tests in `NetPack.Tests/CliOptionsTier2Tests.cs`; docs in
+`docs/other-features.md`. Remaining Tier 2: optimization knobs, source-map modes,
+splitting, JSX controls, `--outfile`/`--outbase`, richer `serve`.

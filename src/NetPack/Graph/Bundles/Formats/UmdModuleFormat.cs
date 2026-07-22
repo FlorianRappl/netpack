@@ -25,7 +25,7 @@ sealed class UmdModuleFormat : JsModuleFormat
     public override Ast.Statement ImportSharedBundle(Ast.Identifier local, string fileName)
     {
         // The binding is provided directly by the matching factory parameter.
-        _deps.Add(($"./{fileName}", local.Name));
+        _deps.Add((Ref(fileName), local.Name));
         return new Ast.EmptyStatement();
     }
 
@@ -57,7 +57,7 @@ sealed class UmdModuleFormat : JsModuleFormat
     {
         _needsBaseUrl = true;
         var url = new Ast.NewExpression(new Ast.Identifier("URL"),
-            new List<Ast.Expression> { MakeString($"./{fileName}"), new Ast.Identifier(BaseUrl) });
+            new List<Ast.Expression> { MakeString(Ref(fileName)), new Ast.Identifier(BaseUrl) });
         return new Ast.MemberExpression(url, new Ast.Identifier("href"), false, false);
     }
 

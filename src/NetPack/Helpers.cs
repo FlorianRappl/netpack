@@ -48,6 +48,15 @@ public static class Helpers
         return ExtensionMap.GetValueOrDefault(extension) ?? extension;
     }
 
+    /// <summary>
+    /// Builds the runtime URL an emitted file is referenced by. With no public
+    /// path the reference stays document-relative (<c>./file.js</c>); a
+    /// <c>--public-path</c> replaces that prefix (<c>https://cdn/app/file.js</c>,
+    /// <c>/static/file.js</c>) so assets and chunks can be served from elsewhere.
+    /// </summary>
+    public static string PublicUrl(string publicPath, string fileName)
+        => string.IsNullOrEmpty(publicPath) ? $"./{fileName}" : $"{publicPath.TrimEnd('/')}/{fileName}";
+
     public static bool IsAssetType(string extension)
     {
         return !BundleTypes.Contains(extension);

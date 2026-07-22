@@ -15,6 +15,27 @@ public sealed class BundlerContext(string root, FeatureFlags features, ModuleIdM
     internal PlatformTarget Platform { get; set; } = new WebPlatform();
 
     /// <summary>
+    /// Extra <c>exports</c> conditions requested with <c>--conditions</c>, layered
+    /// on top of the platform's built-in set. They widen which conditional
+    /// <c>exports</c> branches are eligible (custom conditions like
+    /// <c>development</c> or a framework's own condition name).
+    /// </summary>
+    public IReadOnlyList<string> UserConditions { get; set; } = [];
+
+    /// <summary>
+    /// When true (<c>--packages=external</c>), every bare package import — anything
+    /// resolved from <c>node_modules</c> rather than a relative/absolute path — is
+    /// kept external instead of being bundled. Used to build a library or a Node
+    /// app whose dependencies are installed separately.
+    /// </summary>
+    public bool ExternalPackages { get; set; }
+
+    /// <summary>The condition names used when resolving a package's <c>exports</c>
+    /// map: the user's (highest priority) followed by the platform defaults.</summary>
+    internal IReadOnlyList<string> ActiveConditions =>
+        UserConditions.Count == 0 ? Platform.Conditions : [.. UserConditions, .. Platform.Conditions];
+
+    /// <summary>
     /// True when React Fast Refresh instrumentation is enabled for this build
     /// (dev server + <c>react-refresh</c> resolvable).
     /// </summary>

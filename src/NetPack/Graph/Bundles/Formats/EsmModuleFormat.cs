@@ -15,7 +15,7 @@ sealed class EsmModuleFormat : JsModuleFormat
     public override Ast.Statement ImportSharedBundle(Ast.Identifier local, string fileName)
         => new Ast.ImportDeclaration(
             new List<Ast.ImportSpecifierBase> { new Ast.ImportDefaultSpecifier(local) },
-            MakeString($"./{fileName}"), false);
+            MakeString(Ref(fileName)), false);
 
     public override Ast.Statement RewriteExternalImport(Ast.ImportDeclaration declaration) => declaration;
 
@@ -73,7 +73,7 @@ sealed class EsmModuleFormat : JsModuleFormat
         var importMeta = new Ast.MemberExpression(new Ast.Identifier("import"), new Ast.Identifier("meta"), false, false);
         var importMetaUrl = new Ast.MemberExpression(importMeta, new Ast.Identifier("url"), false, false);
         var urlParse = new Ast.MemberExpression(new Ast.Identifier("URL"), new Ast.Identifier("parse"), false, false);
-        var relative = new Ast.CallExpression(urlParse, new List<Ast.Expression> { MakeString($"./{fileName}"), importMetaUrl }, false);
+        var relative = new Ast.CallExpression(urlParse, new List<Ast.Expression> { MakeString(Ref(fileName)), importMetaUrl }, false);
         return new Ast.MemberExpression(relative, new Ast.Identifier("href"), false, false);
     }
 }

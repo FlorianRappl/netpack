@@ -49,7 +49,7 @@ public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags
     {
         SourceMap = null;
 
-        var format = JsModuleFormats.For(options.Format);
+        var format = JsModuleFormats.For(options.Format, options.PublicPath);
         var transpiler = new JsxToJavaScriptTranspiler(this, options.IsReloading, format);
         var ast = transpiler.Transpile();
 

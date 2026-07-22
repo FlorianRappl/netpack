@@ -1,6 +1,9 @@
 namespace NetPack.Graph.Writers;
 
-sealed class DiskResultWriter(BundlerContext context, string target) : ResultWriter(context)
+using System.Linq;
+using NetPack.Server;
+
+sealed class DiskResultWriter(BundlerContext context, string target) : ResultWriter(context), IFileLocator
 {
     private readonly string _target = target;
 
@@ -13,4 +16,9 @@ sealed class DiskResultWriter(BundlerContext context, string target) : ResultWri
         // shorter file (e.g. after minification or tree-shaking removes code).
         return File.Create(fileName);
     }
+
+    /// <summary>True when <paramref name="fullPath"/> is a source file that took
+    /// part in this build — used by watch mode to decide whether a filesystem
+    /// change warrants a rebuild.</summary>
+    public bool HasFile(string fullPath) => _context.Modules.Values.Any(m => m.FileName == fullPath);
 }

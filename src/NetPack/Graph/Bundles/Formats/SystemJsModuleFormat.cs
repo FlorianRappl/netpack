@@ -17,7 +17,7 @@ sealed class SystemJsModuleFormat : JsModuleFormat
 
     public override Ast.Statement ImportSharedBundle(Ast.Identifier local, string fileName)
     {
-        var variable = NextDep($"./{fileName}");
+        var variable = NextDep(Ref(fileName));
         // A shared bundle exposes its registry as the default export.
         var registry = new Ast.MemberExpression(new Ast.Identifier(variable), new Ast.Identifier("default"), false, false);
         return new Ast.VariableStatement(Ast.VariableKind.Const, new List<Ast.VariableDeclarator>
@@ -43,7 +43,7 @@ sealed class SystemJsModuleFormat : JsModuleFormat
         var meta = new Ast.MemberExpression(new Ast.Identifier("_context"), new Ast.Identifier("meta"), false, false);
         var metaUrl = new Ast.MemberExpression(meta, new Ast.Identifier("url"), false, false);
         var url = new Ast.NewExpression(new Ast.Identifier("URL"),
-            new List<Ast.Expression> { MakeString($"./{fileName}"), metaUrl });
+            new List<Ast.Expression> { MakeString(Ref(fileName)), metaUrl });
         return new Ast.MemberExpression(url, new Ast.Identifier("href"), false, false);
     }
 

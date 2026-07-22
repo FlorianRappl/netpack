@@ -53,7 +53,7 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
 
     public static Task<Traverse> From(string path) => From(path, [], []);
 
-    public static async Task<Traverse> From(string path, IEnumerable<string> externals, IEnumerable<string> shared, ModuleIdMap? moduleIds = null, bool devServer = false, Platform platform = Platform.Web, IReadOnlyDictionary<string, string>? defines = null, IReadOnlyDictionary<string, string>? aliases = null, IReadOnlyDictionary<string, string>? loaders = null)
+    public static async Task<Traverse> From(string path, IEnumerable<string> externals, IEnumerable<string> shared, ModuleIdMap? moduleIds = null, bool devServer = false, Platform platform = Platform.Web, IReadOnlyDictionary<string, string>? defines = null, IReadOnlyDictionary<string, string>? aliases = null, IReadOnlyDictionary<string, string>? loaders = null, IEnumerable<string>? conditions = null, bool externalPackages = false)
     {
         var root = Path.GetDirectoryName(path)!;
         var packageRoot = FindRoot(root);
@@ -62,6 +62,8 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
         traverse.Context.Platform = PlatformTargets.For(platform);
         traverse.Context.Defines = BuildDefines(defines, devServer);
         traverse.Context.Loaders = NormalizeLoaders(loaders);
+        traverse.Context.UserConditions = conditions is null ? [] : [.. conditions];
+        traverse.Context.ExternalPackages = externalPackages;
         ApplyAliases(traverse.Context, aliases);
         var (jsxFactory, jsxFragmentFactory) = await FindJsxFactories(packageRoot);
         var (defaultJsxFactory, defaultJsxFragmentFactory, defaultJsxImportModule, defaultJsxImportIdentifier) = await FindDefaultJsxRuntime(packageRoot);
@@ -469,7 +471,7 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
 
                 if (dependency.HasExports)
                 {
-                    var exported = dependency.ResolveExport(subpath, _context.Platform.Conditions);
+                    var exported = dependency.ResolveExport(subpath, _context.ActiveConditions);
 
                     if (exported is not null)
                     {
@@ -607,6 +609,13 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
         {
             // ignore URLs
             return null;
+        }
+
+        // With --packages=external, every bare (node_modules) import is kept
+        // external — a relative or absolute path is still bundled as usual.
+        if (_context.ExternalPackages && !name.StartsWith('.') && !Path.IsPathRooted(name))
+        {
+            return AddExternalReference(parent, name);
         }
 
         // Split off a trailing `?...` query string (irrelevant for locating the

@@ -21,7 +21,7 @@ sealed class CommonJsModuleFormat : JsModuleFormat
     public override Ast.Statement ImportSharedBundle(Ast.Identifier local, string fileName)
         => new Ast.VariableStatement(Ast.VariableKind.Const, new List<Ast.VariableDeclarator>
         {
-            new Ast.VariableDeclarator(local, Require($"./{fileName}")),
+            new Ast.VariableDeclarator(local, Require(Ref(fileName))),
         });
 
     public override Ast.Statement RewriteExternalImport(Ast.ImportDeclaration declaration)
@@ -48,7 +48,7 @@ sealed class CommonJsModuleFormat : JsModuleFormat
     {
         _needsBaseUrl = true;
         var url = new Ast.NewExpression(new Ast.Identifier("URL"),
-            new List<Ast.Expression> { MakeString($"./{fileName}"), new Ast.Identifier(BaseUrl) });
+            new List<Ast.Expression> { MakeString(Ref(fileName)), new Ast.Identifier(BaseUrl) });
         return new Ast.MemberExpression(url, new Ast.Identifier("href"), false, false);
     }
 

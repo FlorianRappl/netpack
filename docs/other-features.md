@@ -90,6 +90,46 @@ Imported assets are content-hashed already, independently of this flag. The hash
 reflects each bundle's own contents, so a change confined to a shared bundle
 re-hashes that bundle but not the entries that import it.
 
+## Public path (`--public-path`)
+
+Prepends a base path or URL to every reference to an emitted file — bundle
+chunks, assets, and the `script`/`link`/`img` targets in the HTML shell — so the
+output can be served from a CDN or a sub-path instead of next to the document.
+
+```sh
+npx netpack bundle src/index.html --public-path https://cdn.example.com/app
+```
+
+With no public path (the default) references stay document-relative
+(`./app.js`); with one they become `https://cdn.example.com/app/app.js`. It
+applies across every output format.
+
+## Exports conditions (`--conditions`)
+
+Adds custom [`exports`](./platforms.md#entry-point-selection) conditions on top
+of the platform defaults, widening which conditional branches of a dependency's
+`package.json` `exports` map are eligible.
+
+```sh
+npx netpack bundle src/index.html --conditions development --conditions browser
+```
+
+User conditions take priority over the platform's built-ins; `default` always
+matches last.
+
+## Externalizing packages (`--packages`)
+
+`--packages external` keeps every bare (i.e. `node_modules`) import external
+instead of bundling it — the standard way to build a library, or a Node app whose
+dependencies are installed separately. Relative and absolute imports are still
+bundled.
+
+```sh
+npx netpack bundle src/lib.ts --packages external --format esm
+```
+
+This is the bulk equivalent of listing every dependency with `--external`.
+
 ## Watch mode & HMR
 
 `netpack serve` watches the filesystem and recompiles on every change with
@@ -99,6 +139,16 @@ for how updates reach the browser (granular hot-swap vs. full reload), and
 [React & JSX](./react-and-jsx.md#react-fast-refresh-in-the-dev-server) for
 how React component state survives an edit when `react-refresh` is
 installed.
+
+For a build without a server, `netpack bundle --watch` rebuilds and rewrites the
+output directory whenever a source file that took part in the build changes:
+
+```sh
+npx netpack bundle src/index.html --outdir dist --watch
+```
+
+It writes to disk (no dev server, no HMR) and runs until interrupted — handy when
+another process serves `dist/`.
 
 ## Bundle analyzer
 

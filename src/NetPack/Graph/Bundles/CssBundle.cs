@@ -27,8 +27,8 @@ public sealed class CssBundle(BundlerContext context, Node root, BundleFlags fla
             {
                 var property = replacement.Key;
                 var node = replacement.Value;
-                var reference = GetReference(node);
-                property.Value = Regex.Replace(property.Value, @"url\(.*\)", $"url('./{reference}')");
+                var url = Helpers.PublicUrl(options.PublicPath, GetReference(node));
+                property.Value = Regex.Replace(property.Value, @"url\(.*\)", $"url('{url}')");
             }
 
             var formatter = options.IsOptimizing ? new MinifyStyleFormatter() : CssStyleFormatter.Instance;
