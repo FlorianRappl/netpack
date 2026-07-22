@@ -1,5 +1,6 @@
 namespace NetPack.Tests;
 
+using System;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -102,7 +103,10 @@ public class VueSfcTests
             await File.WriteAllTextAsync(Path.Combine(dir, "main.js"),
                 "import Comp from './Comp.vue';\nconsole.log(Comp);\n");
 
-            using var graph = await Traverse.From(Path.Combine(dir, "main.js"));
+            // The compiled SFC imports the `vue` runtime; it isn't installed in
+            // this temp project, so keep it external (as a real build would when
+            // `vue` is provided via an import map / shared dependency).
+            using var graph = await Traverse.From(Path.Combine(dir, "main.js"), new[] { "vue" }, Array.Empty<string>());
             var bundle = graph.Context.Bundles.Values.OfType<JsBundle>().First(b => b.IsPrimary);
             var output = bundle.Stringify(new OutputOptions { IsOptimizing = false, IsReloading = false });
 
@@ -235,7 +239,9 @@ public class VueSfcTests
             await File.WriteAllTextAsync(Path.Combine(dir, "main.js"),
                 "import Counter from './Counter.vue';\nconsole.log(Counter);\n");
 
-            using var graph = await Traverse.From(Path.Combine(dir, "main.js"));
+            // The compiled SFC imports the `vue` runtime; keep it external since
+            // it isn't installed in this temp project.
+            using var graph = await Traverse.From(Path.Combine(dir, "main.js"), new[] { "vue" }, Array.Empty<string>());
             var bundle = graph.Context.Bundles.Values.OfType<JsBundle>().First(b => b.IsPrimary);
             var output = bundle.Stringify(new OutputOptions { IsOptimizing = false, IsReloading = false });
 
