@@ -11,7 +11,13 @@ const docsDir = fileURLToPath(new URL('../../../../docs', import.meta.url));
 
 const docs = defineCollection({
   loader: glob({
-    pattern: '**/*.md',
+    // Only top-level `docs/*.md` files are published. This is non-recursive on
+    // purpose: subfolders like `docs/impl/` hold internal implementation and
+    // architecture notes that must stay off the public site, so nesting a doc
+    // is how you keep it private. (Astro 4's loader takes a single string
+    // pattern, so exclusion is expressed by not descending rather than a
+    // negative glob.)
+    pattern: '*.md',
     base: docsDir,
     // Keep ids as the plain file name (no extension, case preserved) —
     // e.g. "getting-started", "README" — since src/lib/docs.ts and the
