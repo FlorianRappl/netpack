@@ -1,53 +1,62 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <OutputType>Exe</OutputType>
     <TargetFramework>net8.0</TargetFramework>
-    <TargetName>netpack</TargetName>
+    <AssemblyName>NetPack</AssemblyName>
     <AssemblyTitle>netpack</AssemblyTitle>
     <RootNamespace>NetPack</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
-    <PublishAot>true</PublishAot>
     <Nullable>enable</Nullable>
-    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
-    <EnableRequestDelegateGenerator>true</EnableRequestDelegateGenerator>
-    <InterceptorsNamespaces>$(InterceptorsNamespaces);Microsoft.AspNetCore.Http.Generated</InterceptorsNamespaces>
-    <!-- IL2104 / IL3053 are the per-assembly roll-up warnings the linker emits for
-         a *referenced* dependency (here CommandLineParser). We only use that
-         library's non-reflection parsing path, which works under native AOT.
-         These two codes are only ever raised for pre-compiled dependency
-         assemblies, so suppressing them silences the third-party noise while
-         netpack's own source still reports its per-site trim/AOT warnings
-         (IL2026, IL3050, IL2075, …). -->
-    <NoWarn>$(NoWarn);IL2104;IL3053</NoWarn>
+
+    <!-- NuGet package metadata (the embeddable core library; the CLI is shipped
+         separately via npm as a native binary). The package id is NetPack.Core
+         ("NetPack" is taken on nuget.org); the assembly + namespace stay NetPack,
+         so consumers still write `using NetPack;`. -->
+    <PackageId>NetPack.Core</PackageId>
+    <Title>netpack</Title>
+    <Authors>Florian Rappl</Authors>
+    <Description>A fast, batteries-included web bundler engine for .NET. Bundles and optimizes JavaScript, TypeScript, JSX/TSX, CSS and HTML from managed code, with a hand-written TypeScript/JSX parser, printer, minifier and tree-shaker. The core is dependency-free (only AngleSharp) — native image processing is pluggable via IAssetProcessor.</Description>
+    <PackageTags>bundler;javascript;typescript;jsx;tsx;css;html;web;minify;tree-shaking;parser;esbuild;vite;aot</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/FlorianRappl/netpack</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/FlorianRappl/netpack</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageReleaseNotes>See https://github.com/FlorianRappl/netpack/releases</PackageReleaseNotes>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+
+    <!-- Ship IntelliSense docs and embed the PDB (source-debuggable, no separate
+         symbol package). CS1591 = "missing XML comment" is silenced so the many
+         intentionally-undocumented public AST/parser members don't flood output. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <DebugType>embedded</DebugType>
+    <IncludeSymbols>false</IncludeSymbols>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
-    <FrameworkReference Include="Microsoft.AspNetCore.App" />
-  </ItemGroup>
-
-  <ItemGroup>
+    <!-- The CLI and the test project consume engine internals (writers, the file
+         watcher, etc.) that are intentionally not part of the public API; external
+         consumers use the public Bundler facade instead. The CLI's compiled
+         assembly identity follows its TargetName ("netpack"), while its restore
+         name is "NetPack.Cli" — grant both so the friend match holds regardless. -->
+    <InternalsVisibleTo Include="netpack" />
+    <InternalsVisibleTo Include="NetPack.Cli" />
     <InternalsVisibleTo Include="NetPack.Tests" />
   </ItemGroup>
 
   <ItemGroup>
+    <!-- AngleSharp is the only managed dependency: HTML/CSS parsing that the
+         bundler (and the Vue/Astro SFC compilers) are built on. Native image
+         processing (SkiaSharp) is NOT referenced here — it is provided by a
+         consumer through the public IAssetProcessor interface. -->
     <PackageReference Include="AngleSharp" Version="1.5.2" />
     <PackageReference Include="AngleSharp.Css" Version="1.0.0-beta.216" />
-    <PackageReference Include="CommandLineParser" Version="2.9.1" />
-    <PackageReference Include="SkiaSharp" Version="4.150.1" />
-    <!-- Pull the SkiaSharp native binaries matching the target runtime, so each
-         platform's AOT publish ships a working libSkiaSharp. -->
-    <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="4.150.1" Condition="$(RuntimeIdentifier.StartsWith('linux'))" />
-    <PackageReference Include="SkiaSharp.NativeAssets.macOS" Version="4.150.1" Condition="$(RuntimeIdentifier.StartsWith('osx'))" />
-    <PackageReference Include="SkiaSharp.NativeAssets.Win32" Version="4.150.1" Condition="$(RuntimeIdentifier.StartsWith('win'))" />
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="../resources/analyzer/index.css" />
-    <EmbeddedResource Include="../resources/analyzer/index.html" />
-    <EmbeddedResource Include="../resources/analyzer/index.js" />
-    <EmbeddedResource Include="../resources/analyzer/logo.svg" />
     <EmbeddedResource Include="../resources/module-federation/remote.js" />
+    <None Include="README.md" Pack="true" PackagePath="/" />
   </ItemGroup>
 
 </Project>

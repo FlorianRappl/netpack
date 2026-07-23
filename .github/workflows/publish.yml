@@ -1,22 +1,30 @@
 name: Publish
 
-# Release pipeline, three jobs:
+# Release pipeline, four jobs:
 #   1. build   — compile the native AOT binary once per platform (Linux x64,
 #                Linux arm64, macOS arm64, Windows x64, Windows arm64) and
 #                upload each as an artifact.
 #   2. publish — assemble the per-platform npm packages from those artifacts and
 #                publish them together with the central wrapper package.
-#   3. pages   — build both Astro sites (www/home, the landing page, and
+#   3. nuget   — pack the embeddable core library (src/NetPack) and push it to
+#                NuGet.org as the `NetPack.Core` package. Independent of 1/2.
+#   4. pages   — build both Astro sites (www/home, the landing page, and
 #                www/docs, which renders the repo-root docs/*.md) and push
 #                them together to the `gh-pages` branch: the landing page at
 #                the root, the docs site under /docs/. Independent of 1/2,
 #                so it runs in parallel with the npm release.
 #
-# Publishing uses npm Trusted Publishing (OIDC): no NPM token / secret is needed.
-# The maintainer must configure trusted publishing on npmjs.com for each of
-# `netpack`, `@netpack/linux-x64`, `@netpack/linux-arm64`, `@netpack/osx-arm64`,
-# `@netpack/win-x64`, and `@netpack/win-arm64`,
-# pointing at this repository and this workflow file (.github/workflows/publish.yml).
+# Publishing uses Trusted Publishing (OIDC) everywhere: no npm or NuGet API
+# token / secret is needed.
+#   - npm: configure trusted publishing on npmjs.com for each of `netpack`,
+#     `@netpack/linux-x64`, `@netpack/linux-arm64`, `@netpack/osx-arm64`,
+#     `@netpack/win-x64`, and `@netpack/win-arm64`, pointing at this repository
+#     and this workflow file (.github/workflows/publish.yml).
+#   - NuGet: on nuget.org create a Trusted Publishing policy for the `NetPack.Core`
+#     package (Repository Owner + Repository + Workflow File "publish.yml"), and
+#     set the `NUGET_USER` repo secret to your nuget.org username (the profile
+#     name — NOT a token, and NOT your email). See
+#     https://learn.microsoft.com/nuget/nuget-org/trusted-publishing.
 #
 # The published version is the <VersionPrefix> in src/Directory.Build.props; bump
 # it (and tag the matching release) before triggering this workflow.
@@ -66,7 +74,7 @@ jobs:
 
       - name: Publish native binary
         run: >-
-          dotnet publish src/NetPack/NetPack.csproj
+          dotnet publish src/NetPack.Cli/NetPack.Cli.csproj
           -r ${{ matrix.rid }} -c Release
           -p:DebugType=None -p:DebugSymbols=false
 
@@ -74,7 +82,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: binary-${{ matrix.rid }}
-          path: src/NetPack/bin/Release/net8.0/${{ matrix.rid }}/publish/
+          path: src/NetPack.Cli/bin/Release/net8.0/${{ matrix.rid }}/publish/
           if-no-files-found: error
 
   publish:
@@ -125,6 +133,40 @@ jobs:
       - name: Publish central package
         working-directory: src/npm/netpack
         run: npm publish --provenance --access public
+
+  nuget:
+    name: Publish NuGet (core library)
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write # OIDC for NuGet trusted publishing
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Pack core library
+        run: >-
+          dotnet pack src/NetPack/NetPack.csproj
+          -c Release
+          -o ${{ runner.temp }}/nupkgs
+
+      # Exchange the GitHub OIDC token for a short-lived NuGet API key. No stored
+      # NuGet token; `NUGET_USER` is just the nuget.org profile name.
+      - name: NuGet login (OIDC → temporary API key)
+        uses: NuGet/login@v1
+        id: nuget-login
+        with:
+          user: ${{ secrets.NUGET_USER }}
+
+      - name: Push package
+        run: >-
+          dotnet nuget push "${{ runner.temp }}/nupkgs/*.nupkg"
+          --api-key ${{ steps.nuget-login.outputs.NUGET_API_KEY }}
+          --source https://api.nuget.org/v3/index.json
+          --skip-duplicate
 
   pages:
     name: Publish GitHub Pages

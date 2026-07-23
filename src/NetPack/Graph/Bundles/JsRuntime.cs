@@ -3,27 +3,7 @@ namespace NetPack.Graph.Bundles;
 using System.Collections.Generic;
 using System.Text;
 
-/// <summary>
-/// Emits the JavaScript runtime prelude for a JS bundle as plain source text.
-/// It is deliberately written as ordinary JavaScript (rather than assembled from
-/// AST nodes) and then parsed back by the bundler, so the printer formats it and
-/// the mangler shortens its locals like any other code.
-///
-/// The registry (<c>__m</c>) is declared separately by the bundle; this prelude
-/// wires up the lazy <c>require</c> runtime (<c>__r</c>) with a cache
-/// (<c>__c</c>) that stores each module's <c>exports</c> object <i>before</i>
-/// running its factory — the key to correct circular-dependency behaviour — plus
-/// the ESM/CJS default interop and, optionally, the hot-module-replacement
-/// machinery.
-///
-/// HMR: when <paramref name="reloading"/> is set the runtime records the module
-/// dependency graph (which module required which), exposes a <c>module.hot</c>
-/// API, and installs <c>globalThis.__netpack.apply(updates)</c>. Applying an
-/// update swaps the changed module factories, bubbles from each changed module up
-/// through its importers to the nearest <c>hot.accept</c> boundary, disposes and
-/// re-executes that boundary (falling back to a full reload when no boundary
-/// accepts the change).
-/// </summary>
+/// <summary>Runtime envelope for bundle serialization.</summary>
 public static class JsRuntime
 {
     /// <summary>Registry object symbol (module id → factory).</summary>
@@ -32,6 +12,27 @@ public static class JsRuntime
     /// <summary>Require function symbol.</summary>
     public const string Require = "__r";
 
+    /// <summary>
+    /// Emits the JavaScript runtime prelude for a JS bundle as plain source text.
+    /// It is deliberately written as ordinary JavaScript (rather than assembled from
+    /// AST nodes) and then parsed back by the bundler, so the printer formats it and
+    /// the mangler shortens its locals like any other code.
+    ///
+    /// The registry (<c>__m</c>) is declared separately by the bundle; this prelude
+    /// wires up the lazy <c>require</c> runtime (<c>__r</c>) with a cache
+    /// (<c>__c</c>) that stores each module's <c>exports</c> object <i>before</i>
+    /// running its factory — the key to correct circular-dependency behaviour — plus
+    /// the ESM/CJS default interop and, optionally, the hot-module-replacement
+    /// machinery.
+    ///
+    /// HMR: when <paramref name="reloading"/> is set the runtime records the module
+    /// dependency graph (which module required which), exposes a <c>module.hot</c>
+    /// API, and installs <c>globalThis.__netpack.apply(updates)</c>. Applying an
+    /// update swaps the changed module factories, bubbles from each changed module up
+    /// through its importers to the nearest <c>hot.accept</c> boundary, disposes and
+    /// re-executes that boundary (falling back to a full reload when no boundary
+    /// accepts the change).
+    /// </summary>
     public static string Build(bool isShared, IReadOnlyList<string> sharedNames, bool reloading)
     {
         var sb = new StringBuilder();

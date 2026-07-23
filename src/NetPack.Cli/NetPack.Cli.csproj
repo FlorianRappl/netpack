@@ -1,0 +1,51 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <!-- The assembly is NetPack.Cli (distinct from the NetPack core assembly), but
+         the emitted binary is named `netpack` via TargetName — which is what the
+         npm packages and CI expect. -->
+    <TargetName>netpack</TargetName>
+    <AssemblyTitle>netpack</AssemblyTitle>
+    <RootNamespace>NetPack</RootNamespace>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <PublishAot>true</PublishAot>
+    <Nullable>enable</Nullable>
+    <!-- Distributed as a native binary via npm, never as a NuGet package. -->
+    <IsPackable>false</IsPackable>
+    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+    <EnableRequestDelegateGenerator>true</EnableRequestDelegateGenerator>
+    <InterceptorsNamespaces>$(InterceptorsNamespaces);Microsoft.AspNetCore.Http.Generated</InterceptorsNamespaces>
+    <!-- Per-assembly trim/AOT roll-up warnings from CommandLineParser; we only use
+         its non-reflection parsing path (see the note that used to live in the
+         single-project csproj). -->
+    <NoWarn>$(NoWarn);IL2104;IL3053</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../NetPack/NetPack.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommandLineParser" Version="2.9.1" />
+    <PackageReference Include="SkiaSharp" Version="4.150.1" />
+    <!-- Pull the SkiaSharp native binaries matching the target runtime, so each
+         platform's AOT publish ships a working libSkiaSharp. -->
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="4.150.1" Condition="$(RuntimeIdentifier.StartsWith('linux'))" />
+    <PackageReference Include="SkiaSharp.NativeAssets.macOS" Version="4.150.1" Condition="$(RuntimeIdentifier.StartsWith('osx'))" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Win32" Version="4.150.1" Condition="$(RuntimeIdentifier.StartsWith('win'))" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="../resources/analyzer/index.css" />
+    <EmbeddedResource Include="../resources/analyzer/index.html" />
+    <EmbeddedResource Include="../resources/analyzer/index.js" />
+    <EmbeddedResource Include="../resources/analyzer/logo.svg" />
+  </ItemGroup>
+
+</Project>

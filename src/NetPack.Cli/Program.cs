@@ -1,11 +1,25 @@
 ﻿namespace NetPack;
 
+using NetPack.Assets;
 using NetPack.Commands;
 using CommandLine;
 using System.Diagnostics.CodeAnalysis;
 
 static class Program
 {
+    // The core library ships no native asset processing; the CLI supplies the
+    // SkiaSharp-based image processor (resize / re-encode) through the public
+    // registry before any command runs.
+    private static void RegisterAssetProcessors()
+    {
+        var image = new ImageAssetProcessor();
+
+        foreach (var extension in new[] { ".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp", ".exif" })
+        {
+            AssetProcessorFactory.Register(extension, image);
+        }
+    }
+
     static int Run(ICommand command)
     {
         try
@@ -39,6 +53,8 @@ static class Program
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(AnalyzeCommand))]
     static void Main(string[] args)
     {
+        RegisterAssetProcessors();
+
         Parser.Default.ParseArguments<BundleCommand, GraphCommand, InspectCommand, ServeCommand, AnalyzeCommand>(args)
             .MapResult(
                 (BundleCommand opts) => Run(opts),

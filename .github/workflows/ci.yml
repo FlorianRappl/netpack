@@ -54,6 +54,6 @@ jobs:
 
       - name: Publish (AOT)
         run: >-
-          dotnet publish src/NetPack/NetPack.csproj
+          dotnet publish src/NetPack.Cli/NetPack.Cli.csproj
           -r ${{ matrix.rid }} -c Release
           -p:DebugType=None -p:DebugSymbols=false

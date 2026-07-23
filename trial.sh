@@ -4,14 +4,14 @@ PID=`./platform.sh`
 
 echo $PID
 
-dotnet publish -r $PID -c Release ./src/NetPack/NetPack.csproj
+dotnet publish -r $PID -c Release ./src/NetPack.Cli/NetPack.Cli.csproj
 
 echo "Test Graph"
-time ./src/NetPack/bin/Release/net8.0/$PID/publish/netpack graph data/projects/large/src/index.html
+time ./src/NetPack.Cli/bin/Release/net8.0/$PID/publish/netpack graph data/projects/large/src/index.html
 
 rm -rf dist
 
 echo "Test Bundling"
-time ./src/NetPack/bin/Release/net8.0/$PID/publish/netpack bundle data/projects/large/src/index.html --minify
+time ./src/NetPack.Cli/bin/Release/net8.0/$PID/publish/netpack bundle data/projects/large/src/index.html --minify
 
 ls -l dist

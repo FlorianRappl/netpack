@@ -653,9 +653,9 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
     }
 
     /// <summary>Image variant output formats accepted in a `?format=` query
-    /// param — the same raster formats <see cref="Assets.ImageAssetProcessor"/>
-    /// can reliably encode to. An unrecognized value is ignored (treated as if
-    /// no format were requested) rather than failing the build.</summary>
+    /// param — the same raster formats the image asset processor can reliably
+    /// encode to. An unrecognized value is ignored (treated as if no format were
+    /// requested) rather than failing the build.</summary>
     private static readonly HashSet<string> SupportedVariantFormats = new(StringComparer.OrdinalIgnoreCase)
     {
         "png", "jpg", "jpeg", "webp", "gif", "bmp",
