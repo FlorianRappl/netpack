@@ -27,10 +27,11 @@
     <Description>MSBuild integration for netpack: bundle and optimize your web assets (JS/TS/JSX/CSS/HTML) as part of `dotnet build`/`publish`, straight into wwwroot. Built on NetPack.Core with a cross-platform, pure-managed image processor (ImageSharp) — no native/OS dependency.</Description>
     <PackageTags>msbuild;bundler;javascript;typescript;jsx;css;web;wwwroot;aspnetcore;build</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageProjectUrl>https://github.com/FlorianRappl/netpack</PackageProjectUrl>
+    <PackageProjectUrl>https://netpack.anglevisions.com</PackageProjectUrl>
     <RepositoryUrl>https://github.com/FlorianRappl/netpack</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageIcon>icon.png</PackageIcon>
     <PackageReleaseNotes>See https://github.com/FlorianRappl/netpack/releases</PackageReleaseNotes>
   </PropertyGroup>
 
@@ -54,6 +55,7 @@
     <None Include="build/NetPack.Build.props" Pack="true" PackagePath="build/" />
     <None Include="build/NetPack.Build.targets" Pack="true" PackagePath="build/" />
     <None Include="README.md" Pack="true" PackagePath="/" />
+    <None Include="../../art/icon.png" Pack="true" PackagePath="/" Visible="false" />
   </ItemGroup>
 
   <!-- Bundle the task assembly and its private runtime dependencies under

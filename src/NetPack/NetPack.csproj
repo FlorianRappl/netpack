@@ -18,10 +18,11 @@
     <Description>A fast, batteries-included web bundler engine for .NET. Bundles and optimizes JavaScript, TypeScript, JSX/TSX, CSS and HTML from managed code, with a hand-written TypeScript/JSX parser, printer, minifier and tree-shaker. The core is dependency-free (only AngleSharp) — native image processing is pluggable via IAssetProcessor.</Description>
     <PackageTags>bundler;javascript;typescript;jsx;tsx;css;html;web;minify;tree-shaking;parser;esbuild;vite;aot</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageProjectUrl>https://github.com/FlorianRappl/netpack</PackageProjectUrl>
+    <PackageProjectUrl>https://netpack.anglevisions.com</PackageProjectUrl>
     <RepositoryUrl>https://github.com/FlorianRappl/netpack</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageIcon>icon.png</PackageIcon>
     <PackageReleaseNotes>See https://github.com/FlorianRappl/netpack/releases</PackageReleaseNotes>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
 
@@ -57,6 +58,7 @@
   <ItemGroup>
     <EmbeddedResource Include="../resources/module-federation/remote.js" />
     <None Include="README.md" Pack="true" PackagePath="/" />
+    <None Include="../../art/icon.png" Pack="true" PackagePath="/" Visible="false" />
   </ItemGroup>
 
 </Project>

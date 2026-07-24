@@ -1,9 +1,17 @@
+<p align="center">
+  <a href="https://netpack.anglevisions.com"><img src="https://raw.githubusercontent.com/FlorianRappl/netpack/main/art/icon.png" alt="netpack" width="120" height="120" /></a>
+</p>
+
 # NetPack.Build
 
-**Bundle your web assets as part of the .NET build.** This package wires
-[netpack](https://github.com/FlorianRappl/netpack) into MSBuild: on `dotnet build`
-(or `publish`) it bundles and optimizes your JavaScript / TypeScript / JSX / CSS /
-HTML entry point straight into `wwwroot` — ideal for ASP.NET Core apps.
+**Bundle your web assets as part of the .NET build.**
+
+**[Website](https://netpack.anglevisions.com)** · **[Documentation](https://netpack.anglevisions.com/docs/netpack-build/)** · **[Source](https://github.com/FlorianRappl/netpack)** · **[CLI on npm](https://www.npmjs.com/package/netpack)**
+
+This package wires [netpack](https://netpack.anglevisions.com) into MSBuild: on
+`dotnet build` (or `publish`) it bundles and optimizes your JavaScript /
+TypeScript / JSX / CSS / HTML entry point straight into `wwwroot` — ideal for
+ASP.NET Core apps.
 
 It's built on `NetPack.Core` and ships a **cross-platform, pure-managed image
 processor** (ImageSharp) — no SkiaSharp, no native/OS dependency. Everything the

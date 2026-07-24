@@ -1,10 +1,17 @@
-# NetPack
+<p align="center">
+  <a href="https://netpack.anglevisions.com"><img src="https://raw.githubusercontent.com/FlorianRappl/netpack/main/art/icon.png" alt="netpack" width="120" height="120" /></a>
+</p>
 
-**A fast, batteries-included web bundler engine for .NET.** NetPack bundles and
-optimizes JavaScript, TypeScript, JSX/TSX, CSS and HTML directly from managed
-code — with a hand-written TypeScript/JSX parser, printer, scope-aware minifier
-and tree-shaker. The core has no native dependencies and no external toolchain to
-install.
+# NetPack.Core
+
+**A fast, batteries-included web bundler engine for .NET.**
+
+**[Website](https://netpack.anglevisions.com)** · **[Documentation](https://netpack.anglevisions.com/docs/netpack-core/)** · **[Source](https://github.com/FlorianRappl/netpack)** · **[CLI on npm](https://www.npmjs.com/package/netpack)**
+
+NetPack bundles and optimizes JavaScript, TypeScript, JSX/TSX, CSS and HTML
+directly from managed code — with a hand-written TypeScript/JSX parser, printer,
+scope-aware minifier and tree-shaker. The core has no native dependencies and no
+external toolchain to install.
 
 > Looking for the command-line tool? Install it from npm (`npm i -D netpack`).
 > **This package is the embeddable library** for use from .NET: ASP.NET Core
