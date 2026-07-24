@@ -21,38 +21,57 @@ const toPath = path.join(__dirname, "..", "cli", "netpack");
 let isToPathJS = true;
 
 function validateBinaryVersion(...command: string[]): void {
-  command.push("--version");
-  let stdout: string;
-  try {
-    stdout = child_process
-      .execFileSync(command.shift()!, command, {
-        stdio: "pipe",
-      })
-      .toString()
-      .trim();
-  } catch (err) {
-    if (
-      os.platform() === "darwin" &&
-      /_SecTrustEvaluateWithError/.test(err + "")
-    ) {
-      let os = "this version of macOS";
-      try {
-        os =
-          "macOS " +
-          child_process
-            .execFileSync("sw_vers", ["-productVersion"])
-            .toString()
-            .trim();
-      } catch {}
-      throw new Error(`The "netpack" package cannot be installed because ${os} is too outdated.`);
-    }
-    throw err;
-  }
-  if (stdout !== versionFromPackageJSON) {
+  const file = command[0];
+  const args = [...command.slice(1), "--version"];
+
+  // Use spawnSync (not execFileSync) so we can read BOTH streams without it
+  // throwing on a non-zero exit: the CLI prints its version banner
+  // ("netpack 0.5.1+<commit>") to stderr, and older behaviour that only read
+  // stdout saw an empty string.
+  const result = child_process.spawnSync(file, args, {
+    stdio: ["ignore", "pipe", "pipe"],
+    encoding: "utf8",
+  });
+
+  const output = `${result.stdout ?? ""}\n${result.stderr ?? ""}`;
+
+  // Old macOS can't run the signed binary — surface a clear message.
+  if (
+    os.platform() === "darwin" &&
+    (/_SecTrustEvaluateWithError/.test(output) ||
+      (result.error != null &&
+        /_SecTrustEvaluateWithError/.test(String(result.error))))
+  ) {
+    let osName = "this version of macOS";
+    try {
+      osName =
+        "macOS " +
+        child_process
+          .execFileSync("sw_vers", ["-productVersion"])
+          .toString()
+          .trim();
+    } catch {}
     throw new Error(
-      `Expected ${JSON.stringify(
-        versionFromPackageJSON
-      )} but got ${JSON.stringify(stdout)}`
+      `The "netpack" package cannot be installed because ${osName} is too outdated.`
+    );
+  }
+
+  // The binary could not even be started (missing, not executable, …).
+  if (result.error != null) {
+    throw result.error;
+  }
+
+  // Compare on the semver core (major.minor.patch), tolerating a program-name
+  // prefix and any "+build"/"-prerelease" metadata in the banner.
+  const expectedCore = (versionFromPackageJSON.match(/\d+\.\d+\.\d+/) ?? [])[0];
+  const foundCores = output.match(/\d+\.\d+\.\d+/g) ?? [];
+
+  if (!expectedCore || !foundCores.includes(expectedCore)) {
+    throw new Error(
+      `Expected the netpack binary to report version ` +
+        `${JSON.stringify(versionFromPackageJSON)}, but ` +
+        `"${[file, ...args].join(" ")}" produced:\n` +
+        (output.trim() || "(no output)")
     );
   }
 }
