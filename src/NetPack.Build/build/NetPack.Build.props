@@ -1,0 +1,26 @@
+<Project>
+
+  <!--
+    Defaults for the netpack MSBuild integration. Override any of these in your
+    project, and set NetpackEntry to opt in:
+
+      <PropertyGroup>
+        <NetpackEntry>ClientApp/src/index.html</NetpackEntry>
+        <NetpackOutputDirectory>$(MSBuildProjectDirectory)/wwwroot</NetpackOutputDirectory>
+        <NetpackEntryNames>[name]-[hash]</NetpackEntryNames>
+      </PropertyGroup>
+
+      <ItemGroup>
+        <NetpackExternal Include="react" />
+      </ItemGroup>
+  -->
+  <PropertyGroup>
+    <NetpackMinify Condition="'$(NetpackMinify)' == ''">true</NetpackMinify>
+    <NetpackSourceMaps Condition="'$(NetpackSourceMaps)' == ''">false</NetpackSourceMaps>
+    <NetpackFormat Condition="'$(NetpackFormat)' == ''">esm</NetpackFormat>
+    <NetpackPlatform Condition="'$(NetpackPlatform)' == ''">web</NetpackPlatform>
+    <NetpackEntryNames Condition="'$(NetpackEntryNames)' == ''">[name]</NetpackEntryNames>
+    <NetpackOutputDirectory Condition="'$(NetpackOutputDirectory)' == ''">$(MSBuildProjectDirectory)/wwwroot</NetpackOutputDirectory>
+  </PropertyGroup>
+
+</Project>

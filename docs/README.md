@@ -49,7 +49,16 @@ Usage docs for netpack, in addition to the feature overview in the
 - **[Other features](./other-features.md)** — tree shaking, source maps,
   minification, and the bundle analyzer.
 
+## .NET
+
+- **[Using netpack from .NET](./dotnet-libraries.md)** — overview of the two
+  NuGet packages and when to reach for each.
+- **[NetPack.Core](./netpack-core.md)** — the bundler engine as a managed
+  library: bundle programmatically, or use the TypeScript/JSX parser/printer.
+- **[NetPack.Build](./netpack-build.md)** — MSBuild integration: bundle into
+  `wwwroot` on `dotnet build`, with cross-platform image processing.
+
 This content is written to also serve as the source material for the
 project's docs site (`www/docs`) — it's kept as plain, self-contained
 Markdown for that reason. The site groups these same docs into the same
-three sections in its sidebar (see `www/docs/src/lib/docs.ts`).
+sections in its sidebar (see `www/docs/src/lib/docs.ts`).

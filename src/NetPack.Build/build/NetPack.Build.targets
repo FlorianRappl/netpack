@@ -1,0 +1,26 @@
+<Project>
+
+  <UsingTask TaskName="NetPack.Build.NetpackBundleTask"
+             AssemblyFile="$(MSBuildThisFileDirectory)../tasks/net8.0/NetPack.Build.dll" />
+
+  <!--
+    Runs after Build when NetpackEntry is set, bundling the entry into
+    NetpackOutputDirectory (wwwroot by default). Relative paths are resolved
+    against the project directory.
+  -->
+  <Target Name="NetpackBundle"
+          AfterTargets="Build"
+          Condition="'$(NetpackEntry)' != ''">
+    <NetpackBundleTask
+        Entry="$([MSBuild]::NormalizePath('$(MSBuildProjectDirectory)', '$(NetpackEntry)'))"
+        OutputDirectory="$([MSBuild]::NormalizePath('$(MSBuildProjectDirectory)', '$(NetpackOutputDirectory)'))"
+        Minify="$(NetpackMinify)"
+        SourceMaps="$(NetpackSourceMaps)"
+        Format="$(NetpackFormat)"
+        Platform="$(NetpackPlatform)"
+        EntryNames="$(NetpackEntryNames)"
+        PublicPath="$(NetpackPublicPath)"
+        Externals="@(NetpackExternal)" />
+  </Target>
+
+</Project>

@@ -1,0 +1,73 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>NetPack.Build</RootNamespace>
+    <AssemblyName>NetPack.Build</AssemblyName>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <!-- This is an MSBuild *tasks* package: the assemblies ship under tasks/ (not
+         lib/), and it declares no NuGet dependencies — the task and everything it
+         needs (NetPack core, AngleSharp, ImageSharp) are bundled so they load in
+         isolation inside the MSBuild host, never clashing with the consumer's own
+         package graph. -->
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <DevelopmentDependency>true</DevelopmentDependency>
+    <!-- NU5100: assembly not under lib/ (intentional — it's a task). NU5128: no
+         lib/ + no dependencies (intentional — deps are bundled). -->
+    <NoWarn>$(NoWarn);NU5100;NU5128</NoWarn>
+
+    <!-- NuGet package metadata -->
+    <PackageId>NetPack.Build</PackageId>
+    <Title>netpack MSBuild integration</Title>
+    <Authors>Florian Rappl</Authors>
+    <Description>MSBuild integration for netpack: bundle and optimize your web assets (JS/TS/JSX/CSS/HTML) as part of `dotnet build`/`publish`, straight into wwwroot. Built on NetPack.Core with a cross-platform, pure-managed image processor (ImageSharp) — no native/OS dependency.</Description>
+    <PackageTags>msbuild;bundler;javascript;typescript;jsx;css;web;wwwroot;aspnetcore;build</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/FlorianRappl/netpack</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/FlorianRappl/netpack</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageReleaseNotes>See https://github.com/FlorianRappl/netpack/releases</PackageReleaseNotes>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Compile against MSBuild; the host provides these at runtime (ExcludeAssets
+         Runtime keeps them out of the bundled tasks/ folder). 17.8.43 is the
+         patched 17.8.x servicing release for CVE-2025-55247 (GHSA-w3q9-fxm7-j8fq);
+         staying on the 17.8 line keeps compatibility with older MSBuild hosts. -->
+    <PackageReference Include="Microsoft.Build.Utilities.Core" Version="17.8.43" PrivateAssets="all" ExcludeAssets="Runtime" />
+
+    <!-- Pure-managed, cross-platform image processing (Apache-2.0). The 2.1.x line
+         predates ImageSharp's move to the source-available Six Labors Split
+         License in 3.0, so it stays permissive for downstream consumers. -->
+    <PackageReference Include="SixLabors.ImageSharp" Version="2.1.*" PrivateAssets="all" />
+
+    <!-- The engine — bundled into tasks/, not declared as a package dependency. -->
+    <ProjectReference Include="../NetPack/NetPack.csproj" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="build/NetPack.Build.props" Pack="true" PackagePath="build/" />
+    <None Include="build/NetPack.Build.targets" Pack="true" PackagePath="build/" />
+    <None Include="README.md" Pack="true" PackagePath="/" />
+  </ItemGroup>
+
+  <!-- Bundle the task assembly and its private runtime dependencies under
+       tasks/net8.0/. Microsoft.Build.* is excluded (provided by the host). -->
+  <PropertyGroup>
+    <TargetsForTfmSpecificContentInPackage>$(TargetsForTfmSpecificContentInPackage);AddTaskAssembliesToPackage</TargetsForTfmSpecificContentInPackage>
+  </PropertyGroup>
+
+  <Target Name="AddTaskAssembliesToPackage" DependsOnTargets="Build">
+    <ItemGroup>
+      <TfmSpecificPackageFile Include="$(TargetDir)*.dll" Exclude="$(TargetDir)Microsoft.Build.*.dll">
+        <PackagePath>tasks/net8.0/%(Filename)%(Extension)</PackagePath>
+      </TfmSpecificPackageFile>
+    </ItemGroup>
+  </Target>
+
+</Project>

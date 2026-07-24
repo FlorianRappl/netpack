@@ -44,6 +44,10 @@ const NAV_GROUPS: { label: string; ids: string[] }[] = [
     label: 'Advanced',
     ids: ['importmaps-and-externals', 'codegen', 'other-features'],
   },
+  {
+    label: '.NET',
+    ids: ['dotnet-libraries', 'netpack-core', 'netpack-build'],
+  },
 ];
 
 function titleCase(id: string): string {
