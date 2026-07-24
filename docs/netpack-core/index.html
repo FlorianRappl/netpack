@@ -1,0 +1,168 @@
+<!DOCTYPE html><html lang="en"> <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>NetPack.Core — netpack docs</title><meta name="description" content="Usage docs for netpack — the fast, batteries-included bundler for the web, built on C#/.NET with Ahead-of-Time compilation."><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="/docs/_astro/_slug_.YjzD3tp3.css"><script type="module">function d(){const e=document.getElementById("docs-nav-toggle"),t=document.getElementById("docs-scrim"),c=document.getElementById("docs-sidebar"),o=n=>{document.body.classList.toggle("docs-nav-open",n),e?.setAttribute("aria-expanded",String(n))};e?.addEventListener("click",()=>{o(!document.body.classList.contains("docs-nav-open"))}),t?.addEventListener("click",()=>o(!1)),c?.addEventListener("click",n=>{n.target.closest("a")&&o(!1)}),document.addEventListener("keydown",n=>{n.key==="Escape"&&o(!1)})}function s(){document.querySelectorAll(".prose pre.astro-code").forEach(e=>{if(e.querySelector(".code-copy-btn"))return;const t=document.createElement("button");t.type="button",t.className="code-copy-btn",t.textContent="copy",t.addEventListener("click",async()=>{const c=e.textContent??"";try{await navigator.clipboard?.writeText(c)}catch{}t.textContent="copied ✓",setTimeout(()=>{t.textContent="copy"},1600)}),e.appendChild(t)})}d();s();document.addEventListener("astro:page-load",()=>{d(),s()});
+</script></head> <body>  <div class="shell" data-astro-cid-zaqc7ala> <div class="dot-grid" aria-hidden="true" data-astro-cid-tw3ctjfb></div> <div class="glow glow-a" aria-hidden="true" data-astro-cid-tw3ctjfb></div> <div class="glow glow-b" aria-hidden="true" data-astro-cid-tw3ctjfb></div> <div class="scanlines" aria-hidden="true" data-astro-cid-tw3ctjfb></div>  <header class="docs-header" data-astro-cid-l4ysfnjo> <div class="docs-header-inner" data-astro-cid-l4ysfnjo> <button type="button" class="nav-toggle" id="docs-nav-toggle" aria-label="Toggle navigation" aria-controls="docs-sidebar" aria-expanded="false" data-astro-cid-l4ysfnjo> <span data-astro-cid-l4ysfnjo></span> <span data-astro-cid-l4ysfnjo></span> <span data-astro-cid-l4ysfnjo></span> </button> <a href="/docs" class="brand" data-astro-cid-l4ysfnjo> <span class="mark" data-astro-cid-l4ysfnjo> <span data-astro-cid-l4ysfnjo>n</span> </span> <span class="wordmark" data-astro-cid-l4ysfnjo>netpack <span class="wordmark-sub" data-astro-cid-l4ysfnjo>docs</span></span> </a> <nav class="links" aria-label="Site" data-astro-cid-l4ysfnjo> <a href="/" data-astro-cid-l4ysfnjo>Home</a> <a href="https://github.com/FlorianRappl/netpack" target="_blank" rel="noopener noreferrer" data-astro-cid-l4ysfnjo> <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true" data-astro-cid-l4ysfnjo> <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z" data-astro-cid-l4ysfnjo></path> </svg> <span class="github-label" data-astro-cid-l4ysfnjo>GitHub</span> </a> </nav> </div> </header>  <main class="content" data-astro-cid-zaqc7ala>   <div class="docs-scrim" id="docs-scrim"></div> <div class="docs-grid"> <nav class="docs-sidebar" id="docs-sidebar" aria-label="Documentation" data-astro-cid-ssfzsv2f> <ul class="top-level" data-astro-cid-ssfzsv2f> <li data-astro-cid-ssfzsv2f> <a href="/docs" class="link overview-link" data-astro-cid-ssfzsv2f>
+Overview
+</a> </li> </ul> <div class="group" data-astro-cid-ssfzsv2f> <div class="group-label" data-astro-cid-ssfzsv2f>General</div> <ul data-astro-cid-ssfzsv2f> <li data-astro-cid-ssfzsv2f> <a href="/docs/getting-started/" class="link" data-astro-cid-ssfzsv2f> Getting started </a> </li> </ul> </div><div class="group" data-astro-cid-ssfzsv2f> <div class="group-label" data-astro-cid-ssfzsv2f>Use cases</div> <ul data-astro-cid-ssfzsv2f> <li data-astro-cid-ssfzsv2f> <a href="/docs/react-and-jsx/" class="link" data-astro-cid-ssfzsv2f> React &amp; JSX </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/vue/" class="link" data-astro-cid-ssfzsv2f> Vue single-file components </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/astro/" class="link" data-astro-cid-ssfzsv2f> Astro components </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/module-federation/" class="link" data-astro-cid-ssfzsv2f> Module Federation </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/native-federation/" class="link" data-astro-cid-ssfzsv2f> Native Federation </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/styling-and-assets/" class="link" data-astro-cid-ssfzsv2f> Styling &amp; assets </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/images-and-assets/" class="link" data-astro-cid-ssfzsv2f> Images &amp; assets </a> </li> </ul> </div><div class="group" data-astro-cid-ssfzsv2f> <div class="group-label" data-astro-cid-ssfzsv2f>Advanced</div> <ul data-astro-cid-ssfzsv2f> <li data-astro-cid-ssfzsv2f> <a href="/docs/importmaps-and-externals/" class="link" data-astro-cid-ssfzsv2f> Import maps &amp; externals </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/codegen/" class="link" data-astro-cid-ssfzsv2f> Build-time code generation (.codegen files) </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/other-features/" class="link" data-astro-cid-ssfzsv2f> Other features </a> </li> </ul> </div><div class="group" data-astro-cid-ssfzsv2f> <div class="group-label" data-astro-cid-ssfzsv2f>.NET</div> <ul data-astro-cid-ssfzsv2f> <li data-astro-cid-ssfzsv2f> <a href="/docs/dotnet-libraries/" class="link" data-astro-cid-ssfzsv2f> Using netpack from .NET </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/netpack-core/" class="link active" aria-current="page" data-astro-cid-ssfzsv2f> NetPack.Core </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/netpack-build/" class="link" data-astro-cid-ssfzsv2f> NetPack.Build </a> </li> </ul> </div><div class="group" data-astro-cid-ssfzsv2f> <div class="group-label" data-astro-cid-ssfzsv2f>More</div> <ul data-astro-cid-ssfzsv2f> <li data-astro-cid-ssfzsv2f> <a href="/docs/output-formats/" class="link" data-astro-cid-ssfzsv2f> Output formats </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/platforms/" class="link" data-astro-cid-ssfzsv2f> Platforms </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/svelte/" class="link" data-astro-cid-ssfzsv2f> Svelte components </a> </li> </ul> </div> </nav>  <article class="prose docs-main">  <h1 id="netpackcore">NetPack.Core</h1>
+<p><a href="https://www.nuget.org/packages/NetPack.Core"><code>NetPack.Core</code></a> is netpack’s bundler
+engine as an embeddable, managed .NET library — the same engine the CLI is built
+on. Use it to bundle <strong>programmatically</strong>, or to use netpack’s TypeScript/JSX
+parser and printer on their own. See <a href="/docs/dotnet-libraries">Using netpack from .NET</a>
+for how it compares to the CLI and to <a href="/docs/netpack-build"><code>NetPack.Build</code></a>.</p>
+<p>It targets <strong>.NET 8</strong>, is trim/AOT-friendly, and has a single managed dependency
+(AngleSharp).</p>
+<h2 id="when-to-use-it">When to use it</h2>
+<ul>
+<li>bundling as a step inside a larger .NET program or a custom build tool;</li>
+<li>generating assets on the fly (e.g. a server that compiles on demand);</li>
+<li>writing tests that assert on bundle output;</li>
+<li>using netpack’s <strong>TypeScript/JSX parser, printer, minifier or tree-shaker</strong> on
+their own, without bundling anything.</li>
+</ul>
+<h2 id="install">Install</h2>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="sh"><code><span class="line"><span style="color:#80A665">dotnet</span><span style="color:#C98A7D"> add</span><span style="color:#C98A7D"> package</span><span style="color:#C98A7D"> NetPack.Core</span></span>
+<span class="line"></span></code></pre>
+<p>The package id is <code>NetPack.Core</code>, but the assembly and namespace are <code>NetPack</code> —
+so you write <code>using NetPack;</code>.</p>
+<h2 id="bundle-a-project">Bundle a project</h2>
+<p>The entry point is the static <code>Bundler</code> facade. It takes an entry file (an
+<code>.html</code>, <code>.js</code>/<code>.ts</code>, <code>.jsx</code>/<code>.tsx</code> or <code>.css</code>) and either returns the emitted
+files in memory or writes them to a directory:</p>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="csharp"><code><span class="line"><span style="color:#4D9375">using</span><span style="color:#5DA994"> NetPack</span><span style="color:#666666">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#758575DD">// …in memory</span></span>
+<span class="line"><span style="color:#CB7676">var</span><span style="color:#80A665"> result</span><span style="color:#666666"> =</span><span style="color:#CB7676"> await</span><span style="color:#BD976A"> Bundler</span><span style="color:#666666">.</span><span style="color:#80A665">BundleAsync</span><span style="color:#666666">(</span><span style="color:#C98A7D77">"</span><span style="color:#C98A7D">src/index.html</span><span style="color:#C98A7D77">"</span><span style="color:#666666">,</span><span style="color:#CB7676"> new</span><span style="color:#5DA994"> BundleOptions</span></span>
+<span class="line"><span style="color:#666666">{</span></span>
+<span class="line"><span style="color:#BD976A">    Minify</span><span style="color:#666666"> =</span><span style="color:#4D9375"> true</span><span style="color:#666666">,</span></span>
+<span class="line"><span style="color:#BD976A">    Platform</span><span style="color:#666666"> =</span><span style="color:#BD976A"> Platform</span><span style="color:#666666">.</span><span style="color:#BD976A">Web</span><span style="color:#666666">,</span></span>
+<span class="line"><span style="color:#BD976A">    Format</span><span style="color:#666666"> =</span><span style="color:#BD976A"> ModuleFormat</span><span style="color:#666666">.</span><span style="color:#BD976A">Esm</span><span style="color:#666666">,</span></span>
+<span class="line"><span style="color:#666666">});</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#4D9375">byte</span><span style="color:#666666">[]</span><span style="color:#80A665"> indexHtml</span><span style="color:#666666"> =</span><span style="color:#BD976A"> result</span><span style="color:#666666">.</span><span style="color:#BD976A">Outputs</span><span style="color:#666666">[</span><span style="color:#C98A7D77">"</span><span style="color:#C98A7D">index.html</span><span style="color:#C98A7D77">"</span><span style="color:#666666">];</span></span>
+<span class="line"><span style="color:#4D9375">foreach</span><span style="color:#666666"> (</span><span style="color:#CB7676">var</span><span style="color:#80A665"> file</span><span style="color:#4D9375"> in</span><span style="color:#BD976A"> result</span><span style="color:#666666">.</span><span style="color:#BD976A">Files</span><span style="color:#666666">)</span></span>
+<span class="line"><span style="color:#BD976A">    Console</span><span style="color:#666666">.</span><span style="color:#80A665">WriteLine</span><span style="color:#666666">(</span><span style="color:#C98A7D77">$"</span><span style="color:#666666">{</span><span style="color:#C98A7D">file</span><span style="color:#666666">.</span><span style="color:#C98A7D">Name</span><span style="color:#666666">}</span><span style="color:#666666">  {</span><span style="color:#C98A7D">file</span><span style="color:#666666">.</span><span style="color:#C98A7D">Size</span><span style="color:#666666">}</span><span style="color:#C98A7D"> bytes  (</span><span style="color:#666666">{</span><span style="color:#C98A7D">file</span><span style="color:#666666">.</span><span style="color:#C98A7D">Modules</span><span style="color:#666666">}</span><span style="color:#C98A7D"> modules)</span><span style="color:#C98A7D77">"</span><span style="color:#666666">);</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#758575DD">// …or straight to a directory (created if missing)</span></span>
+<span class="line"><span style="color:#CB7676">await</span><span style="color:#BD976A"> Bundler</span><span style="color:#666666">.</span><span style="color:#80A665">WriteToDirectoryAsync</span><span style="color:#666666">(</span><span style="color:#C98A7D77">"</span><span style="color:#C98A7D">src/index.html</span><span style="color:#C98A7D77">"</span><span style="color:#666666">,</span><span style="color:#C98A7D77"> "</span><span style="color:#C98A7D">dist</span><span style="color:#C98A7D77">"</span><span style="color:#666666">,</span></span>
+<span class="line"><span style="color:#CB7676">    new</span><span style="color:#5DA994"> BundleOptions</span><span style="color:#666666"> {</span><span style="color:#BD976A"> Minify</span><span style="color:#666666"> =</span><span style="color:#4D9375"> true</span><span style="color:#666666">,</span><span style="color:#BD976A"> SourceMaps</span><span style="color:#666666"> =</span><span style="color:#4D9375"> true</span><span style="color:#666666"> });</span></span>
+<span class="line"></span></code></pre>
+<p><code>BundleResult</code> exposes <code>Files</code> (the emitted-file report — name, size, module
+count) and <code>Outputs</code> (a <code>name → byte[]</code> map of the contents).</p>
+<h2 id="options">Options</h2>
+<p><code>BundleOptions</code> mirrors the <a href="/docs/other-features">CLI flags</a>; every property is
+optional, so <code>new BundleOptions()</code> is a valid production-ESM build.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Property</th><th>Default</th><th>Purpose</th></tr></thead><tbody><tr><td><code>Minify</code></td><td><code>false</code></td><td>minify + tree-shake</td></tr><tr><td><code>SourceMaps</code></td><td><code>false</code></td><td>emit a source map per JS bundle</td></tr><tr><td><code>Format</code></td><td><code>ModuleFormat.Esm</code></td><td><code>Esm</code>, <code>CommonJs</code>, <code>Umd</code>, <code>SystemJs</code> — see <a href="/docs/output-formats">output formats</a></td></tr><tr><td><code>Platform</code></td><td><code>Platform.Web</code></td><td><code>Web</code>, <code>Node</code>, <code>Deno</code> — see <a href="/docs/platforms">platforms</a></td></tr><tr><td><code>EntryNames</code></td><td><code>[name]</code></td><td>naming template, e.g. <code>[name]-[hash]</code> for cache-busting</td></tr><tr><td><code>PublicPath</code></td><td><code>""</code></td><td>base URL/path prepended to emitted-file references</td></tr><tr><td><code>Externals</code></td><td>empty</td><td>import specifiers to keep external</td></tr><tr><td><code>Shared</code></td><td>empty</td><td>dependencies emitted as shared bundles + import-map entries</td></tr><tr><td><code>Define</code></td><td>—</td><td>compile-time constant substitutions</td></tr><tr><td><code>Alias</code></td><td>—</td><td>import-specifier rewrites</td></tr><tr><td><code>Loader</code></td><td>—</td><td>per-extension loader overrides</td></tr><tr><td><code>Conditions</code></td><td>—</td><td>extra <code>package.json</code> <code>exports</code> conditions</td></tr><tr><td><code>ExternalPackages</code></td><td><code>false</code></td><td>keep every <code>node_modules</code> import external</td></tr></tbody></table>
+<h2 id="use-the-parser-and-printer-directly">Use the parser and printer directly</h2>
+<p>The TypeScript/JSX front-end is public, so you can parse, inspect and print
+source without bundling:</p>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="csharp"><code><span class="line"><span style="color:#4D9375">using</span><span style="color:#5DA994"> NetPack</span><span style="color:#666666">.</span><span style="color:#5DA994">Syntax</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#4D9375">using</span><span style="color:#5DA994"> NetPack</span><span style="color:#666666">.</span><span style="color:#5DA994">Syntax</span><span style="color:#666666">.</span><span style="color:#5DA994">Printer</span><span style="color:#666666">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#CB7676">var</span><span style="color:#80A665"> module</span><span style="color:#666666"> =</span><span style="color:#BD976A"> Parser</span><span style="color:#666666">.</span><span style="color:#80A665">ParseModule</span><span style="color:#666666">(</span><span style="color:#C98A7D77">"</span><span style="color:#C98A7D">const x: number = 1;</span><span style="color:#C98A7D77">"</span><span style="color:#666666">,</span><span style="color:#C98A7D77"> "</span><span style="color:#C98A7D">in.ts</span><span style="color:#C98A7D77">"</span><span style="color:#666666">);</span></span>
+<span class="line"><span style="color:#4D9375">string</span><span style="color:#80A665"> js</span><span style="color:#666666"> =</span><span style="color:#BD976A"> JsPrinter</span><span style="color:#666666">.</span><span style="color:#80A665">Print</span><span style="color:#666666">(</span><span style="color:#BD976A">module</span><span style="color:#666666">);</span><span style="color:#758575DD">            // -> "const x = 1;"</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#758575DD">// The AST is in NetPack.Syntax.Ast; diagnostics are on the parsed module.</span></span>
+<span class="line"><span style="color:#4D9375">bool</span><span style="color:#80A665"> ok</span><span style="color:#666666"> =</span><span style="color:#BD976A"> module</span><span style="color:#666666">.</span><span style="color:#BD976A">Diagnostics</span><span style="color:#666666">.</span><span style="color:#BD976A">Count</span><span style="color:#CB7676"> ==</span><span style="color:#4C9A91"> 0</span><span style="color:#666666">;</span></span>
+<span class="line"></span></code></pre>
+<p><code>NetPack.Syntax</code> exposes the <code>Tokenizer</code>, <code>Parser</code>, the AST
+(<code>NetPack.Syntax.Ast</code>), <code>JsPrinter</code> (with <code>PrinterOptions.Compact</code> for minified
+output), and the source-map builder.</p>
+<h2 id="custom-asset-processing">Custom asset processing</h2>
+<p>The core has <strong>no native dependencies</strong>, so binary asset handling (image
+resizing/re-encoding) is opt-in. Implement <code>IAssetProcessor</code> and register it per
+extension; unregistered types fall back to a pass-through copy:</p>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="csharp"><code><span class="line"><span style="color:#4D9375">using</span><span style="color:#5DA994"> NetPack</span><span style="color:#666666">.</span><span style="color:#5DA994">Assets</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#4D9375">using</span><span style="color:#5DA994"> NetPack</span><span style="color:#666666">.</span><span style="color:#5DA994">Graph</span><span style="color:#666666">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#CB7676">public</span><span style="color:#CB7676"> sealed</span><span style="color:#CB7676"> class</span><span style="color:#5DA994"> MyImageProcessor</span><span style="color:#666666"> :</span><span style="color:#5DA994"> IAssetProcessor</span></span>
+<span class="line"><span style="color:#666666">{</span></span>
+<span class="line"><span style="color:#CB7676">    public</span><span style="color:#5DA994"> Task</span><span style="color:#666666">&#x3C;</span><span style="color:#5DA994">Stream</span><span style="color:#666666">></span><span style="color:#80A665"> ProcessAsync</span><span style="color:#666666">(</span><span style="color:#5DA994">Asset</span><span style="color:#80A665"> asset</span><span style="color:#666666">,</span><span style="color:#5DA994"> OutputOptions</span><span style="color:#80A665"> options</span><span style="color:#666666">)</span></span>
+<span class="line"><span style="color:#666666">    {</span></span>
+<span class="line"><span style="color:#758575DD">        // resize/re-encode asset.Root.FileName using the library of your choice…</span></span>
+<span class="line"><span style="color:#4D9375">        return</span><span style="color:#BD976A"> Task</span><span style="color:#666666">.</span><span style="color:#80A665">FromResult</span><span style="color:#666666">&#x3C;</span><span style="color:#5DA994">Stream</span><span style="color:#666666">>(</span><span style="color:#BD976A">File</span><span style="color:#666666">.</span><span style="color:#80A665">OpenRead</span><span style="color:#666666">(</span><span style="color:#BD976A">asset</span><span style="color:#666666">.</span><span style="color:#BD976A">Root</span><span style="color:#666666">.</span><span style="color:#BD976A">FileName</span><span style="color:#666666">));</span></span>
+<span class="line"><span style="color:#666666">    }</span></span>
+<span class="line"><span style="color:#666666">}</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#BD976A">AssetProcessorFactory</span><span style="color:#666666">.</span><span style="color:#80A665">Register</span><span style="color:#666666">(</span><span style="color:#C98A7D77">"</span><span style="color:#C98A7D">.png</span><span style="color:#C98A7D77">"</span><span style="color:#666666">,</span><span style="color:#CB7676"> new</span><span style="color:#5DA994"> MyImageProcessor</span><span style="color:#666666">());</span></span>
+<span class="line"></span></code></pre>
+<p>This is exactly how netpack’s own distributions add image support: the native CLI
+registers a SkiaSharp processor, and <a href="/docs/netpack-build"><code>NetPack.Build</code></a>
+registers a cross-platform ImageSharp one — keeping the core itself
+dependency-free.</p>
+<h2 id="nodejs">Node.js</h2>
+<p>Plain JS/TS/JSX/CSS/HTML bundling is entirely native — no Node.js involved. Node
+is only required for the optional preprocessor features (Sass, Less, PostCSS, and
+Svelte compilation), which shell out to a local Node install.</p>  </article> <nav class="docs-toc" aria-label="On this page" data-astro-cid-xvrfupwn><div class="toc-label" data-astro-cid-xvrfupwn>On this page</div><ul data-astro-cid-xvrfupwn><li class="depth-2" data-astro-cid-xvrfupwn><a href="#when-to-use-it" data-astro-cid-xvrfupwn>When to use it</a></li><li class="depth-2" data-astro-cid-xvrfupwn><a href="#install" data-astro-cid-xvrfupwn>Install</a></li><li class="depth-2" data-astro-cid-xvrfupwn><a href="#bundle-a-project" data-astro-cid-xvrfupwn>Bundle a project</a></li><li class="depth-2" data-astro-cid-xvrfupwn><a href="#options" data-astro-cid-xvrfupwn>Options</a></li><li class="depth-2" data-astro-cid-xvrfupwn><a href="#use-the-parser-and-printer-directly" data-astro-cid-xvrfupwn>Use the parser and printer directly</a></li><li class="depth-2" data-astro-cid-xvrfupwn><a href="#custom-asset-processing" data-astro-cid-xvrfupwn>Custom asset processing</a></li><li class="depth-2" data-astro-cid-xvrfupwn><a href="#nodejs" data-astro-cid-xvrfupwn>Node.js</a></li></ul></nav> </div>  </main> </div>   </body></html> 

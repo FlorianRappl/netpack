@@ -1,0 +1,97 @@
+<!DOCTYPE html><html lang="en"> <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>NetPack.Build — netpack docs</title><meta name="description" content="Usage docs for netpack — the fast, batteries-included bundler for the web, built on C#/.NET with Ahead-of-Time compilation."><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="/docs/_astro/_slug_.YjzD3tp3.css"><script type="module">function d(){const e=document.getElementById("docs-nav-toggle"),t=document.getElementById("docs-scrim"),c=document.getElementById("docs-sidebar"),o=n=>{document.body.classList.toggle("docs-nav-open",n),e?.setAttribute("aria-expanded",String(n))};e?.addEventListener("click",()=>{o(!document.body.classList.contains("docs-nav-open"))}),t?.addEventListener("click",()=>o(!1)),c?.addEventListener("click",n=>{n.target.closest("a")&&o(!1)}),document.addEventListener("keydown",n=>{n.key==="Escape"&&o(!1)})}function s(){document.querySelectorAll(".prose pre.astro-code").forEach(e=>{if(e.querySelector(".code-copy-btn"))return;const t=document.createElement("button");t.type="button",t.className="code-copy-btn",t.textContent="copy",t.addEventListener("click",async()=>{const c=e.textContent??"";try{await navigator.clipboard?.writeText(c)}catch{}t.textContent="copied ✓",setTimeout(()=>{t.textContent="copy"},1600)}),e.appendChild(t)})}d();s();document.addEventListener("astro:page-load",()=>{d(),s()});
+</script></head> <body>  <div class="shell" data-astro-cid-zaqc7ala> <div class="dot-grid" aria-hidden="true" data-astro-cid-tw3ctjfb></div> <div class="glow glow-a" aria-hidden="true" data-astro-cid-tw3ctjfb></div> <div class="glow glow-b" aria-hidden="true" data-astro-cid-tw3ctjfb></div> <div class="scanlines" aria-hidden="true" data-astro-cid-tw3ctjfb></div>  <header class="docs-header" data-astro-cid-l4ysfnjo> <div class="docs-header-inner" data-astro-cid-l4ysfnjo> <button type="button" class="nav-toggle" id="docs-nav-toggle" aria-label="Toggle navigation" aria-controls="docs-sidebar" aria-expanded="false" data-astro-cid-l4ysfnjo> <span data-astro-cid-l4ysfnjo></span> <span data-astro-cid-l4ysfnjo></span> <span data-astro-cid-l4ysfnjo></span> </button> <a href="/docs" class="brand" data-astro-cid-l4ysfnjo> <span class="mark" data-astro-cid-l4ysfnjo> <span data-astro-cid-l4ysfnjo>n</span> </span> <span class="wordmark" data-astro-cid-l4ysfnjo>netpack <span class="wordmark-sub" data-astro-cid-l4ysfnjo>docs</span></span> </a> <nav class="links" aria-label="Site" data-astro-cid-l4ysfnjo> <a href="/" data-astro-cid-l4ysfnjo>Home</a> <a href="https://github.com/FlorianRappl/netpack" target="_blank" rel="noopener noreferrer" data-astro-cid-l4ysfnjo> <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true" data-astro-cid-l4ysfnjo> <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z" data-astro-cid-l4ysfnjo></path> </svg> <span class="github-label" data-astro-cid-l4ysfnjo>GitHub</span> </a> </nav> </div> </header>  <main class="content" data-astro-cid-zaqc7ala>   <div class="docs-scrim" id="docs-scrim"></div> <div class="docs-grid"> <nav class="docs-sidebar" id="docs-sidebar" aria-label="Documentation" data-astro-cid-ssfzsv2f> <ul class="top-level" data-astro-cid-ssfzsv2f> <li data-astro-cid-ssfzsv2f> <a href="/docs" class="link overview-link" data-astro-cid-ssfzsv2f>
+Overview
+</a> </li> </ul> <div class="group" data-astro-cid-ssfzsv2f> <div class="group-label" data-astro-cid-ssfzsv2f>General</div> <ul data-astro-cid-ssfzsv2f> <li data-astro-cid-ssfzsv2f> <a href="/docs/getting-started/" class="link" data-astro-cid-ssfzsv2f> Getting started </a> </li> </ul> </div><div class="group" data-astro-cid-ssfzsv2f> <div class="group-label" data-astro-cid-ssfzsv2f>Use cases</div> <ul data-astro-cid-ssfzsv2f> <li data-astro-cid-ssfzsv2f> <a href="/docs/react-and-jsx/" class="link" data-astro-cid-ssfzsv2f> React &amp; JSX </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/vue/" class="link" data-astro-cid-ssfzsv2f> Vue single-file components </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/astro/" class="link" data-astro-cid-ssfzsv2f> Astro components </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/module-federation/" class="link" data-astro-cid-ssfzsv2f> Module Federation </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/native-federation/" class="link" data-astro-cid-ssfzsv2f> Native Federation </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/styling-and-assets/" class="link" data-astro-cid-ssfzsv2f> Styling &amp; assets </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/images-and-assets/" class="link" data-astro-cid-ssfzsv2f> Images &amp; assets </a> </li> </ul> </div><div class="group" data-astro-cid-ssfzsv2f> <div class="group-label" data-astro-cid-ssfzsv2f>Advanced</div> <ul data-astro-cid-ssfzsv2f> <li data-astro-cid-ssfzsv2f> <a href="/docs/importmaps-and-externals/" class="link" data-astro-cid-ssfzsv2f> Import maps &amp; externals </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/codegen/" class="link" data-astro-cid-ssfzsv2f> Build-time code generation (.codegen files) </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/other-features/" class="link" data-astro-cid-ssfzsv2f> Other features </a> </li> </ul> </div><div class="group" data-astro-cid-ssfzsv2f> <div class="group-label" data-astro-cid-ssfzsv2f>.NET</div> <ul data-astro-cid-ssfzsv2f> <li data-astro-cid-ssfzsv2f> <a href="/docs/dotnet-libraries/" class="link" data-astro-cid-ssfzsv2f> Using netpack from .NET </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/netpack-core/" class="link" data-astro-cid-ssfzsv2f> NetPack.Core </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/netpack-build/" class="link active" aria-current="page" data-astro-cid-ssfzsv2f> NetPack.Build </a> </li> </ul> </div><div class="group" data-astro-cid-ssfzsv2f> <div class="group-label" data-astro-cid-ssfzsv2f>More</div> <ul data-astro-cid-ssfzsv2f> <li data-astro-cid-ssfzsv2f> <a href="/docs/output-formats/" class="link" data-astro-cid-ssfzsv2f> Output formats </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/platforms/" class="link" data-astro-cid-ssfzsv2f> Platforms </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/svelte/" class="link" data-astro-cid-ssfzsv2f> Svelte components </a> </li> </ul> </div> </nav>  <article class="prose docs-main">  <h1 id="netpackbuild">NetPack.Build</h1>
+<p><a href="https://www.nuget.org/packages/NetPack.Build"><code>NetPack.Build</code></a> wires netpack into
+MSBuild: on <code>dotnet build</code> (or <code>publish</code>) it bundles your web entry point straight
+into <code>wwwroot</code>. It’s ideal for ASP.NET Core apps. See
+<a href="/docs/dotnet-libraries">Using netpack from .NET</a> for how it compares to the CLI
+and to the <a href="/docs/netpack-core"><code>NetPack.Core</code></a> library.</p>
+<p>It’s built on <code>NetPack.Core</code> and ships a <strong>pure-managed, cross-platform image
+processor</strong> (ImageSharp) — no SkiaSharp, no native/OS dependency. Everything the
+task needs is bundled, so it adds no package references to your project.</p>
+<h2 id="install-and-enable">Install and enable</h2>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="sh"><code><span class="line"><span style="color:#80A665">dotnet</span><span style="color:#C98A7D"> add</span><span style="color:#C98A7D"> package</span><span style="color:#C98A7D"> NetPack.Build</span></span>
+<span class="line"></span></code></pre>
+<p>Point it at an entry file and build:</p>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="xml"><code><span class="line"><span style="color:#666666">&#x3C;</span><span style="color:#4D9375">PropertyGroup</span><span style="color:#666666">></span></span>
+<span class="line"><span style="color:#666666">  &#x3C;</span><span style="color:#4D9375">NetpackEntry</span><span style="color:#666666">></span><span style="color:#DBD7CAEE">ClientApp/src/index.html</span><span style="color:#666666">&#x3C;/</span><span style="color:#4D9375">NetpackEntry</span><span style="color:#666666">></span></span>
+<span class="line"><span style="color:#666666">&#x3C;/</span><span style="color:#4D9375">PropertyGroup</span><span style="color:#666666">></span></span>
+<span class="line"></span></code></pre>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="sh"><code><span class="line"><span style="color:#80A665">dotnet</span><span style="color:#C98A7D"> build</span></span>
+<span class="line"><span style="color:#758575DD"># -> wwwroot/index.html, wwwroot/index.js, wwwroot/styles.css, …</span></span>
+<span class="line"></span></code></pre>
+<p>Bundling runs after <code>Build</code> whenever <code>NetpackEntry</code> is set; it’s a no-op
+otherwise, so the package is safe to reference from projects that don’t use it.</p>
+<h2 id="options">Options</h2>
+<p>All options are MSBuild properties with sensible defaults:</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Property</th><th>Default</th><th>Purpose</th></tr></thead><tbody><tr><td><code>NetpackEntry</code></td><td>—</td><td>entry file (enables the integration when set)</td></tr><tr><td><code>NetpackOutputDirectory</code></td><td><code>$(MSBuildProjectDirectory)/wwwroot</code></td><td>output folder</td></tr><tr><td><code>NetpackMinify</code></td><td><code>true</code></td><td>minify + tree-shake</td></tr><tr><td><code>NetpackSourceMaps</code></td><td><code>false</code></td><td>emit source maps</td></tr><tr><td><code>NetpackFormat</code></td><td><code>esm</code></td><td><code>esm</code> / <code>cjs</code> / <code>umd</code> / <code>systemjs</code></td></tr><tr><td><code>NetpackPlatform</code></td><td><code>web</code></td><td><code>web</code> / <code>node</code> / <code>deno</code></td></tr><tr><td><code>NetpackEntryNames</code></td><td><code>[name]</code></td><td>naming template, e.g. <code>[name]-[hash]</code></td></tr><tr><td><code>NetpackPublicPath</code></td><td>—</td><td>base URL/path for emitted-file references</td></tr></tbody></table>
+<p>Relative paths (<code>NetpackEntry</code>, <code>NetpackOutputDirectory</code>) are resolved against the
+project directory.</p>
+<h2 id="externals">Externals</h2>
+<p>Keep dependencies out of the bundle with an item group:</p>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="xml"><code><span class="line"><span style="color:#666666">&#x3C;</span><span style="color:#4D9375">ItemGroup</span><span style="color:#666666">></span></span>
+<span class="line"><span style="color:#666666">  &#x3C;</span><span style="color:#4D9375">NetpackExternal</span><span style="color:#BD976A"> Include</span><span style="color:#DBD7CAEE">=</span><span style="color:#C98A7D77">"</span><span style="color:#C98A7D">react</span><span style="color:#C98A7D77">"</span><span style="color:#666666"> /></span></span>
+<span class="line"><span style="color:#666666">  &#x3C;</span><span style="color:#4D9375">NetpackExternal</span><span style="color:#BD976A"> Include</span><span style="color:#DBD7CAEE">=</span><span style="color:#C98A7D77">"</span><span style="color:#C98A7D">react-dom</span><span style="color:#C98A7D77">"</span><span style="color:#666666"> /></span></span>
+<span class="line"><span style="color:#666666">&#x3C;/</span><span style="color:#4D9375">ItemGroup</span><span style="color:#666666">></span></span>
+<span class="line"></span></code></pre>
+<h2 id="image-processing">Image processing</h2>
+<p>Image resizing and re-encoding use ImageSharp — pure-managed and cross-platform,
+with no native/OS dependency. Formats it doesn’t cover (<code>.avif</code>, <code>.ico</code>) are
+copied as-is. If you need those, use the <a href="/docs/netpack-core"><code>NetPack.Core</code></a>
+library and register your own <code>IAssetProcessor</code>.</p>
+<h2 id="build-with-the-net-sdk">Build with the .NET SDK</h2>
+<p>The task targets .NET 8, so build via <code>dotnet build</code> / <code>dotnet msbuild</code> (the
+SDK’s .NET-based MSBuild). Node.js is only needed for the optional
+Sass/Less/PostCSS/Svelte features; plain JS/TS/JSX/CSS/HTML bundling needs
+nothing extra.</p>  </article> <nav class="docs-toc" aria-label="On this page" data-astro-cid-xvrfupwn><div class="toc-label" data-astro-cid-xvrfupwn>On this page</div><ul data-astro-cid-xvrfupwn><li class="depth-2" data-astro-cid-xvrfupwn><a href="#install-and-enable" data-astro-cid-xvrfupwn>Install and enable</a></li><li class="depth-2" data-astro-cid-xvrfupwn><a href="#options" data-astro-cid-xvrfupwn>Options</a></li><li class="depth-2" data-astro-cid-xvrfupwn><a href="#externals" data-astro-cid-xvrfupwn>Externals</a></li><li class="depth-2" data-astro-cid-xvrfupwn><a href="#image-processing" data-astro-cid-xvrfupwn>Image processing</a></li><li class="depth-2" data-astro-cid-xvrfupwn><a href="#build-with-the-net-sdk" data-astro-cid-xvrfupwn>Build with the .NET SDK</a></li></ul></nav> </div>  </main> </div>   </body></html> 
