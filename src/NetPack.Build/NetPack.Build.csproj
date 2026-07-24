@@ -48,7 +48,7 @@
     <PackageReference Include="SixLabors.ImageSharp" Version="2.1.*" PrivateAssets="all" />
 
     <!-- The engine — bundled into tasks/, not declared as a package dependency. -->
-    <ProjectReference Include="../NetPack/NetPack.csproj" PrivateAssets="all" />
+    <ProjectReference Include="../NetPack.Core/NetPack.Core.csproj" PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup>

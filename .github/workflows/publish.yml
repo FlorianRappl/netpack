@@ -6,7 +6,7 @@ name: Publish
 #                upload each as an artifact.
 #   2. publish — assemble the per-platform npm packages from those artifacts and
 #                publish them together with the central wrapper package.
-#   3. nuget   — pack the embeddable core library (src/NetPack) and the MSBuild
+#   3. nuget   — pack the embeddable core library (src/NetPack.Core) and the MSBuild
 #                integration (src/NetPack.Build) and push both to NuGet.org as
 #                `NetPack.Core` and `NetPack.Build`. Independent of 1/2.
 #   4. pages   — build both Astro sites (www/home, the landing page, and
@@ -150,7 +150,7 @@ jobs:
 
       - name: Pack core library
         run: >-
-          dotnet pack src/NetPack/NetPack.csproj
+          dotnet pack src/NetPack.Core/NetPack.Core.csproj
           -c Release
           -o ${{ runner.temp }}/nupkgs
 

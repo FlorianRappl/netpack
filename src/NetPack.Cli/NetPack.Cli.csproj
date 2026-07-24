@@ -28,7 +28,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../NetPack/NetPack.csproj" />
+    <ProjectReference Include="../NetPack.Core/NetPack.Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>
