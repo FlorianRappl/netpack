@@ -63,6 +63,9 @@ public class BundleCommand : ICommand
     [Option("watch", Default = false, HelpText = "Rebuild and write to the output directory whenever a source file changes (no dev server).")]
     public bool Watch { get; set; } = false;
 
+    [Option("clear-screen", Default = false, HelpText = "Clear the terminal on rebuild.")]
+    public bool ClearScreen { get; set; } = false;
+
     private static bool ParsePackages(string packages) => packages.ToLowerInvariant() switch
     {
         "external" => true,
@@ -160,7 +163,15 @@ public class BundleCommand : ICommand
         if (Watch)
         {
             using var watcher = new FileWatcher<DiskResultWriter>(writer, invalidateDirectory: _resolutionCache.Invalidate);
-            watcher.Install(() => BuildOnce(file, outdir, options, mergedDefines, aliases, loaders, externalPackages));
+            watcher.Install(() =>
+            {
+                if (ClearScreen)
+                {
+                    Console.Clear();
+                }
+
+                return BuildOnce(file, outdir, options, mergedDefines, aliases, loaders, externalPackages);
+            });
             Console.WriteLine();
             Console.WriteLine("[netpack] Watching for changes — press Ctrl+C to stop.");
             await Task.Delay(Timeout.Infinite);
