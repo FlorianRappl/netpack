@@ -63,7 +63,7 @@ public class BundleCommand : ICommand
     [Option("watch", Default = false, HelpText = "Rebuild and write to the output directory whenever a source file changes (no dev server).")]
     public bool Watch { get; set; } = false;
 
-    [Option("clearScreen", Default = false, HelpText = "Clear the terminal on rebuild.")]
+    [Option("clear-screen", Default = false, HelpText = "Clear the terminal on rebuild.")]
     public bool ClearScreen { get; set; } = false;
 
     private static bool ParsePackages(string packages) => packages.ToLowerInvariant() switch
