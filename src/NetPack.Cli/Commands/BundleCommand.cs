@@ -66,6 +66,9 @@ public class BundleCommand : ICommand
     [Option("clear-screen", Default = false, HelpText = "Clear the terminal on rebuild.")]
     public bool ClearScreen { get; set; } = false;
 
+    [Option("preload", Default = true, HelpText = "Emit <link rel=\"modulepreload\"> for shared JS bundles (use --no-preload to disable).")]
+    public bool Preload { get; set; } = true;
+
     private static bool ParsePackages(string packages) => packages.ToLowerInvariant() switch
     {
         "external" => true,
@@ -149,6 +152,7 @@ public class BundleCommand : ICommand
             Format = ParseFormat(Format),
             EntryNames = EntryNames,
             PublicPath = PublicPath,
+            EnableModulePreload = Preload,
         };
 
         if (Clean && Directory.Exists(outdir))

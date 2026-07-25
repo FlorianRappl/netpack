@@ -41,8 +41,8 @@ public class HtmlBundlingTests
         }
     }
 
-    private static OutputOptions Options(bool optimizing = false, string publicPath = "")
-        => new() { IsOptimizing = optimizing, IsReloading = false, PublicPath = publicPath };
+    private static OutputOptions Options(bool optimizing = false, string publicPath = "", bool enableModulePreload = true)
+        => new() { IsOptimizing = optimizing, IsReloading = false, PublicPath = publicPath, EnableModulePreload = enableModulePreload };
 
     [Fact]
     public async Task Rewrites_a_module_script_reference()
@@ -93,5 +93,57 @@ public class HtmlBundlingTests
         Assert.True(minified.Length <= normal.Length,
             $"minified ({minified.Length}) should not exceed normal ({normal.Length})");
         Assert.Contains("main.js", minified);
+    }
+
+    [Fact]
+    public async Task Module_preload_is_not_added_for_single_entry()
+    {
+        // Single entry with no shared deps should not have modulepreload
+        var output = await BundleHtml(Options(),
+            ("index.html", "<!doctype html><html><head></head><body>\n  <script type=\"module\" src=\"./main.js\"></script>\n</body></html>"),
+            ("main.js", "console.log('hello');"));
+
+        Assert.DoesNotContain("modulepreload", output);
+    }
+
+    [Fact]
+    public async Task Module_preload_is_added_when_shared_deps_exist()
+    {
+        // Two entry scripts sharing a common module should produce modulepreload
+        var output = await BundleHtml(Options(),
+            ("index.html", "<!doctype html><html><head></head><body>\n  <script type=\"module\" src=\"./app.js\"></script>\n  <script type=\"module\" src=\"./vendor.js\"></script>\n</body></html>"),
+            ("app.js", "import { shared } from './shared.js'; console.log('app', shared);"),
+            ("vendor.js", "import { shared } from './shared.js'; console.log('vendor', shared);"),
+            ("shared.js", "export const shared = 'hello';"));
+
+        Assert.Contains("modulepreload", output);
+        Assert.Contains("common.0001.js", output);
+    }
+
+    [Fact]
+    public async Task Module_preload_respects_public_path()
+    {
+        // Modulepreload href should include the public path
+        var output = await BundleHtml(Options(publicPath: "https://cdn.example.com"),
+            ("index.html", "<!doctype html><html><head></head><body>\n  <script type=\"module\" src=\"./app.js\"></script>\n  <script type=\"module\" src=\"./vendor.js\"></script>\n</body></html>"),
+            ("app.js", "import { shared } from './shared.js'; console.log('app', shared);"),
+            ("vendor.js", "import { shared } from './shared.js'; console.log('vendor', shared);"),
+            ("shared.js", "export const shared = 'hello';"));
+
+        Assert.Contains("modulepreload", output);
+        Assert.Contains("https://cdn.example.com/common.0001.js", output);
+    }
+
+    [Fact]
+    public async Task Module_preload_is_not_added_when_disabled()
+    {
+        // With --no-preload, modulepreload should not appear even with shared deps
+        var output = await BundleHtml(Options(enableModulePreload: false),
+            ("index.html", "<!doctype html><html><head></head><body>\n  <script type=\"module\" src=\"./app.js\"></script>\n  <script type=\"module\" src=\"./vendor.js\"></script>\n</body></html>"),
+            ("app.js", "import { shared } from './shared.js'; console.log('app', shared);"),
+            ("vendor.js", "import { shared } from './shared.js'; console.log('vendor', shared);"),
+            ("shared.js", "export const shared = 'hello';"));
+
+        Assert.DoesNotContain("modulepreload", output);
     }
 }
