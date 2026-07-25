@@ -50,6 +50,9 @@ public class ServeCommand : ICommand
     [Option("loader", HelpText = "Override how a file extension is handled, e.g. --loader .svg=text.")]
     public IEnumerable<string> Loader { get; set; } = [];
 
+    [Option("clearScreen", Default = false, HelpText = "Clear the terminal on rebuild.")]
+    public bool ClearScreen { get; set; } = false;
+
     private async Task<(MemoryResultWriter Writer, Dictionary<int, string> Factories)> Compile()
     {
         var file = Path.Combine(Environment.CurrentDirectory, FilePath);
@@ -181,6 +184,11 @@ public class ServeCommand : ICommand
 
         watcher.Install(async () =>
         {
+            if (ClearScreen)
+            {
+                Console.Clear();
+            }
+
             var result = await Compile();
             _hmrMessage = ComputeMessage(result.Factories);
             return result.Writer;
