@@ -88,6 +88,96 @@ public class CssModuleTests
         return output[start..end];
     }
 
+    // -- CSS Code Splitting ------------------------------------------------
+
+    [Fact]
+    public async Task Shared_css_across_multiple_scripts_in_html_is_extracted()
+    {
+        // An HTML entry with two scripts that both import the same CSS
+        var dir = Path.Combine(Path.GetTempPath(), "netpack-css-split-" + Path.GetRandomFileName());
+        Directory.CreateDirectory(dir);
+
+        try
+        {
+            await File.WriteAllTextAsync(Path.Combine(dir, "package.json"), "{}");
+            await File.WriteAllTextAsync(Path.Combine(dir, "shared.css"), ".common { color: red; }");
+            await File.WriteAllTextAsync(Path.Combine(dir, "app1.js"), "import './shared.css';\nexport const a = 1;");
+            await File.WriteAllTextAsync(Path.Combine(dir, "app2.js"), "import './shared.css';\nexport const b = 2;");
+            await File.WriteAllTextAsync(Path.Combine(dir, "index.html"),
+                "<!doctype html><html><head>" +
+                "<script type=\"module\" src=\"./app1.js\"></script>" +
+                "<script type=\"module\" src=\"./app2.js\"></script>" +
+                "</head><body></body></html>");
+
+            using var graph = await Traverse.From(Path.Combine(dir, "index.html"));
+
+            // Check that a shared CSS bundle was created
+            var sharedCssBundles = graph.Context.Bundles.Values
+                .OfType<CssBundle>()
+                .Where(b => b.IsShared)
+                .ToList();
+
+            Assert.NotEmpty(sharedCssBundles);
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Non_shared_css_stays_inlined_in_js()
+    {
+        // Single entry point with CSS import - should be inlined
+        var output = await Bundle("app.js",
+            ("s.css", ".unique { color: green; }"),
+            ("app.js", "import './s.css';\nexport const x = 1;"));
+
+        // CSS is inlined as a virtual JS module
+        Assert.Contains("document.createElement(\"style\")", output);
+        Assert.Contains(".unique", output);
+    }
+
+    [Fact]
+    public async Task Css_chunk_splitter_identifies_shared_css()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "netpack-css-splitter-" + Path.GetRandomFileName());
+        Directory.CreateDirectory(dir);
+
+        try
+        {
+            await File.WriteAllTextAsync(Path.Combine(dir, "package.json"), "{}");
+            await File.WriteAllTextAsync(Path.Combine(dir, "shared.css"), ".common { color: red; }");
+            await File.WriteAllTextAsync(Path.Combine(dir, "app1.js"), "import './shared.css';\nexport const a = 1;");
+            await File.WriteAllTextAsync(Path.Combine(dir, "app2.js"), "import './shared.css';\nexport const b = 2;");
+            await File.WriteAllTextAsync(Path.Combine(dir, "index.html"),
+                "<!doctype html><html><head>" +
+                "<script type=\"module\" src=\"./app1.js\"></script>" +
+                "<script type=\"module\" src=\"./app2.js\"></script>" +
+                "</head><body></body></html>");
+
+            using var graph = await Traverse.From(Path.Combine(dir, "index.html"));
+
+            // The shared CSS should not be inlined in JS - it's extracted to a separate chunk
+            var jsBundles = graph.Context.Bundles.Values.OfType<JsBundle>().ToList();
+            foreach (var jsBundle in jsBundles)
+            {
+                var jsContent = jsBundle.Stringify(new OutputOptions { IsOptimizing = false, IsReloading = false });
+                // Primary JS bundles should not contain the shared CSS content
+                // (it's extracted to a separate CSS chunk)
+                Assert.DoesNotContain("color:red", jsContent);
+            }
+
+            // The shared CSS should be in a CSS bundle
+            var cssBundles = graph.Context.Bundles.Values.OfType<CssBundle>().ToList();
+            Assert.NotEmpty(cssBundles);
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
     private static async Task<string> Bundle(string entry, params (string Name, string Content)[] files)
     {
         var dir = Path.Combine(Path.GetTempPath(), "netpack-css-" + Path.GetRandomFileName());
