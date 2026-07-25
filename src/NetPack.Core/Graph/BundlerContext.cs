@@ -103,6 +103,13 @@ public sealed class BundlerContext(string root, FeatureFlags features, ModuleIdM
     public IReadOnlyList<KeyValuePair<string, string>> Defines { get; set; } = [];
 
     /// <summary>
+    /// Environment variables loaded from <c>.env</c> files, keyed by name
+    /// (without the <c>VITE_</c> prefix). Used to replace
+    /// <c>import.meta.env.X</c> references in JS/TS source.
+    /// </summary>
+    public IReadOnlyDictionary<string, string> EnvVars { get; set; } = new Dictionary<string, string>();
+
+    /// <summary>
     /// Per-extension loader overrides (the <c>--loader</c> option), keyed by a
     /// lowercase extension including the leading dot (e.g. <c>.svg</c> →
     /// <c>text</c>). Decides how a file of that type is turned into a module or

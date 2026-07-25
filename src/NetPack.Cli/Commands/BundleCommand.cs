@@ -58,6 +58,9 @@ public class BundleCommand : ICommand
     [Option("packages", Default = "bundle", HelpText = "Set to 'external' to keep every node_modules import external instead of bundling it.")]
     public string Packages { get; set; } = "bundle";
 
+    [Option("mode", Default = "", HelpText = "The build mode (development, production, or custom). Sets the default --define process.env.NODE_ENV value.")]
+    public string Mode { get; set; } = "";
+
     [Option("watch", Default = false, HelpText = "Rebuild and write to the output directory whenever a source file changes (no dev server).")]
     public bool Watch { get; set; } = false;
 
@@ -125,6 +128,18 @@ public class BundleCommand : ICommand
         var aliases = ParseKeyValues(Alias, "alias");
         var loaders = ParseKeyValues(Loader, "loader");
         var externalPackages = ParsePackages(Packages);
+
+        // Load .env files and merge with --define overrides
+        var envMode = string.IsNullOrEmpty(Mode) ? "production" : Mode;
+        var envDefines = EnvLoader.LoadFromDirectory(Environment.CurrentDirectory, envMode);
+        var mergedDefines = new Dictionary<string, string>(envDefines);
+
+        // --define overrides .env values
+        foreach (var (key, value) in defines)
+        {
+            mergedDefines[key] = value;
+        }
+
         var options = new OutputOptions
         {
             IsOptimizing = Minify,
@@ -142,12 +157,12 @@ public class BundleCommand : ICommand
 
         Directory.CreateDirectory(outdir);
 
-        var writer = await BuildOnce(file, outdir, options, defines, aliases, loaders, externalPackages);
+        var writer = await BuildOnce(file, outdir, options, mergedDefines, aliases, loaders, externalPackages, Mode);
 
         if (Watch)
         {
             using var watcher = new FileWatcher<DiskResultWriter>(writer);
-            watcher.Install(() => BuildOnce(file, outdir, options, defines, aliases, loaders, externalPackages));
+            watcher.Install(() => BuildOnce(file, outdir, options, mergedDefines, aliases, loaders, externalPackages, Mode));
             Console.WriteLine();
             Console.WriteLine("[netpack] Watching for changes — press Ctrl+C to stop.");
             await Task.Delay(Timeout.Infinite);
@@ -157,14 +172,14 @@ public class BundleCommand : ICommand
     private async Task<DiskResultWriter> BuildOnce(
         string file, string outdir, OutputOptions options,
         IReadOnlyDictionary<string, string> defines, IReadOnlyDictionary<string, string> aliases,
-        IReadOnlyDictionary<string, string> loaders, bool externalPackages)
+        IReadOnlyDictionary<string, string> loaders, bool externalPackages, string mode)
     {
         var watch = Stopwatch.StartNew();
         Console.WriteLine("[netpack] Bundling '{0}' ...", FilePath);
         using var graph = await Traverse.From(
             file, Externals, Shared, platform: ParsePlatform(Platform),
             defines: defines, aliases: aliases, loaders: loaders,
-            conditions: Conditions, externalPackages: externalPackages);
+            conditions: Conditions, externalPackages: externalPackages, mode: mode);
         var result = new DiskResultWriter(graph.Context, outdir);
         var emitted = await result.WriteOut(options);
         watch.Stop();

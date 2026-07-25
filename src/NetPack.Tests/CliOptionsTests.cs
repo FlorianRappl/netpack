@@ -18,7 +18,9 @@ public class CliOptionsTests
         Action<string> writeFiles,
         IReadOnlyDictionary<string, string>? defines = null,
         IReadOnlyDictionary<string, string>? aliases = null,
-        IReadOnlyDictionary<string, string>? loaders = null)
+        IReadOnlyDictionary<string, string>? loaders = null,
+        string? mode = null,
+        IReadOnlyDictionary<string, string>? envVars = null)
     {
         var dir = Path.Combine(Path.GetTempPath(), "netpack-cli-" + Path.GetRandomFileName());
         Directory.CreateDirectory(dir);
@@ -30,7 +32,7 @@ public class CliOptionsTests
 
             using var graph = await Traverse.From(
                 Path.Combine(dir, entryRelative), Array.Empty<string>(), Array.Empty<string>(),
-                defines: defines, aliases: aliases, loaders: loaders);
+                defines: defines, aliases: aliases, loaders: loaders, mode: mode, envVars: envVars);
             var bundle = graph.Context.Bundles.Values.OfType<JsBundle>().First(b => b.IsPrimary);
             return bundle.Stringify(new OutputOptions { IsOptimizing = false, IsReloading = false });
         }
@@ -71,6 +73,166 @@ public class CliOptionsTests
 
         Assert.Contains("\"test\"", output);
         Assert.DoesNotContain("\"production\"", output);
+    }
+
+    [Fact]
+    public async Task Mode_development_sets_node_env_to_development()
+    {
+        var output = await BundleDir("main.js",
+            dir => File.WriteAllText(Path.Combine(dir, "main.js"), "export const mode = process.env.NODE_ENV;"),
+            mode: "development");
+
+        Assert.Contains("\"development\"", output);
+        Assert.DoesNotContain("\"production\"", output);
+    }
+
+    [Fact]
+    public async Task Mode_production_sets_node_env_to_production()
+    {
+        var output = await BundleDir("main.js",
+            dir => File.WriteAllText(Path.Combine(dir, "main.js"), "export const mode = process.env.NODE_ENV;"),
+            mode: "production");
+
+        Assert.Contains("\"production\"", output);
+    }
+
+    [Fact]
+    public async Task Mode_custom_sets_node_env_to_custom_value()
+    {
+        var output = await BundleDir("main.js",
+            dir => File.WriteAllText(Path.Combine(dir, "main.js"), "export const mode = process.env.NODE_ENV;"),
+            mode: "staging");
+
+        Assert.Contains("\"staging\"", output);
+    }
+
+    [Fact]
+    public async Task Mode_empty_defaults_to_production()
+    {
+        var output = await BundleDir("main.js",
+            dir => File.WriteAllText(Path.Combine(dir, "main.js"), "export const mode = process.env.NODE_ENV;"),
+            mode: "");
+
+        Assert.Contains("\"production\"", output);
+    }
+
+    [Fact]
+    public async Task Define_replaces_multiple_identifiers()
+    {
+        var output = await BundleDir("main.js",
+            dir => File.WriteAllText(Path.Combine(dir, "main.js"),
+                "export const a = __A__;\nexport const b = __B__;"),
+            defines: new Dictionary<string, string>
+            {
+                ["__A__"] = "1",
+                ["__B__"] = "2"
+            });
+
+        Assert.Contains("1", output);
+        Assert.Contains("2", output);
+        Assert.DoesNotContain("__A__", output);
+        Assert.DoesNotContain("__B__", output);
+    }
+
+    [Fact]
+    public async Task Define_with_string_value_preserves_quotes()
+    {
+        var output = await BundleDir("main.js",
+            dir => File.WriteAllText(Path.Combine(dir, "main.js"),
+                "export const name = __NAME__;"),
+            defines: new Dictionary<string, string>
+            {
+                ["__NAME__"] = "'netpack'"
+            });
+
+        Assert.Contains("netpack", output);
+    }
+
+    [Fact]
+    public async Task Define_does_not_replace_non_matching_keys()
+    {
+        var output = await BundleDir("main.js",
+            dir => File.WriteAllText(Path.Combine(dir, "main.js"),
+                "export const x = __MISSING__;"),
+            defines: new Dictionary<string, string>
+            {
+                ["__VERSION"] = "'partial'"
+            });
+
+        Assert.DoesNotContain("partial", output);
+        Assert.Contains("__MISSING__", output);
+    }
+
+    [Fact]
+    public async Task Alias_chain_resolves_correctly()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "netpack-cli-" + Path.GetRandomFileName());
+        Directory.CreateDirectory(dir);
+
+        try
+        {
+            await File.WriteAllTextAsync(Path.Combine(dir, "package.json"), "{}");
+            await File.WriteAllTextAsync(Path.Combine(dir, "main.js"),
+                "import { x } from '@utils/helper';\nexport default x;");
+            Directory.CreateDirectory(Path.Combine(dir, "src", "utils"));
+            await File.WriteAllTextAsync(Path.Combine(dir, "src", "utils", "helper.js"), "export const x = 'HELPER';");
+
+            using var graph = await Traverse.From(
+                Path.Combine(dir, "main.js"), Array.Empty<string>(), Array.Empty<string>(),
+                aliases: new Dictionary<string, string>
+                {
+                    ["@utils/helper"] = Path.Combine(dir, "src", "utils", "helper.js")
+                });
+            var bundle = graph.Context.Bundles.Values.OfType<JsBundle>().First(b => b.IsPrimary);
+            var output = bundle.Stringify(new OutputOptions { IsOptimizing = false, IsReloading = false });
+
+            // Aliases resolve the module at graph level; the content is bundled
+            Assert.Contains("HELPER", output);
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task ImportMetaEnv_replaces_with_env_values()
+    {
+        var output = await BundleDir("main.js",
+            dir => File.WriteAllText(Path.Combine(dir, "main.js"),
+                "export const url = import.meta.env.VITE_API_URL;"),
+            envVars: new Dictionary<string, string>
+            {
+                ["VITE_API_URL"] = "'https://api.example.com'"
+            });
+
+        Assert.Contains("https://api.example.com", output);
+        Assert.DoesNotContain("import.meta.env", output);
+    }
+
+    [Fact]
+    public async Task ImportMetaEnv_replaces_MODE()
+    {
+        var output = await BundleDir("main.js",
+            dir => File.WriteAllText(Path.Combine(dir, "main.js"),
+                "export const mode = import.meta.env.MODE;"),
+            envVars: new Dictionary<string, string>
+            {
+                ["MODE"] = "'development'"
+            });
+
+        Assert.Contains("development", output);
+    }
+
+    [Fact]
+    public async Task ImportMetaEnv_leaves_unknown_vars_unchanged()
+    {
+        var output = await BundleDir("main.js",
+            dir => File.WriteAllText(Path.Combine(dir, "main.js"),
+                "export const x = import.meta.env.UNKNOWN_VAR;"),
+            envVars: new Dictionary<string, string>());
+
+        Assert.Contains("import.meta.env.UNKNOWN_VAR", output);
     }
 
     [Fact]
