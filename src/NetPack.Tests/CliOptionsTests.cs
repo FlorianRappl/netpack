@@ -19,7 +19,6 @@ public class CliOptionsTests
         IReadOnlyDictionary<string, string>? defines = null,
         IReadOnlyDictionary<string, string>? aliases = null,
         IReadOnlyDictionary<string, string>? loaders = null,
-        string? mode = null,
         IReadOnlyDictionary<string, string>? envVars = null)
     {
         var dir = Path.Combine(Path.GetTempPath(), "netpack-cli-" + Path.GetRandomFileName());
@@ -32,7 +31,7 @@ public class CliOptionsTests
 
             using var graph = await Traverse.From(
                 Path.Combine(dir, entryRelative), Array.Empty<string>(), Array.Empty<string>(),
-                defines: defines, aliases: aliases, loaders: loaders, mode: mode, envVars: envVars);
+                defines: defines, aliases: aliases, loaders: loaders, envVars: envVars);
             var bundle = graph.Context.Bundles.Values.OfType<JsBundle>().First(b => b.IsPrimary);
             return bundle.Stringify(new OutputOptions { IsOptimizing = false, IsReloading = false });
         }
@@ -73,47 +72,6 @@ public class CliOptionsTests
 
         Assert.Contains("\"test\"", output);
         Assert.DoesNotContain("\"production\"", output);
-    }
-
-    [Fact]
-    public async Task Mode_development_sets_node_env_to_development()
-    {
-        var output = await BundleDir("main.js",
-            dir => File.WriteAllText(Path.Combine(dir, "main.js"), "export const mode = process.env.NODE_ENV;"),
-            mode: "development");
-
-        Assert.Contains("\"development\"", output);
-        Assert.DoesNotContain("\"production\"", output);
-    }
-
-    [Fact]
-    public async Task Mode_production_sets_node_env_to_production()
-    {
-        var output = await BundleDir("main.js",
-            dir => File.WriteAllText(Path.Combine(dir, "main.js"), "export const mode = process.env.NODE_ENV;"),
-            mode: "production");
-
-        Assert.Contains("\"production\"", output);
-    }
-
-    [Fact]
-    public async Task Mode_custom_sets_node_env_to_custom_value()
-    {
-        var output = await BundleDir("main.js",
-            dir => File.WriteAllText(Path.Combine(dir, "main.js"), "export const mode = process.env.NODE_ENV;"),
-            mode: "staging");
-
-        Assert.Contains("\"staging\"", output);
-    }
-
-    [Fact]
-    public async Task Mode_empty_defaults_to_production()
-    {
-        var output = await BundleDir("main.js",
-            dir => File.WriteAllText(Path.Combine(dir, "main.js"), "export const mode = process.env.NODE_ENV;"),
-            mode: "");
-
-        Assert.Contains("\"production\"", output);
     }
 
     [Fact]

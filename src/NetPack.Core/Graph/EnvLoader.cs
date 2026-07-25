@@ -59,18 +59,15 @@ public static partial class EnvLoader
 
     /// <summary>
     /// Loads all <c>.env</c> files from the given directory in priority order
-    /// (lowest to highest): <c>.env</c>, <c>.env.local</c>,
-    /// <c>.env.[mode]</c>, <c>.env.[mode].local</c>. Returns the merged
-    /// result (higher-priority files override lower ones).
+    /// (lowest to highest): <c>.env</c>, <c>.env.local</c>.
+    /// Returns the merged result (higher-priority files override lower ones).
     /// </summary>
-    public static IReadOnlyDictionary<string, string> LoadFromDirectory(string directory, string mode = "production", string? prefix = "VITE_")
+    public static IReadOnlyDictionary<string, string> LoadFromDirectory(string directory, string? prefix = "VITE_")
     {
         var files = new[]
         {
             ".env",
             ".env.local",
-            $".env.{mode}",
-            $".env.{mode}.local"
         };
 
         var merged = new Dictionary<string, string>();

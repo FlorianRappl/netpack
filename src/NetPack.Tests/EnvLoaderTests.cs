@@ -95,26 +95,6 @@ public class EnvLoaderTests
     }
 
     [Fact]
-    public async Task LoadFromDirectory_loads_mode_specific_files()
-    {
-        var dir = Path.Combine(Path.GetTempPath(), "env-test-" + Path.GetRandomFileName());
-        Directory.CreateDirectory(dir);
-
-        try
-        {
-            await File.WriteAllTextAsync(Path.Combine(dir, ".env"), "VITE_MODE=production");
-            await File.WriteAllTextAsync(Path.Combine(dir, ".env.development"), "VITE_MODE=development");
-
-            var env = EnvLoader.LoadFromDirectory(dir, mode: "development", prefix: "VITE_");
-            Assert.Equal("development", env["VITE_MODE"]);
-        }
-        finally
-        {
-            Directory.Delete(dir, recursive: true);
-        }
-    }
-
-    [Fact]
     public void GenerateReplacements_creates_import_meta_env_mappings()
     {
         var env = new Dictionary<string, string>
