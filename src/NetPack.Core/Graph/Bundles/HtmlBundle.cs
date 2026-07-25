@@ -89,6 +89,20 @@ public sealed class HtmlBundle(BundlerContext context, Graph.Node root, BundleFl
                 WriteImportmap(importmap, content);
             }
 
+            // Add shared CSS chunks as <link> tags in the <head>
+            var sharedCssBundles = _context.Bundles.Values
+                .Where(b => b is CssBundle && b.IsShared)
+                .OrderBy(b => b.Name)
+                .ToList();
+
+            foreach (var cssBundle in sharedCssBundles)
+            {
+                var link = document.CreateElement("link");
+                link.SetAttribute("rel", "stylesheet");
+                link.SetAttribute("href", Helpers.PublicUrl(options.PublicPath, cssBundle.GetFileName()));
+                document.Head!.AppendChild(link);
+            }
+
             if (options.IsOptimizing)
             {
                 foreach (var node in document.Head!.ChildNodes.OfType<IText>().ToArray())
