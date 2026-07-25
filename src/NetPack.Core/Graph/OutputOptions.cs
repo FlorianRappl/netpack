@@ -45,4 +45,12 @@ public record OutputOptions
     /// <c>--public-path</c> option). Empty keeps references document-relative.
     /// </summary>
     public string PublicPath { get; init; } = "";
+
+    /// <summary>
+    /// When true, <c>&lt;link rel="modulepreload"&gt;</c> directives are emitted
+    /// for shared JS bundles that entry scripts import. The browser fetches these
+    /// early, before the module graph needs them. Defaults to <c>true</c>.
+    /// Disabled with <c>--no-preload</c>.
+    /// </summary>
+    public bool EnableModulePreload { get; init; } = true;
 }
