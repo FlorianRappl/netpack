@@ -10,6 +10,8 @@ using NetPack.Server;
 [Verb("bundle", HelpText = "Bundles the code starting at the given entry point.")]
 public class BundleCommand : ICommand
 {
+    private readonly DirectoryListingCache _resolutionCache = new();
+
     [Value(0, HelpText = "The entry point file where the bundler should start.")]
     public string FilePath { get; set; } = "";
 
@@ -60,6 +62,9 @@ public class BundleCommand : ICommand
 
     [Option("watch", Default = false, HelpText = "Rebuild and write to the output directory whenever a source file changes (no dev server).")]
     public bool Watch { get; set; } = false;
+
+    [Option("clear-screen", Default = false, HelpText = "Clear the terminal on rebuild.")]
+    public bool ClearScreen { get; set; } = false;
 
     private static bool ParsePackages(string packages) => packages.ToLowerInvariant() switch
     {
@@ -157,8 +162,16 @@ public class BundleCommand : ICommand
 
         if (Watch)
         {
-            using var watcher = new FileWatcher<DiskResultWriter>(writer);
-            watcher.Install(() => BuildOnce(file, outdir, options, mergedDefines, aliases, loaders, externalPackages));
+            using var watcher = new FileWatcher<DiskResultWriter>(writer, invalidateDirectory: _resolutionCache.Invalidate);
+            watcher.Install(() =>
+            {
+                if (ClearScreen)
+                {
+                    Console.Clear();
+                }
+
+                return BuildOnce(file, outdir, options, mergedDefines, aliases, loaders, externalPackages);
+            });
             Console.WriteLine();
             Console.WriteLine("[netpack] Watching for changes — press Ctrl+C to stop.");
             await Task.Delay(Timeout.Infinite);
@@ -175,7 +188,7 @@ public class BundleCommand : ICommand
         using var graph = await Traverse.From(
             file, Externals, Shared, platform: ParsePlatform(Platform),
             defines: defines, aliases: aliases, loaders: loaders,
-            conditions: Conditions, externalPackages: externalPackages);
+            conditions: Conditions, externalPackages: externalPackages, directoryFiles: Watch ? _resolutionCache : null);
         var result = new DiskResultWriter(graph.Context, outdir);
         var emitted = await result.WriteOut(options);
         watch.Stop();
