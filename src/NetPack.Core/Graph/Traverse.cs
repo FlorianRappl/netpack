@@ -54,14 +54,15 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
 
     public static Task<Traverse> From(string path) => From(path, [], []);
 
-    public static async Task<Traverse> From(string path, IEnumerable<string> externals, IEnumerable<string> shared, ModuleIdMap? moduleIds = null, bool devServer = false, Platform platform = Platform.Web, IReadOnlyDictionary<string, string>? defines = null, IReadOnlyDictionary<string, string>? aliases = null, IReadOnlyDictionary<string, string>? loaders = null, IEnumerable<string>? conditions = null, bool externalPackages = false, DirectoryListingCache? directoryFiles = null)
+    public static async Task<Traverse> From(string path, IEnumerable<string> externals, IEnumerable<string> shared, ModuleIdMap? moduleIds = null, bool devServer = false, Platform platform = Platform.Web, IReadOnlyDictionary<string, string>? defines = null, IReadOnlyDictionary<string, string>? aliases = null, IReadOnlyDictionary<string, string>? loaders = null, IEnumerable<string>? conditions = null, bool externalPackages = false, string? mode = null, IReadOnlyDictionary<string, string>? envVars = null, DirectoryListingCache? directoryFiles = null)
     {
         var root = Path.GetDirectoryName(path)!;
         var packageRoot = FindRoot(root);
         var features = await FindFeatures(packageRoot);
         var traverse = new Traverse(packageRoot ?? root, features, moduleIds, directoryFiles) { _devServer = devServer };
         traverse.Context.Platform = PlatformTargets.For(platform);
-        traverse.Context.Defines = BuildDefines(defines, devServer);
+        traverse.Context.Defines = BuildDefines(defines, devServer, mode);
+        traverse.Context.EnvVars = envVars ?? new Dictionary<string, string>();
         traverse.Context.Loaders = NormalizeLoaders(loaders);
         traverse.Context.UserConditions = conditions is null ? [] : [.. conditions];
         traverse.Context.ExternalPackages = externalPackages;
@@ -84,13 +85,18 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
     /// Builds the effective <c>--define</c> table: the built-in
     /// <c>process.env.NODE_ENV</c> default (development on the dev server,
     /// production otherwise) overlaid with the user's entries, then ordered
-    /// longest-key-first for safe sequential text replacement.
+    /// longest-key-first for safe sequential text replacement. A non-empty
+    /// <c>mode</c> overrides the dev-server/production default.
     /// </summary>
-    private static IReadOnlyList<KeyValuePair<string, string>> BuildDefines(IReadOnlyDictionary<string, string>? defines, bool devServer)
+    private static IReadOnlyList<KeyValuePair<string, string>> BuildDefines(IReadOnlyDictionary<string, string>? defines, bool devServer, string? mode)
     {
+        var defaultMode = !string.IsNullOrEmpty(mode)
+            ? mode
+            : devServer ? "development" : "production";
+
         var map = new Dictionary<string, string>
         {
-            ["process.env.NODE_ENV"] = devServer ? "'development'" : "'production'",
+            ["process.env.NODE_ENV"] = $"'{defaultMode}'",
         };
 
         if (defines is not null)
@@ -1143,6 +1149,15 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
         foreach (var (key, replacement) in _context.Defines)
         {
             newContent = newContent.Replace(key, replacement);
+        }
+
+        // Replace import.meta.env.X references with their values from .env files
+        if (_context.EnvVars.Count > 0)
+        {
+            foreach (var (key, value) in _context.EnvVars)
+            {
+                newContent = newContent.Replace($"import.meta.env.{key}", value);
+            }
         }
 
         var fragment = await ParseJsModule(bundle, current, newContent);

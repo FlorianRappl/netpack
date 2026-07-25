@@ -17,7 +17,9 @@ jobs:
 
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: |
+            8.0.x
+            10.0.x
 
       - name: Test
         run: dotnet test src/NetPack.sln -c Release
@@ -46,7 +48,7 @@ jobs:
 
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: '10.0.x'
 
       - name: Install AOT prerequisites (Linux)
         if: runner.os == 'Linux'
