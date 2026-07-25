@@ -32,12 +32,14 @@ public static class TreeShaker
         var statements = file.Body;
         var infos = new List<StatementInfo>(statements.Count);
         var topNames = new HashSet<string>(StringComparer.Ordinal);
+        var declarers = new Dictionary<string, StatementInfo>(StringComparer.Ordinal);
 
         foreach (var statement in statements)
         {
             var info = Classify(statement, isImportPure);
             infos.Add(info);
             foreach (var name in info.Declares) topNames.Add(name);
+            foreach (var name in info.Declares) declarers[name] = info;
         }
 
         foreach (var info in infos)
@@ -68,8 +70,7 @@ public static class TreeShaker
         while (worklist.Count > 0)
         {
             var name = worklist.Dequeue();
-            var decl = FindDeclarer(infos, name);
-            if (decl is not null)
+            if (declarers.TryGetValue(name, out var decl))
             {
                 foreach (var use in decl.Uses) MarkLive(use);
             }
@@ -146,15 +147,6 @@ public static class TreeShaker
             if (live.Contains(name)) return true;
         }
         return false;
-    }
-
-    private static StatementInfo? FindDeclarer(List<StatementInfo> infos, string name)
-    {
-        foreach (var info in infos)
-        {
-            if (info.Declares.Contains(name)) return info;
-        }
-        return null;
     }
 
     private static bool PruneExportSpecifiers(StatementInfo info, UsedExports used)

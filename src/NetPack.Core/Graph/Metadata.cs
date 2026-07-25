@@ -15,6 +15,11 @@ class Metadata(Traverse graph, MemoryResultWriter compilation) : IFileLocator
         return ((IFileLocator)_compilation).HasFile(fullPath);
     }
 
+    bool IFileLocator.HasDirectory(string fullPath)
+    {
+        return ((IFileLocator)_compilation).HasDirectory(fullPath);
+    }
+
     public string Stringify()
     {
         var root = Environment.CurrentDirectory;

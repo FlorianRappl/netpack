@@ -90,6 +90,8 @@ public static class TreeShakePass
         var fragments = context.JsFragments;
         var free = new HashSet<Node>();
         var heuristicPure = new Dictionary<Node, bool>();
+        var remainingDependencies = new Dictionary<Node, int>();
+        var dependents = new Dictionary<Node, List<Node>>();
 
         foreach (var entry in fragments)
         {
@@ -102,36 +104,67 @@ public static class TreeShakePass
             {
                 free.Add(node); // the package guarantees the whole subtree is pure
             }
+
+            var uniqueDependencies = new HashSet<Node>();
+            foreach (var target in entry.Value.Replacements.Values)
+            {
+                if (fragments.ContainsKey(target) && uniqueDependencies.Add(target))
+                {
+                    if (!dependents.TryGetValue(target, out var list))
+                    {
+                        list = new List<Node>();
+                        dependents[target] = list;
+                    }
+
+                    list.Add(node);
+                }
+            }
+
+            remainingDependencies[node] = uniqueDependencies.Count;
         }
 
-        // Fixpoint: a provably pure module is side-effect-free once every module it
-        // pulls in is known side-effect-free too.
-        var changed = true;
-        while (changed)
+        var queue = new Queue<Node>();
+
+        foreach (var entry in fragments)
         {
-            changed = false;
-            foreach (var entry in fragments)
+            var node = entry.Key;
+            if (!heuristicPure[node])
             {
-                var node = entry.Key;
-                if (free.Contains(node) || !heuristicPure[node])
+                continue;
+            }
+
+            if (free.Contains(node) || remainingDependencies[node] == 0)
+            {
+                if (free.Add(node))
+                {
+                    queue.Enqueue(node);
+                }
+            }
+        }
+
+        while (queue.Count > 0)
+        {
+            var node = queue.Dequeue();
+            if (!dependents.TryGetValue(node, out var list))
+            {
+                continue;
+            }
+
+            foreach (var dependent in list)
+            {
+                if (free.Contains(dependent))
                 {
                     continue;
                 }
 
-                var allFree = true;
-                foreach (var target in entry.Value.Replacements.Values)
+                if (remainingDependencies[dependent] > 0)
                 {
-                    if (fragments.ContainsKey(target) && !free.Contains(target))
-                    {
-                        allFree = false;
-                        break;
-                    }
+                    remainingDependencies[dependent]--;
                 }
 
-                if (allFree)
+                if (heuristicPure[dependent] && remainingDependencies[dependent] == 0 && free.Add(dependent))
                 {
-                    free.Add(node);
-                    changed = true;
+                    queue.Enqueue(dependent);
                 }
             }
         }
