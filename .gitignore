@@ -3,11 +3,6 @@ dist
 obj
 node_modules
 
-.nx/installation
-.nx/cache
-.nx/workspace-data
-.nx/self-healing
-.nx/migrate-runs
 # .NET
 **/bin/
 **/obj/
