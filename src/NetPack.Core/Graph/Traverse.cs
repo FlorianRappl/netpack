@@ -430,7 +430,7 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
             }
         }
 
-        return ResolveFromFileSystem(CombinePath(dir, name)) ?? throw new Exception($"Could not find the module '{name}' in '{dir}'.");
+        return ResolveFromFileSystem(CombinePath(dir, name)) ?? throw new Exception($"Could not find the module '{name}' in '{dir}'. Make sure the module is installed (npm install {name}).");
     }
 
     private string? ResolveFromFileSystem(string fn)
@@ -653,7 +653,7 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
         }
         catch (Exception err)
         {
-            Console.WriteLine("Error from '{0}': {1}", parent.FileName, err.Message);
+            Console.Error.WriteLine("[netpack] error: failed to process '{0}': {1}", parent.FileName, err.Message);
             return null;
         }
     }
