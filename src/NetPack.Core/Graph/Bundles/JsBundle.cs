@@ -101,14 +101,13 @@ public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags
         }
 
         var first = reparsed.Diagnostics[0];
-        var start = System.Math.Max(0, first.Position - 50);
-        var length = System.Math.Min(120, code.Length - start);
-        var snippet = code.Substring(start, length).Replace("\n", " ");
+        Console.Error.Write("[netpack] ");
+        Console.Error.Write(first.FormatWithSource(code, GetFileName()));
 
-        Console.Error.WriteLine(
-            "[netpack] WARNING: generated bundle '{0}' is not valid JS ({1} issue(s)); first at {2}:{3}: {4}",
-            GetFileName(), reparsed.Diagnostics.Count, first.Line, first.Column, first.Message);
-        Console.Error.WriteLine("[netpack]   …{0}…", snippet);
+        if (reparsed.Diagnostics.Count > 1)
+        {
+            Console.Error.WriteLine("[netpack]   ... and {0} more issue(s)", reparsed.Diagnostics.Count - 1);
+        }
     }
 
     private static Ast.StringLiteral MakeString(string text) => new(text, text);
