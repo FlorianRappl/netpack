@@ -58,6 +58,9 @@ public class BundleCommand : ICommand
     [Option("packages", Default = "bundle", HelpText = "Set to 'external' to keep every node_modules import external instead of bundling it.")]
     public string Packages { get; set; } = "bundle";
 
+    [Option("config", HelpText = "Path to netpack config file (netpack.config.js, netpack.config.mjs, or netpack.config.ts).")]
+    public string? Config { get; set; }
+
     [Option("watch", Default = false, HelpText = "Rebuild and write to the output directory whenever a source file changes (no dev server).")]
     public bool Watch { get; set; } = false;
 
@@ -118,19 +121,35 @@ public class BundleCommand : ICommand
             throw new InvalidOperationException("You must specify a non-empty target directory.");
         }
 
+        // Load config file (if specified or auto-detected)
+        var config = LoadConfig();
+
+        // Merge: CLI flags override config values
         var file = Path.Combine(Environment.CurrentDirectory, FilePath);
-        var outdir = Path.Combine(Environment.CurrentDirectory, OutDir);
+        var outdir = Path.Combine(Environment.CurrentDirectory, config?.OutDir ?? OutDir);
 
-        var defines = ParseKeyValues(Define, "define");
-        var aliases = ParseKeyValues(Alias, "alias");
-        var loaders = ParseKeyValues(Loader, "loader");
-        var externalPackages = ParsePackages(Packages);
+        var defines = MergeDefines(config);
+        var aliases = MergeAliases(config);
+        var loaders = MergeLoaders(config);
+        var externalPackages = ParsePackages(config?.Packages ?? Packages);
+        var externals = MergeExternals(config);
+        var shared = MergeShared(config);
+        var conditions = MergeConditions(config);
 
-        // Load .env files and merge with --define overrides
+        // Load .env files and merge with config + CLI overrides
         var envDefines = EnvLoader.LoadFromDirectory(Environment.CurrentDirectory);
         var mergedDefines = new Dictionary<string, string>(envDefines);
 
-        // --define overrides .env values
+        // Config define values (lower priority than CLI)
+        if (config?.Define is not null)
+        {
+            foreach (var (key, value) in config.Define)
+            {
+                mergedDefines.TryAdd(key, value);
+            }
+        }
+
+        // --define overrides everything
         foreach (var (key, value) in defines)
         {
             mergedDefines[key] = value;
@@ -138,12 +157,12 @@ public class BundleCommand : ICommand
 
         var options = new OutputOptions
         {
-            IsOptimizing = Minify,
+            IsOptimizing = config?.Minify ?? Minify,
             IsReloading = false,
-            WithSourceMaps = SourceMap,
-            Format = ParseFormat(Format),
-            EntryNames = EntryNames,
-            PublicPath = PublicPath,
+            WithSourceMaps = config?.SourceMap ?? SourceMap,
+            Format = ParseFormat(config?.Format ?? Format),
+            EntryNames = config?.EntryNames ?? EntryNames,
+            PublicPath = config?.PublicPath ?? PublicPath,
         };
 
         if (Clean && Directory.Exists(outdir))
@@ -153,29 +172,141 @@ public class BundleCommand : ICommand
 
         Directory.CreateDirectory(outdir);
 
-        var writer = await BuildOnce(file, outdir, options, mergedDefines, aliases, loaders, externalPackages);
+        var writer = await BuildOnce(file, outdir, options, mergedDefines, aliases, loaders, externalPackages, externals, shared, conditions);
 
         if (Watch)
         {
             using var watcher = new FileWatcher<DiskResultWriter>(writer);
-            watcher.Install(() => BuildOnce(file, outdir, options, mergedDefines, aliases, loaders, externalPackages));
+            watcher.Install(() => BuildOnce(file, outdir, options, mergedDefines, aliases, loaders, externalPackages, externals, shared, conditions));
             Console.WriteLine();
             Console.WriteLine("[netpack] Watching for changes — press Ctrl+C to stop.");
             await Task.Delay(Timeout.Infinite);
         }
     }
 
+    private NetpackConfig? LoadConfig()
+    {
+        var configPath = Config;
+
+        if (configPath is not null)
+        {
+            if (!Path.IsPathRooted(configPath))
+            {
+                configPath = Path.Combine(Environment.CurrentDirectory, configPath);
+            }
+
+            return ConfigLoader.Load(configPath);
+        }
+
+        return ConfigLoader.LoadFromDirectory(Environment.CurrentDirectory);
+    }
+
+    private IReadOnlyDictionary<string, string> MergeDefines(NetpackConfig? config)
+    {
+        var cliDefines = ParseKeyValues(Define, "define");
+
+        if (config?.Define is null)
+        {
+            return cliDefines;
+        }
+
+        // Start with config defines, then override with CLI
+        var merged = new Dictionary<string, string>(config.Define);
+
+        foreach (var (key, value) in cliDefines)
+        {
+            merged[key] = value;
+        }
+
+        return merged;
+    }
+
+    private IReadOnlyDictionary<string, string> MergeAliases(NetpackConfig? config)
+    {
+        var cliAliases = ParseKeyValues(Alias, "alias");
+
+        if (config?.ResolveAlias is null)
+        {
+            return cliAliases;
+        }
+
+        var merged = new Dictionary<string, string>(config.ResolveAlias);
+
+        foreach (var (key, value) in cliAliases)
+        {
+            merged[key] = value;
+        }
+
+        return merged;
+    }
+
+    private IReadOnlyDictionary<string, string> MergeLoaders(NetpackConfig? config)
+    {
+        var cliLoaders = ParseKeyValues(Loader, "loader");
+
+        if (config?.Loader is null)
+        {
+            return cliLoaders;
+        }
+
+        var merged = new Dictionary<string, string>(config.Loader);
+
+        foreach (var (key, value) in cliLoaders)
+        {
+            merged[key] = value;
+        }
+
+        return merged;
+    }
+
+    private IEnumerable<string> MergeExternals(NetpackConfig? config)
+    {
+        var cliExternals = Externals.ToList();
+
+        if (config?.External is null)
+        {
+            return cliExternals;
+        }
+
+        return config.External.Concat(cliExternals).Distinct();
+    }
+
+    private IEnumerable<string> MergeShared(NetpackConfig? config)
+    {
+        var cliShared = Shared.ToList();
+
+        if (config?.Shared is null)
+        {
+            return cliShared;
+        }
+
+        return config.Shared.Concat(cliShared).Distinct();
+    }
+
+    private IEnumerable<string> MergeConditions(NetpackConfig? config)
+    {
+        var cliConditions = Conditions.ToList();
+
+        if (config?.Conditions is null)
+        {
+            return cliConditions;
+        }
+
+        return config.Conditions.Concat(cliConditions).Distinct();
+    }
+
     private async Task<DiskResultWriter> BuildOnce(
         string file, string outdir, OutputOptions options,
         IReadOnlyDictionary<string, string> defines, IReadOnlyDictionary<string, string> aliases,
-        IReadOnlyDictionary<string, string> loaders, bool externalPackages)
+        IReadOnlyDictionary<string, string> loaders, bool externalPackages,
+        IEnumerable<string> externals, IEnumerable<string> shared, IEnumerable<string> conditions)
     {
         var watch = Stopwatch.StartNew();
         Console.WriteLine("[netpack] Bundling '{0}' ...", FilePath);
         using var graph = await Traverse.From(
-            file, Externals, Shared, platform: ParsePlatform(Platform),
+            file, externals, shared, platform: ParsePlatform(Platform),
             defines: defines, aliases: aliases, loaders: loaders,
-            conditions: Conditions, externalPackages: externalPackages);
+            conditions: conditions, externalPackages: externalPackages);
         var result = new DiskResultWriter(graph.Context, outdir);
         var emitted = await result.WriteOut(options);
         watch.Stop();

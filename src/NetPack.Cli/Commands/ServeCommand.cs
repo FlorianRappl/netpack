@@ -50,18 +50,26 @@ public class ServeCommand : ICommand
     [Option("loader", HelpText = "Override how a file extension is handled, e.g. --loader .svg=text.")]
     public IEnumerable<string> Loader { get; set; } = [];
 
+    [Option("config", HelpText = "Path to netpack config file (netpack.config.js, netpack.config.mjs, or netpack.config.ts).")]
+    public string? Config { get; set; }
+
     private async Task<(MemoryResultWriter Writer, Dictionary<int, string> Factories)> Compile()
     {
+        var config = LoadConfig();
         var file = Path.Combine(Environment.CurrentDirectory, FilePath);
-        var defines = BundleCommand.ParseKeyValues(Define, "define");
-        var aliases = BundleCommand.ParseKeyValues(Alias, "alias");
-        var loaders = BundleCommand.ParseKeyValues(Loader, "loader");
+
+        var defines = MergeDefines(config);
+        var aliases = MergeAliases(config);
+        var loaders = MergeLoaders(config);
+        var externals = MergeExternals(config);
+        var shared = MergeShared(config);
+
         Console.WriteLine("[netpack] Starting build ...");
-        using var graph = await Traverse.From(file, Externals, Shared, _moduleIds, devServer: true, defines: defines, aliases: aliases, loaders: loaders);
+        using var graph = await Traverse.From(file, externals, shared, _moduleIds, devServer: true, defines: defines, aliases: aliases, loaders: loaders);
         var compilation = new MemoryResultWriter(graph.Context);
         var options = new OutputOptions
         {
-            IsOptimizing = Minify,
+            IsOptimizing = config?.Minify ?? Minify,
             IsReloading = true,
             WithSourceMaps = true,
         };
@@ -69,6 +77,104 @@ public class ServeCommand : ICommand
         var factories = new Dictionary<int, string>(graph.Context.ModuleFactories);
         Console.WriteLine("[netpack] Everything bundled!");
         return (compilation, factories);
+    }
+
+    private NetpackConfig? LoadConfig()
+    {
+        var configPath = Config;
+
+        if (configPath is not null)
+        {
+            if (!Path.IsPathRooted(configPath))
+            {
+                configPath = Path.Combine(Environment.CurrentDirectory, configPath);
+            }
+
+            return ConfigLoader.Load(configPath);
+        }
+
+        return ConfigLoader.LoadFromDirectory(Environment.CurrentDirectory);
+    }
+
+    private IReadOnlyDictionary<string, string> MergeDefines(NetpackConfig? config)
+    {
+        var cliDefines = BundleCommand.ParseKeyValues(Define, "define");
+
+        if (config?.Define is null)
+        {
+            return cliDefines;
+        }
+
+        var merged = new Dictionary<string, string>(config.Define);
+
+        foreach (var (key, value) in cliDefines)
+        {
+            merged[key] = value;
+        }
+
+        return merged;
+    }
+
+    private IReadOnlyDictionary<string, string> MergeAliases(NetpackConfig? config)
+    {
+        var cliAliases = BundleCommand.ParseKeyValues(Alias, "alias");
+
+        if (config?.ResolveAlias is null)
+        {
+            return cliAliases;
+        }
+
+        var merged = new Dictionary<string, string>(config.ResolveAlias);
+
+        foreach (var (key, value) in cliAliases)
+        {
+            merged[key] = value;
+        }
+
+        return merged;
+    }
+
+    private IReadOnlyDictionary<string, string> MergeLoaders(NetpackConfig? config)
+    {
+        var cliLoaders = BundleCommand.ParseKeyValues(Loader, "loader");
+
+        if (config?.Loader is null)
+        {
+            return cliLoaders;
+        }
+
+        var merged = new Dictionary<string, string>(config.Loader);
+
+        foreach (var (key, value) in cliLoaders)
+        {
+            merged[key] = value;
+        }
+
+        return merged;
+    }
+
+    private IEnumerable<string> MergeExternals(NetpackConfig? config)
+    {
+        var cliExternals = Externals.ToList();
+
+        if (config?.External is null)
+        {
+            return cliExternals;
+        }
+
+        return config.External.Concat(cliExternals).Distinct();
+    }
+
+    private IEnumerable<string> MergeShared(NetpackConfig? config)
+    {
+        var cliShared = Shared.ToList();
+
+        if (config?.Shared is null)
+        {
+            return cliShared;
+        }
+
+        return config.Shared.Concat(cliShared).Distinct();
     }
 
     /// <summary>
