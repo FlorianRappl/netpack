@@ -2,3 +2,8 @@ bin
 dist
 obj
 node_modules
+
+# .NET
+**/bin/
+**/obj/
+/artifacts/
