@@ -5,13 +5,15 @@ class FileWatcher<T> : IDisposable
 {
     private readonly FileSystemWatcher _watcher;
     private readonly Queue<Func<Task>> _taskQueue = new();
+    private readonly Action<string>? _invalidateDirectory;
     private Task _current = Task.CompletedTask;
     private TaskCompletionSource _tcs = new();
     private T _result;
 
-    public FileWatcher(T result, string? root = null)
+    public FileWatcher(T result, string? root = null, Action<string>? invalidateDirectory = null)
     {
         _result = result;
+        _invalidateDirectory = invalidateDirectory;
         _watcher = new FileSystemWatcher(root ?? Environment.CurrentDirectory)
         {
             IncludeSubdirectories = true,
@@ -41,12 +43,21 @@ class FileWatcher<T> : IDisposable
 
         void OnChange(object sender, FileSystemEventArgs e)
         {
+            var shouldInvalidate = e.ChangeType is WatcherChangeTypes.Created or WatcherChangeTypes.Deleted or WatcherChangeTypes.Renamed;
+            var shouldRestart = _result.HasFile(e.FullPath)
+                || (shouldInvalidate && _result.HasDirectory(Path.GetDirectoryName(e.FullPath)!));
+
+            if (shouldInvalidate)
+            {
+                _invalidateDirectory?.Invoke(Path.GetDirectoryName(e.FullPath)!);
+            }
+
             if (_taskQueue.Count > 0)
             {
                 return;
             }
 
-            if (_result.HasFile(e.FullPath))
+            if (shouldRestart)
             {
                 _taskQueue.Enqueue(Restart);
 
@@ -58,6 +69,7 @@ class FileWatcher<T> : IDisposable
         }
 
         _watcher.Changed += OnChange;
+        _watcher.Created += OnChange;
         _watcher.Deleted += OnChange;
         _watcher.Renamed += OnChange;
     }

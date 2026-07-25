@@ -6,6 +6,7 @@ using NetPack.Server;
 sealed class DiskResultWriter(BundlerContext context, string target) : ResultWriter(context), IFileLocator
 {
     private readonly string _target = target;
+    private readonly SourcePathIndex _watchIndex = new(context);
 
     protected override Stream OpenWrite(string name)
     {
@@ -20,5 +21,8 @@ sealed class DiskResultWriter(BundlerContext context, string target) : ResultWri
     /// <summary>True when <paramref name="fullPath"/> is a source file that took
     /// part in this build — used by watch mode to decide whether a filesystem
     /// change warrants a rebuild.</summary>
-    public bool HasFile(string fullPath) => _context.Modules.Values.Any(m => m.FileName == fullPath);
+    public bool HasFile(string fullPath) => _watchIndex.ContainsFile(fullPath);
+
+    public bool HasDirectory(string fullPath)
+        => _watchIndex.ContainsDirectory(fullPath);
 }

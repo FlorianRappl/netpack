@@ -15,6 +15,7 @@ public class ServeCommand : ICommand
     private const string ReloadMessage = "event: reload\ndata: {}\n\n";
 
     private readonly FileExtensionContentTypeProvider provider = new();
+    private readonly DirectoryListingCache _resolutionCache = new();
 
     // Kept alive across recompiles so module ids stay stable — a precondition
     // for addressing an already loaded module during a hot update.
@@ -57,7 +58,7 @@ public class ServeCommand : ICommand
         var aliases = BundleCommand.ParseKeyValues(Alias, "alias");
         var loaders = BundleCommand.ParseKeyValues(Loader, "loader");
         Console.WriteLine("[netpack] Starting build ...");
-        using var graph = await Traverse.From(file, Externals, Shared, _moduleIds, devServer: true, defines: defines, aliases: aliases, loaders: loaders);
+        using var graph = await Traverse.From(file, Externals, Shared, _moduleIds, devServer: true, defines: defines, aliases: aliases, loaders: loaders, directoryFiles: _resolutionCache);
         var compilation = new MemoryResultWriter(graph.Context);
         var options = new OutputOptions
         {
@@ -146,7 +147,7 @@ public class ServeCommand : ICommand
 
         var initial = await Compile();
         _factories = initial.Factories;
-        using var watcher = new FileWatcher<MemoryResultWriter>(initial.Writer);
+        using var watcher = new FileWatcher<MemoryResultWriter>(initial.Writer, invalidateDirectory: _resolutionCache.Invalidate);
 
         var address = $"http://localhost:{Port}";
         var app = LiveServer.Create(address, watcher, () => _hmrMessage);
