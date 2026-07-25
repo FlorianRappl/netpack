@@ -6,8 +6,8 @@ Summary:
 
 | Bundler     |  Version  |        Large |       Medium |        Small |      Library |
 | :---------- | :-------: | -----------: | -----------: | -----------: | -----------: |
-| **NetPack** | **0.5.2** | **797.0 ms** | **762.7 ms** | **219.1 ms** |     152.1 ms |
-| esbuild     |   0.28.1  |     894.8 ms |     818.6 ms |     238.0 ms | **149.9 ms** |
+| **NetPack** | **0.6.0** | **595.3 ms** | **636.8 ms** |     240.3 ms | **141.1 ms** |
+| esbuild     |   0.28.1  |     894.8 ms |     818.6 ms | **238.0 ms** | **149.9 ms** |
 | rspack      |   1.1.8   |     972.0 ms |     961.0 ms |     328.7 ms |     220.0 ms |
 | Vite        |   6.0.1   |    2807.0 ms |    2247.0 ms |     467.3 ms |     216.2 ms |
 | rspack      | **2.1.5** | **450.0 ms** | **512.7 ms** | **274.9 ms** |     171.1 ms |
@@ -18,7 +18,7 @@ Interpretation:
 | Rank | Bundler        | Overall observation                                               |
 | ---: | :------------- | :---------------------------------------------------------------- |
 |   🥇 | rspack 2.1.5   | Fastest on large and medium projects.                             |
-|   🥈 | NetPack 0.5.2  | Best on small projects and nearly ties esbuild on library builds. |
+|   🥈 | NetPack 0.6.0  | Best on library builds and nearly ties esbuild on small projects. |
 |   🥉 | esbuild 0.28.1 | Very competitive overall; fastest library bundling.               |
 |    4 | Vite 8.1.5     | Huge improvement over Vite 6, approaching rspack performance.     |
 |    5 | rspack 1.1.8   | Noticeably slower than v2.                                        |
@@ -48,6 +48,33 @@ Benchmark 1: npx netpack bundle src/small/index.html --minify
 Benchmark 1: npx netpack bundle src/lib/index.mjs --minify
   Time (mean ± σ):     152.1 ms ±   2.3 ms    [User: 120.3 ms, System: 47.9 ms]
   Range (min … max):   146.8 ms … 155.2 ms    19 runs
+```
+
+### NetPack v0.6.0
+
+```
+Benchmark 1: npx netpack bundle src/large/index.html --minify
+  Time (mean ± σ):     595.3 ms ±   9.7 ms    [User: 826.0 ms, System: 2276.9 ms]
+  Range (min … max):   580.4 ms … 611.1 ms    10 runs
+```
+
+```
+Benchmark 1: npx netpack bundle src/medium/index.html --minify
+  Time (mean ± σ):     636.8 ms ±  14.2 ms    [User: 716.2 ms, System: 353.5 ms]
+  Range (min … max):   613.5 ms … 661.2 ms    10 runs
+```
+
+```
+Benchmark 1: npx netpack bundle src/small/index.html --minify
+  Time (mean ± σ):     240.3 ms ±   0.7 ms    [User: 131.2 ms, System: 48.0 ms]
+  Range (min … max):   239.3 ms … 241.5 ms    12 runs
+```
+
+```
+Benchmark 1: npx netpack bundle src/lib/index.mjs --minify
+  Time (mean ± σ):     141.1 ms ±   0.9 ms    [User: 112.8 ms, System: 41.5 ms]
+  Range (min … max):   138.8 ms … 143.2 ms    20 runs
+ 
 ```
 
 ### esbuild v0.28.1
