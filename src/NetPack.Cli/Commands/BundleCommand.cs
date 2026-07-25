@@ -125,6 +125,17 @@ public class BundleCommand : ICommand
         var aliases = ParseKeyValues(Alias, "alias");
         var loaders = ParseKeyValues(Loader, "loader");
         var externalPackages = ParsePackages(Packages);
+
+        // Load .env files and merge with --define overrides
+        var envDefines = EnvLoader.LoadFromDirectory(Environment.CurrentDirectory);
+        var mergedDefines = new Dictionary<string, string>(envDefines);
+
+        // --define overrides .env values
+        foreach (var (key, value) in defines)
+        {
+            mergedDefines[key] = value;
+        }
+
         var options = new OutputOptions
         {
             IsOptimizing = Minify,
@@ -142,12 +153,12 @@ public class BundleCommand : ICommand
 
         Directory.CreateDirectory(outdir);
 
-        var writer = await BuildOnce(file, outdir, options, defines, aliases, loaders, externalPackages);
+        var writer = await BuildOnce(file, outdir, options, mergedDefines, aliases, loaders, externalPackages);
 
         if (Watch)
         {
             using var watcher = new FileWatcher<DiskResultWriter>(writer);
-            watcher.Install(() => BuildOnce(file, outdir, options, defines, aliases, loaders, externalPackages));
+            watcher.Install(() => BuildOnce(file, outdir, options, mergedDefines, aliases, loaders, externalPackages));
             Console.WriteLine();
             Console.WriteLine("[netpack] Watching for changes — press Ctrl+C to stop.");
             await Task.Delay(Timeout.Infinite);
