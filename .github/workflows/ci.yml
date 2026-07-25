@@ -17,21 +17,12 @@ jobs:
 
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '10.0.x'
+          dotnet-version: |
+            8.0.x
+            10.0.x
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'npm'
-
-      - name: Install Nx
-        run: npm add --global nx@latest
-
-      - name: Build affected
-        run: npx nx affected -t build
-
-      - name: Test affected
-        run: npx nx affected -t test
+      - name: Test
+        run: dotnet test src/NetPack.sln -c Release
 
   aot-smoke:
     # Cross-platform AOT publish is slow, so only validate it on pushes to main.

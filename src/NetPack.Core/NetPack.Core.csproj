@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <!-- Assembly name must NOT be "NetPack": the CLI's binary is "netpack" and on
          a case-insensitive filesystem (macOS/Windows) NetPack.dll and netpack.dll
          would collide in the CLI's publish output, clobbering the core assembly.
