@@ -23,7 +23,7 @@ more readable than Rust and more capable than Go.
 - **Zero-config** — point it at an `index.html` (like Vite or Parcel) or a `.js`/`.ts` entry directly.
 - **Native startup** — an AoT-compiled CLI; competitive with esbuild and faster than rspack/Vite on the [benchmarks](#performance) below.
 - **Batteries included** — TypeScript, JSX, CSS & CSS Modules, Sass/LESS/PostCSS (incl. Tailwind), images (optimized with SkiaSharp), JSON, HTML and arbitrary assets, out of the box.
-- **Frameworks** — React (with Fast Refresh), Preact, Vue (a native SFC compiler), Svelte, Astro and vanilla.
+- **Frameworks** — React (with Fast Refresh), Preact, Solid, Vue (a native SFC compiler), Svelte, Astro and vanilla.
 - **A real bundler** — tree-shaking, minification, source maps, code-splitting, a dev server with true HMR, and a bundle analyzer.
 - **Flexible output** — ESM / CommonJS / UMD / SystemJS (`--format`), web / Node / Deno targets (`--platform`), import maps, externals, shared dependencies, and Module + Native Federation.
 - **Its own toolchain** — a hand-written JavaScript/TypeScript/JSX tokenizer, parser, printer, mangler and tree-shaker in C# — no Acornima, Babel or SWC.
@@ -296,15 +296,16 @@ The following items are features or topics that are relevant for bundlers - netp
 - [x] Astro
 - [x] React
 - [x] Preact
-- [ ] Solid
+- [x] Solid (requires `babel-preset-solid` installed; compiled via the Node bridge)
 - [x] Svelte (requires `svelte` installed; compiled via the Node bridge)
 - [x] Vanilla
 - [x] Vue (single-file components; see notes below)
 
 **Vue** and **Astro** components are compiled natively (no Node round-trip);
-**Svelte** is compiled by the installed Svelte compiler over the Node bridge. See
-[Vue](./docs/vue.md), [Astro](./docs/astro.md) and [Svelte](./docs/svelte.md) for
-exactly what's supported and the current limitations.
+**Svelte** is compiled by the installed Svelte compiler, and **Solid**'s JSX by
+`babel-preset-solid`, over the Node bridge. See [Vue](./docs/vue.md),
+[Astro](./docs/astro.md), [Svelte](./docs/svelte.md) and [Solid](./docs/solid.md)
+for exactly what's supported and the current limitations.
 
 ### Bundler Basics
 

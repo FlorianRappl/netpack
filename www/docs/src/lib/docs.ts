@@ -32,6 +32,7 @@ const NAV_GROUPS: { label: string; ids: string[] }[] = [
     label: 'Use cases',
     ids: [
       'react-and-jsx',
+      'solid',
       'vue',
       'astro',
       'module-federation',

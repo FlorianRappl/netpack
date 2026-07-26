@@ -51,6 +51,26 @@ const commands = {
     const result = compile(content, options);
     return { js: result.js.code, css: (result.css && result.css.code) || '' };
   },
+  solid: (content, file) => {
+    // Solid's JSX is a whole compiler pass (dom-expressions), not a factory call,
+    // so we delegate to the official transform: babel-preset-solid. TypeScript
+    // sources (.tsx) additionally need @babel/preset-typescript to parse and strip
+    // the type syntax. Presets are resolved from the project's node_modules.
+    const babel = require('@babel/core');
+    const isTs = /\.tsx?$/.test(file);
+    const presets = ['babel-preset-solid'];
+    if (isTs) {
+      presets.push(['@babel/preset-typescript', { isTSX: true, allExtensions: true }]);
+    }
+    const result = babel.transformSync(content, {
+      filename: file,
+      presets,
+      babelrc: false,
+      configFile: false,
+      sourceMaps: false,
+    });
+    return { js: (result && result.code) || '' };
+  },
   codegen: async (file) => {
     const context = { name: file, options: {}, addDependency() {} };
     const res = await require(file).call(context);

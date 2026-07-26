@@ -18,6 +18,10 @@ In the Preact case, netpack also auto-injects `import Preact from "preact"`
 for modules that contain JSX and don't already define a top-level `Preact`
 binding.
 
+> Using **Solid**? Its JSX is compiled by a different mechanism entirely (a
+> whole-program transform, not a factory call) — see [Solid](./solid.md). The
+> factory/pragma options on this page don't apply there.
+
 React-style default output:
 
 ```jsx

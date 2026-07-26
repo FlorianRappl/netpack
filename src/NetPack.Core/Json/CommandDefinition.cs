@@ -27,3 +27,10 @@ public sealed class SvelteCommandResult
     [JsonPropertyName("css")]
     public string? Css { get; set; }
 }
+
+public sealed class SolidCommandResult
+{
+    /// <summary>The JSX source compiled by babel-preset-solid (dom-expressions).</summary>
+    [JsonPropertyName("js")]
+    public string? Js { get; set; }
+}

@@ -82,6 +82,15 @@ public sealed class BundlerContext(string root, FeatureFlags features, ModuleIdM
     /// </summary>
     public string? DefaultJsxImportIdentifier { get; set; }
 
+    /// <summary>
+    /// When true, JSX files (<c>.jsx</c>/<c>.tsx</c>) are compiled with Solid's
+    /// official transform (<c>babel-preset-solid</c>) over the Node bridge instead
+    /// of netpack's <c>createElement</c>-style lowering — Solid's JSX is a
+    /// fine-grained DOM/reactivity compilation, not a factory call. Selected when
+    /// <c>solid-js</c> is a dependency and <c>react</c> is not.
+    /// </summary>
+    public bool UseSolid { get; set; }
+
     public ConcurrentDictionary<Node, Asset> Assets = [];
 
     public ConcurrentDictionary<Node, Bundle> Bundles = [];

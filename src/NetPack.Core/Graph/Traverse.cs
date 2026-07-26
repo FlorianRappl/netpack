@@ -75,6 +75,7 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
         traverse.Context.DefaultJsxFragmentFactory = defaultJsxFragmentFactory;
         traverse.Context.DefaultJsxImportModule = defaultJsxImportModule;
         traverse.Context.DefaultJsxImportIdentifier = defaultJsxImportIdentifier;
+        traverse.Context.UseSolid = await FindSolidRuntime(packageRoot);
         traverse.Context.Externals = [.. externals, .. shared];
         traverse.Context.Shared = [.. shared];
         await traverse.Run([path, .. shared]);
@@ -423,6 +424,51 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
                 && depObj.ValueKind == JsonValueKind.Object
                 && depObj.TryGetProperty(name, out _);
         }
+    }
+
+    /// <summary>
+    /// Detects whether the project targets Solid.js: <c>solid-js</c> is a
+    /// dependency and <c>react</c> is not. In that case JSX files are compiled
+    /// with Solid's official transform (<c>babel-preset-solid</c>) over the Node
+    /// bridge rather than netpack's <c>createElement</c> lowering.
+    /// </summary>
+    private static async Task<bool> FindSolidRuntime(string? root)
+    {
+        if (root is null)
+        {
+            return false;
+        }
+
+        var packageJsonPath = Path.Combine(root, "package.json");
+
+        if (!File.Exists(packageJsonPath))
+        {
+            return false;
+        }
+
+        try
+        {
+            using var packageJson = File.OpenRead(packageJsonPath);
+            using var jsonDoc = await JsonDocument.ParseAsync(packageJson);
+            var jsonObj = jsonDoc.RootElement;
+
+            return HasDependency(jsonObj, "solid-js") && !HasDependency(jsonObj, "react");
+        }
+        catch
+        {
+            return false;
+        }
+
+        static bool HasDependency(JsonElement rootElement, string name)
+            => Has(rootElement, "dependencies", name)
+                || Has(rootElement, "devDependencies", name)
+                || Has(rootElement, "peerDependencies", name)
+                || Has(rootElement, "optionalDependencies", name);
+
+        static bool Has(JsonElement rootElement, string section, string name)
+            => rootElement.TryGetProperty(section, out var depObj)
+                && depObj.ValueKind == JsonValueKind.Object
+                && depObj.TryGetProperty(name, out _);
     }
 
     private async Task<string> Resolve(string dir, string name)
@@ -1201,8 +1247,38 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
             }
         }
 
+        // For a Solid project, JSX files are compiled by Solid's official transform
+        // (babel-preset-solid) into fine-grained DOM/reactivity code before parsing —
+        // Solid's JSX is not a `createElement`-style factory call, so netpack's own
+        // JSX lowering must not run on it.
+        if (_context.UseSolid && IsJsxFile(current))
+        {
+            newContent = await CompileSolid(newContent, current.FileName);
+        }
+
         var fragment = await ParseJsModule(bundle, current, newContent);
         _context.JsFragments.TryAdd(current, fragment);
+    }
+
+    /// <summary>True for a JSX-bearing source file (<c>.jsx</c>/<c>.tsx</c>).</summary>
+    private static bool IsJsxFile(Node current)
+    {
+        var ext = current.Extension.ToLowerInvariant();
+        return ext is ".jsx" or ".tsx";
+    }
+
+    /// <summary>
+    /// Compiles a Solid JSX/TSX source with <c>babel-preset-solid</c> over the Node
+    /// bridge (<see cref="NodeJs"/>) — the same IPC used for Sass/Svelte. The result
+    /// is plain JavaScript (Solid's dom-expressions output, importing its runtime
+    /// from <c>solid-js/web</c>), parsed like any other module. Requires
+    /// <c>@babel/core</c> and <c>babel-preset-solid</c> to be installed.
+    /// </summary>
+    private async Task<string> CompileSolid(string content, string file)
+    {
+        var response = await _njs.RunCommand("solid", content, file);
+        var result = response.Deserialize(SourceGenerationContext.Default.SolidCommandResult);
+        return result?.Js ?? "";
     }
 
     /// <summary>The <c>--loader</c> override for a node's extension, or null when
