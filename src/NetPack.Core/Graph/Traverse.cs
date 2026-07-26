@@ -614,9 +614,12 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
             return AddExternalReference(parent, name);
         }
 
-        // Runtime built-ins for the target platform (e.g. `node:fs` / `fs` on Node,
-        // `npm:`/`jsr:` on Deno) are provided by the runtime — keep them external.
-        if (_context.Platform.IsBuiltin(name))
+        // Runtime built-ins carrying an explicit scheme (`node:fs`, `npm:`/`jsr:` on
+        // Deno) are unambiguous — always provided by the runtime, kept external
+        // verbatim. Bare core names (e.g. `fs`) are intentionally NOT handled here:
+        // they are resolved locally first (a local module/package of the same name
+        // wins) and only canonicalized to `node:` further down if nothing is found.
+        if (_context.Platform.IsExplicitBuiltin(name))
         {
             return AddExternalReference(parent, name);
         }
@@ -628,10 +631,11 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
         }
 
         // With --packages=external, every bare (node_modules) import is kept
-        // external — a relative or absolute path is still bundled as usual.
+        // external — a relative or absolute path is still bundled as usual. A bare
+        // Node core module is still canonicalized to the `node:` scheme.
         if (_context.ExternalPackages && !name.StartsWith('.') && !Path.IsPathRooted(name))
         {
-            return AddExternalReference(parent, name);
+            return AddExternalReference(parent, _context.Platform.BuiltinFallback(name) ?? name);
         }
 
         // Split off a trailing `?...` query string (irrelevant for locating the
@@ -663,6 +667,15 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
         }
         catch (Exception err)
         {
+            // Nothing resolved locally. A bare specifier that is a known runtime
+            // built-in (e.g. `fs` / `path` / `test` on Node) is provided by the
+            // runtime — keep it external, canonicalized to the `node:` scheme.
+            var builtin = _context.Platform.BuiltinFallback(name);
+            if (builtin is not null)
+            {
+                return AddExternalReference(parent, builtin);
+            }
+
             Console.Error.WriteLine("[netpack] error: failed to process '{0}': {1}", parent.FileName, err.Message);
             return null;
         }

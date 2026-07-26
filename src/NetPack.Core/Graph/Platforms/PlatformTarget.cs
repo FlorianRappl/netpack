@@ -28,6 +28,26 @@ abstract class PlatformTarget
     /// must not be bundled (e.g. <c>node:fs</c> / <c>fs</c> on Node).</summary>
     public abstract bool IsBuiltin(string specifier);
 
+    /// <summary>
+    /// True when <paramref name="specifier"/> is an <i>unambiguous</i> runtime
+    /// built-in — one carrying an explicit scheme (<c>node:</c>, <c>npm:</c>,
+    /// <c>jsr:</c>). These are kept external verbatim and are never resolved
+    /// locally. A bare name that merely <i>looks</i> like a built-in (e.g.
+    /// <c>fs</c>) is not included here: it is resolved locally first and only
+    /// treated as a built-in if nothing is found (see
+    /// <see cref="BuiltinFallback"/>). Defaults to false.
+    /// </summary>
+    public virtual bool IsExplicitBuiltin(string specifier) => false;
+
+    /// <summary>
+    /// The external specifier to emit for a bare <paramref name="specifier"/> that
+    /// did not resolve to a local module but is a known runtime built-in — for
+    /// Node this canonicalizes <c>fs</c> to <c>node:fs</c>. Returns <c>null</c>
+    /// when the specifier is not a built-in for this platform (so the caller
+    /// reports an unresolved import). Defaults to <c>null</c>.
+    /// </summary>
+    public virtual string? BuiltinFallback(string specifier) => null;
+
     /// <summary>Whether the <c>browser</c> field of a dependency's package.json is
     /// honoured when picking its entry point.</summary>
     public virtual bool UseBrowserField => false;
@@ -60,6 +80,19 @@ sealed class NodePlatform : PlatformTarget
     public override bool IsBuiltin(string specifier)
         => specifier.StartsWith("node:", StringComparison.Ordinal) || PlatformTargets.IsNodeCore(specifier);
 
+    // Only `node:`-scheme imports are unconditionally external; a bare core name
+    // like `fs` is resolved locally first (a local `fs` module/package wins).
+    public override bool IsExplicitBuiltin(string specifier)
+        => specifier.StartsWith("node:", StringComparison.Ordinal);
+
+    // A bare core module that didn't resolve locally is provided by Node — emit it
+    // under the canonical `node:` scheme, e.g. `fs` -> `node:fs`,
+    // `fs/promises` -> `node:fs/promises`.
+    public override string? BuiltinFallback(string specifier)
+        => !specifier.StartsWith("node:", StringComparison.Ordinal) && PlatformTargets.IsNodeCore(specifier)
+            ? "node:" + specifier
+            : null;
+
     public override IReadOnlyList<string> Conditions { get; } = ["import", "module", "node", "default"];
 }
 
@@ -71,6 +104,10 @@ sealed class DenoPlatform : PlatformTarget
         => specifier.StartsWith("node:", StringComparison.Ordinal)
             || specifier.StartsWith("npm:", StringComparison.Ordinal)
             || specifier.StartsWith("jsr:", StringComparison.Ordinal);
+
+    // Deno's runtime specifiers are always explicitly scheme-prefixed, so they are
+    // unconditionally external; there is no bare-name form to canonicalize.
+    public override bool IsExplicitBuiltin(string specifier) => IsBuiltin(specifier);
 
     public override IReadOnlyList<string> Conditions { get; } = ["import", "module", "deno", "node", "default"];
 }
@@ -99,7 +136,8 @@ static class PlatformTargets
         "constants", "crypto", "dgram", "diagnostics_channel", "dns", "domain",
         "events", "fs", "http", "http2", "https", "inspector", "module", "net",
         "os", "path", "perf_hooks", "process", "punycode", "querystring", "readline",
-        "repl", "stream", "string_decoder", "sys", "timers", "tls", "trace_events",
-        "tty", "url", "util", "v8", "vm", "wasi", "worker_threads", "zlib",
+        "repl", "stream", "string_decoder", "sys", "test", "timers", "tls",
+        "trace_events", "tty", "url", "util", "v8", "vm", "wasi", "worker_threads",
+        "zlib",
     ];
 }

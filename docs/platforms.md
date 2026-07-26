@@ -27,15 +27,22 @@ because the runtime supplies it:
 import { readFile } from 'node:fs/promises';
 import path from 'path';
 
-// out (esm): the imports are hoisted verbatim, nothing is bundled for them
+// out (esm): the imports are hoisted, bare core names get the `node:` scheme
 import { readFile } from "node:fs/promises";
-import path from "path";
+import path from "node:path";
 ```
 
 Under `--platform node`, both the `node:` scheme and the classic bare names (`fs`,
-`path`, `crypto`, …) — including subpaths such as `fs/promises` — are recognised.
-A local package that happens to share a core module's name does not shadow the
-built-in, matching Node's own resolution.
+`path`, `crypto`, `test`, …) — including subpaths such as `fs/promises` — are
+recognised. A bare core name is emitted under the canonical `node:` scheme
+(`path` → `node:path`); an already-prefixed specifier is left as-is (never
+`node:node:`).
+
+A bare name is resolved **locally first**, so a local module or an installed
+package that shares a core module's name wins — `import 'test'` picks up your
+`node_modules/test` if it exists, and only falls back to `node:test` when nothing
+resolves. (This differs slightly from Node, where the core module always wins; it
+lets you deliberately shadow a built-in.)
 
 Under `--platform deno`, Deno's URL-like schemes (`node:`, `npm:`, `jsr:`) are kept
 external for the Deno runtime to resolve.
