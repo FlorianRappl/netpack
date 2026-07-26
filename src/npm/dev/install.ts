@@ -1,16 +1,16 @@
-import {
-  downloadedBinPath,
-  NETPACK_BINARY_PATH,
-  isValidBinaryPath,
-  pkgAndSubpathForCurrentPlatform,
-} from "./platform";
-
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
 import * as zlib from "zlib";
 import * as https from "https";
 import * as child_process from "child_process";
+
+import {
+  downloadedBinPath,
+  NETPACK_BINARY_PATH,
+  isValidBinaryPath,
+  pkgAndSubpathForCurrentPlatform,
+} from "./platform";
 
 const versionFromPackageJSON: string = require(path.join(
   __dirname,

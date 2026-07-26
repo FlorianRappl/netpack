@@ -89,6 +89,9 @@ Lower-level commands for printing the raw dependency graph or inspecting a
 single resolved module — mainly useful when debugging netpack itself or a
 tricky resolution issue.
 
+You can also drive all of these from a Node.js program — see
+[Programmatic use](./programmatic-api.md).
+
 ## Output
 
 For an HTML entry point, netpack writes:
