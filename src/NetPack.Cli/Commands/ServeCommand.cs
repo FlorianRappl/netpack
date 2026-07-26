@@ -51,6 +51,12 @@ public class ServeCommand : ICommand
     [Option("loader", HelpText = "Override how a file extension is handled, e.g. --loader .svg=text.")]
     public IEnumerable<string> Loader { get; set; } = [];
 
+    [Option("clear-screen", Default = false, HelpText = "Clear the terminal on rebuild.")]
+    public bool ClearScreen { get; set; } = false;
+
+    [Option("preload", Default = true, HelpText = "Emit <link rel=\"modulepreload\"> for shared JS bundles (use --no-preload to disable).")]
+    public bool Preload { get; set; } = true;
+
     private async Task<(MemoryResultWriter Writer, Dictionary<int, string> Factories)> Compile()
     {
         var file = Path.Combine(Environment.CurrentDirectory, FilePath);
@@ -65,6 +71,7 @@ public class ServeCommand : ICommand
             IsOptimizing = Minify,
             IsReloading = true,
             WithSourceMaps = true,
+            EnableModulePreload = Preload,
         };
         await compilation.WriteOut(options);
         var factories = new Dictionary<int, string>(graph.Context.ModuleFactories);
@@ -182,6 +189,11 @@ public class ServeCommand : ICommand
 
         watcher.Install(async () =>
         {
+            if (ClearScreen)
+            {
+                Console.Clear();
+            }
+
             var result = await Compile();
             _hmrMessage = ComputeMessage(result.Factories);
             return result.Writer;

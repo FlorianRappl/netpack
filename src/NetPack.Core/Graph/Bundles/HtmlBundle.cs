@@ -89,6 +89,52 @@ public sealed class HtmlBundle(BundlerContext context, Graph.Node root, BundleFl
                 WriteImportmap(importmap, content);
             }
 
+            // Add shared CSS chunks as <link> tags in the <head>
+            var sharedCssBundles = _context.Bundles.Values
+                .Where(b => b is CssBundle && b.IsShared)
+                .OrderBy(b => b.Name)
+                .ToList();
+
+            foreach (var cssBundle in sharedCssBundles)
+            {
+                var link = document.CreateElement("link");
+                link.SetAttribute("rel", "stylesheet");
+                link.SetAttribute("href", Helpers.PublicUrl(options.PublicPath, cssBundle.GetFileName()));
+                document.Head!.AppendChild(link);
+            }
+
+            // Add module preload directives for shared JS bundles that entry scripts import.
+            // This tells the browser to fetch shared modules early, before the JS module graph needs them.
+            if (options.EnableModulePreload && fragments.TryGetValue(Root, out var htmlRoot))
+            {
+                // Find all script elements that reference JS bundles
+                var scriptElements = replacements
+                    .Where(r => r.Key.LocalName == "script")
+                    .Select(r => r.Value)
+                    .ToList();
+
+                foreach (var scriptNode in scriptElements)
+                {
+                    if (!_context.Bundles.TryGetValue(scriptNode, out var scriptBundle) || scriptBundle is not JsBundle jsBundle)
+                    {
+                        continue;
+                    }
+
+                    // Find shared bundles that this JS bundle depends on
+                    var sharedDeps = _context.Bundles.Values
+                        .Where(b => b.IsShared && b != jsBundle && jsBundle.Items.Contains(b.Root))
+                        .ToList();
+
+                    foreach (var sharedDep in sharedDeps)
+                    {
+                        var link = document.CreateElement("link");
+                        link.SetAttribute("rel", "modulepreload");
+                        link.SetAttribute("href", Helpers.PublicUrl(options.PublicPath, sharedDep.GetFileName()));
+                        document.Head!.AppendChild(link);
+                    }
+                }
+            }
+
             if (options.IsOptimizing)
             {
                 foreach (var node in document.Head!.ChildNodes.OfType<IText>().ToArray())

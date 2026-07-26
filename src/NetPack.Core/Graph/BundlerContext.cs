@@ -141,6 +141,13 @@ public sealed class BundlerContext(string root, FeatureFlags features, ModuleIdM
     public ConcurrentDictionary<Node, bool> CssModuleNodes = [];
 
     /// <summary>
+    /// Tracks which bundles import each CSS file. Used for CSS code splitting
+    /// to determine which CSS files are shared across multiple entry points.
+    /// Key: CSS node, Value: set of bundles that import this CSS file.
+    /// </summary>
+    public ConcurrentDictionary<Node, HashSet<Bundle>> CssImportedByBundles = [];
+
+    /// <summary>
     /// The printed (pre-mangle) source of each module's factory, keyed by module
     /// id. Populated during a reloading build so the dev server can diff modules
     /// between compiles and push hot updates. Fresh per compile.

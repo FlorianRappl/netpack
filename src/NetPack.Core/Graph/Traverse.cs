@@ -169,7 +169,13 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
         }
 
         await Task.WhenAll(queue);
-        await TransformCssModules();
+
+        // CSS code splitting: compute shared CSS and create separate chunks
+        var cssSplitter = new CssChunkSplitter(_context);
+        var sharedCss = cssSplitter.ComputeSharedCss();
+        cssSplitter.CreateSharedCssBundles(sharedCss);
+
+        await TransformCssModules(sharedCss);
 
         if (_devServer && primaryEntry is not null)
         {
@@ -431,7 +437,7 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
             }
         }
 
-        return ResolveFromFileSystem(CombinePath(dir, name)) ?? throw new Exception($"Could not find the module '{name}' in '{dir}'.");
+        return ResolveFromFileSystem(CombinePath(dir, name)) ?? throw new Exception($"Could not find the module '{name}' in '{dir}'. Make sure the module is installed (npm install {name}).");
     }
 
     private string? ResolveFromFileSystem(string fn)
@@ -657,7 +663,7 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
         }
         catch (Exception err)
         {
-            Console.WriteLine("Error from '{0}': {1}", parent.FileName, err.Message);
+            Console.Error.WriteLine("[netpack] error: failed to process '{0}': {1}", parent.FileName, err.Message);
             return null;
         }
     }
@@ -1051,7 +1057,7 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
     /// <summary>
     /// Records CSS files this module imports so they can later be turned into
     /// virtual JS modules. An import that carries named/default bindings marks the
-    /// CSS file as a CSS module (its class names get hashed).
+    /// CSS file as a CSS module (class names are hashed).
     /// </summary>
     private void RegisterCssImports(Bundle bundle, JsFragment fragment)
     {
@@ -1060,6 +1066,19 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
             if (astNode is Syntax.Ast.ImportDeclaration import && graphNode.Type == ".css")
             {
                 _context.CssImports.TryAdd(graphNode, bundle);
+
+                // Track all bundles that import this CSS file for code splitting
+                _context.CssImportedByBundles.AddOrUpdate(
+                    graphNode,
+                    _ => new HashSet<Bundle> { bundle },
+                    (_, existing) =>
+                    {
+                        lock (existing)
+                        {
+                            existing.Add(bundle);
+                        }
+                        return existing;
+                    });
 
                 if (import.Specifiers.Count > 0)
                 {
@@ -1074,11 +1093,20 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
     /// class selectors are hashed (for CSS modules), the CSS is set up for runtime
     /// injection, and the original→hashed class map is exported. Runs after the
     /// graph is built but before bundles are assembled.
+    /// 
+    /// Shared CSS (imported by multiple entry points) is kept as separate CSS
+    /// bundles and not transformed into virtual JS modules.
     /// </summary>
-    private async Task TransformCssModules()
+    private async Task TransformCssModules(IDictionary<Node, string>? sharedCss = null)
     {
         foreach (var (node, bundle) in _context.CssImports.ToArray())
         {
+            // Skip shared CSS - it's already been created as a separate CSS bundle
+            if (sharedCss is not null && sharedCss.ContainsKey(node))
+            {
+                continue;
+            }
+
             if (!_context.CssFragments.TryRemove(node, out var cssFragment))
             {
                 continue;
