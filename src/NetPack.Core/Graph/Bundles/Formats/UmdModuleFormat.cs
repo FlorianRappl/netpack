@@ -86,9 +86,32 @@ sealed class UmdModuleFormat : JsModuleFormat
 
         if (_needsBaseUrl)
         {
-            // Best effort: the running script's URL in the browser, else __filename.
+            // Resolve the running bundle's own URL so module-relative references
+            // (assets, chunks) work wherever it is loaded from:
+            //   1. the browser's <script> element (document.currentScript.src),
+            //   2. Node's __filename (CommonJS),
+            //   3. otherwise, recover it from a thrown error's stack trace — this
+            //      covers browser workers, injected/inline scripts, and other cases
+            //      where currentScript is null and __filename is undefined.
+            const string fallback =
+                """
+                (function () {
+                  try {
+                    throw new Error();
+                  } catch (t) {
+                    const e = ("" + t.stack).match(/(https?|file|ftp|chrome-extension|moz-extension):\/\/[^)\n]+/g);
+
+                    if (e) {
+                      return e[0].replace(/^((?:https?|file|ftp|chrome-extension|moz-extension):\/\/.+)\/[^\/]+$/, "$1") + "/";
+                    }
+                  }
+
+                  return "/";
+                })()
+                """;
+
             body.AddRange(FormatSupport.Parse(
-                $"const {BaseUrl} = typeof document !== \"undefined\" && document.currentScript ? document.currentScript.src : (typeof __filename !== \"undefined\" ? __filename : \"\");"));
+                $"const {BaseUrl} = typeof document !== \"undefined\" && document.currentScript ? document.currentScript.src : (typeof __filename !== \"undefined\" ? __filename : {fallback});"));
         }
 
         body.AddRange(module.Body);
