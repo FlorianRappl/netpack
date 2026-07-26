@@ -51,6 +51,9 @@ public class ServeCommand : ICommand
     [Option("loader", HelpText = "Override how a file extension is handled, e.g. --loader .svg=text.")]
     public IEnumerable<string> Loader { get; set; } = [];
 
+    [Option("banner", Default = "", HelpText = "Text placed on top of the entry JS bundle, followed by a newline, e.g. --banner \"// (c) 2026 Acme\". Empty by default.")]
+    public string Banner { get; set; } = "";
+
     [Option("clear-screen", Default = false, HelpText = "Clear the terminal on rebuild.")]
     public bool ClearScreen { get; set; } = false;
 
@@ -71,6 +74,7 @@ public class ServeCommand : ICommand
             IsOptimizing = Minify,
             IsReloading = true,
             WithSourceMaps = true,
+            Banner = Banner,
             EnableModulePreload = Preload,
         };
         await compilation.WriteOut(options);

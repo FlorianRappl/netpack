@@ -64,19 +64,51 @@ public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags
 
         if (!options.WithSourceMaps)
         {
-            code = JsPrinter.Print(ast, printerOptions);
+            code = ApplyBanner(JsPrinter.Print(ast, printerOptions), options.Banner);
         }
         else
         {
             var mapFile = $"{GetFileName()}.map";
             var builder = new SourceMapBuilder(GetFileName(), _context.Root);
-            var printed = JsPrinter.Print(ast, printerOptions, builder);
+            var printed = ApplyBanner(JsPrinter.Print(ast, printerOptions, builder), options.Banner, builder);
             SourceMap = Encoding.UTF8.GetBytes(builder.ToJson());
             code = $"{printed}\n//# sourceMappingURL={mapFile}\n";
         }
 
         VerifyOutput(code);
         return code;
+    }
+
+    /// <summary>
+    /// Prepends the <c>--banner</c> text (plus a newline) to an entry bundle's
+    /// output. Every entry JS bundle receives it; shared split chunks do not, and
+    /// an empty banner is discarded. When a source map is being built, its
+    /// mappings are shifted down by the number of lines the banner adds so
+    /// positions stay accurate.
+    /// </summary>
+    private string ApplyBanner(string code, string banner, SourceMapBuilder? builder = null)
+    {
+        if (string.IsNullOrEmpty(banner) || IsShared)
+        {
+            return code;
+        }
+
+        if (builder is not null)
+        {
+            // The banner adds its own newlines plus the one we append after it.
+            var lines = 1;
+            foreach (var c in banner)
+            {
+                if (c == '\n')
+                {
+                    lines++;
+                }
+            }
+
+            builder.PrependGeneratedLines(lines);
+        }
+
+        return $"{banner}\n{code}";
     }
 
     /// <summary>

@@ -47,6 +47,14 @@ public record OutputOptions
     public string PublicPath { get; init; } = "";
 
     /// <summary>
+    /// Arbitrary text placed on the very first line of each entry JS bundle,
+    /// followed by a newline (the <c>--banner</c> option). Typically a
+    /// license/copyright comment or a runtime pragma. Empty (the default) emits
+    /// nothing. Entry bundles receive the banner; shared split chunks do not.
+    /// </summary>
+    public string Banner { get; init; } = "";
+
+    /// <summary>
     /// When true, <c>&lt;link rel="modulepreload"&gt;</c> directives are emitted
     /// for shared JS bundles that entry scripts import. The browser fetches these
     /// early, before the module graph needs them. Defaults to <c>true</c>.

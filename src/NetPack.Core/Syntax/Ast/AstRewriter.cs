@@ -420,15 +420,51 @@ public abstract class AstRewriter
 
     protected virtual Node VisitBinaryExpression(BinaryExpression node)
     {
-        node.Left = Ex(node.Left);
-        node.Right = Ex(node.Right);
+        // Left-associative operators nest on the left, so `a + b + c + …` becomes
+        // a left spine hundreds/thousands deep. Walk that spine iteratively (rather
+        // than recursing through Ex on each Left) so a long chain can't overflow the
+        // stack. Visitation order (left operands, then each right) is preserved.
+        var spine = new List<BinaryExpression>();
+        Expression current = node;
+        while (current is BinaryExpression bin)
+        {
+            spine.Add(bin);
+            current = bin.Left;
+        }
+
+        var left = Ex(current);
+        for (var i = spine.Count - 1; i >= 0; i--)
+        {
+            var bin = spine[i];
+            bin.Left = left;
+            bin.Right = Ex(bin.Right);
+            left = bin;
+        }
+
         return node;
     }
 
     protected virtual Node VisitLogicalExpression(LogicalExpression node)
     {
-        node.Left = Ex(node.Left);
-        node.Right = Ex(node.Right);
+        // Same left-spine iteration as VisitBinaryExpression, for long `&&`/`||`/`??`
+        // chains.
+        var spine = new List<LogicalExpression>();
+        Expression current = node;
+        while (current is LogicalExpression log)
+        {
+            spine.Add(log);
+            current = log.Left;
+        }
+
+        var left = Ex(current);
+        for (var i = spine.Count - 1; i >= 0; i--)
+        {
+            var log = spine[i];
+            log.Left = left;
+            log.Right = Ex(log.Right);
+            left = log;
+        }
+
         return node;
     }
 

@@ -75,6 +75,23 @@ public sealed class SourceMapBuilder
 
     public bool IsEmpty => _mappings.Length == 0;
 
+    /// <summary>
+    /// Shifts every mapping down by <paramref name="lines"/> generated lines.
+    /// Used when content (e.g. a <c>--banner</c>) is prepended to the printed
+    /// output after the map was built: mappings are keyed by generated line, so
+    /// prepending that many line separators (<c>;</c>) keeps them pointing at the
+    /// right source positions.
+    /// </summary>
+    public void PrependGeneratedLines(int lines)
+    {
+        if (lines <= 0)
+        {
+            return;
+        }
+
+        _mappings.Insert(0, new string(';', lines));
+    }
+
     private int Intern(SourceFile source)
     {
         if (_sourceIndex.TryGetValue(source, out var index))

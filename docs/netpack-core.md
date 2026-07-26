@@ -68,6 +68,7 @@ optional, so `new BundleOptions()` is a valid production-ESM build.
 | `Platform` | `Platform.Web` | `Web`, `Node`, `Deno` — see [platforms](./platforms.md) |
 | `EntryNames` | `[name]` | naming template, e.g. `[name]-[hash]` for cache-busting |
 | `PublicPath` | `""` | base URL/path prepended to emitted-file references |
+| `Banner` | `""` | text placed on top of each entry JS bundle, followed by a newline |
 | `Externals` | empty | import specifiers to keep external |
 | `Shared` | empty | dependencies emitted as shared bundles + import-map entries |
 | `Define` | — | compile-time constant substitutions |

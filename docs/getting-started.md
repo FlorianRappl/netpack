@@ -44,6 +44,7 @@ npx netpack bundle src/index.html
 | `--minify` | off | Minify the emitted JS/CSS/HTML. |
 | `--sourcemap` | off | Emit a `.js.map` next to each JS bundle. |
 | `--clean` | off | Delete `--outdir` before writing. |
+| `--banner <text>` | — | Text placed on top of the entry JS bundle, followed by a newline. Empty banners are discarded. See [Banner](./other-features.md#banner---banner). |
 | `--external <name>` | — | Repeatable. Don't bundle this import; leave it as a real `import` for the browser/import map to resolve. |
 | `--shared <name>` | — | Repeatable. Like `--external`, but also builds the dependency as its own output chunk and wires it into an import map. See [Import maps & externals](./importmaps-and-externals.md). |
 
@@ -61,8 +62,8 @@ browser over a small SSE-based client:
 - if a module was added/removed, or something non-JS changed, it falls back
   to a full page reload.
 
-Accepts `--port` (default `1234`), plus `--minify`, `--external` and
-`--shared` from `bundle`. Source maps are always on in dev.
+Accepts `--port` (default `1234`), plus `--minify`, `--external`, `--shared`
+and `--banner` from `bundle`. Source maps are always on in dev.
 
 When the `react-refresh` package is resolvable from your project, the dev
 server automatically enables React Fast Refresh instead of plain HMR for

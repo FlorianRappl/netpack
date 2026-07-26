@@ -31,6 +31,10 @@ public sealed record BundleOptions
     /// <summary>Base path/URL prepended to references to emitted files.</summary>
     public string PublicPath { get; init; } = "";
 
+    /// <summary>Text placed on top of each entry JS bundle, followed by a newline
+    /// (<c>--banner</c>). Empty by default; shared split chunks do not receive it.</summary>
+    public string Banner { get; init; } = "";
+
     /// <summary>Import specifiers to keep external (not bundled).</summary>
     public IEnumerable<string> Externals { get; init; } = [];
 
@@ -73,6 +77,7 @@ public static class Bundler
         Format = options.Format,
         EntryNames = options.EntryNames,
         PublicPath = options.PublicPath,
+        Banner = options.Banner,
     };
 
     private static Task<Traverse> BuildGraph(string entryPath, BundleOptions options) => Traverse.From(

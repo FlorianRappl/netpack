@@ -104,6 +104,22 @@ With no public path (the default) references stay document-relative
 (`./app.js`); with one they become `https://cdn.example.com/app/app.js`. It
 applies across every output format.
 
+## Banner (`--banner`)
+
+Places arbitrary text on the very first line of the entry JS bundle, followed by
+a newline — typically a license/copyright header or a runtime pragma.
+
+```sh
+npx netpack bundle src/index.html --banner "// (c) 2026 Acme, Inc. — MIT"
+```
+
+The banner is emitted verbatim, so it is your responsibility to make it valid for
+the position it lands in (a `//` or `/* … */` comment, a `"use client"`-style
+directive, a shebang, …). It goes on top of every entry JS bundle; shared split
+chunks are left untouched. An empty banner (the default) emits nothing. Source
+maps stay accurate: mappings are shifted to account for the added lines. Both
+`bundle` and `serve` accept the flag.
+
 ## Exports conditions (`--conditions`)
 
 Adds custom [`exports`](./platforms.md#entry-point-selection) conditions on top

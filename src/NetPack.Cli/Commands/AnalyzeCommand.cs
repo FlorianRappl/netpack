@@ -31,7 +31,10 @@ public class AnalyzeCommand : ICommand
 
     [Option("shared", HelpText = "Indicates if a dependency should be shared.")]
     public IEnumerable<string> Shared { get; set; } = [];
-    
+
+    [Option("banner", Default = "", HelpText = "Text placed on top of the entry JS bundle, followed by a newline, e.g. --banner \"// (c) 2026 Acme\". Empty by default.")]
+    public string Banner { get; set; } = "";
+
     private async Task<Metadata> Compile()
     {
         var file = Path.Combine(Environment.CurrentDirectory, FilePath!);
@@ -39,6 +42,7 @@ public class AnalyzeCommand : ICommand
         {
             IsOptimizing = true,
             IsReloading = false,
+            Banner = Banner,
         };
         using var graph = await Traverse.From(file, Externals, Shared);
         var compilation = new MemoryResultWriter(graph.Context);

@@ -90,6 +90,8 @@ export interface BundleOptions extends CommonOptions {
   entryNames?: string;
   /** Base path/URL prepended to references to emitted files. */
   publicPath?: string;
+  /** Text placed on top of the entry JS bundle, followed by a newline. */
+  banner?: string;
   /** Extra package.json `exports` conditions. */
   conditions?: string[];
   /** Set to "external" to keep every node_modules import external. */
@@ -107,6 +109,8 @@ export interface ServeOptions extends CommonOptions {
   define?: Record<string, string>;
   alias?: Record<string, string>;
   loader?: Record<string, string>;
+  /** Text placed on top of the entry JS bundle, followed by a newline. */
+  banner?: string;
 }
 
 export interface GraphOptions extends CommonOptions {
