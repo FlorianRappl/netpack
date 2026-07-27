@@ -26,7 +26,7 @@ export const INDEX_ID = 'README';
 const NAV_GROUPS: { label: string; ids: string[] }[] = [
   {
     label: 'General',
-    ids: ['getting-started', 'programmatic-api'],
+    ids: ['getting-started', 'configuration', 'programmatic-api'],
   },
   {
     label: 'Use cases',

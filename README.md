@@ -329,7 +329,7 @@ for exactly what's supported and the current limitations.
 - [x] Platforms (web, node, deno; `--platform`)
 - [x] Tree shaking
 - [x] Other formats (esm, cjs, umd, systemjs; `--format`)
-- [ ] Presets / configuration system
+- [x] Presets / configuration system (JSONC `netpack.json` / `--preset`; composable, with hooks — see [Configuration](./docs/configuration.md))
 
 ## Idea Stash
 

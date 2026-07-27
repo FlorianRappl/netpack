@@ -127,8 +127,26 @@ copy the shape):
 4. `NetPack.Core/Bundler.cs` `BundleOptions` — the library facade.
 5. `src/npm/dev/main.ts` and `src/npm/netpack/main.d.ts` — the typed programmatic
    API (they mirror the CLI flags; `main.d.ts` is hand-written and must stay in sync).
-6. Docs (`docs/getting-started.md` tables + a section in `docs/other-features.md`
+6. If the option should be settable from a preset: add the nullable property to
+   `Config/PresetConfig.cs` and a `Candidates` token + per-verb allow-list entry in
+   `NetPack.Cli/PresetArgs.cs` (see "Config & presets" below).
+7. Docs (`docs/getting-started.md` tables + a section in `docs/other-features.md`
    or the relevant page) and tests.
+
+## Config & presets
+
+- User config is a JSONC **preset** (`netpack.json`, auto-discovered, and/or
+  `--preset <ref>`). Presets carry CLI options plus `presets` (composition) and
+  `hooks` (JS modules, resolved but not yet invoked).
+- `NetPack.Core/Config/` owns it: `PresetConfig` (nullable option DTO +
+  JSONC-tolerant source-gen context) and `Presets.Resolve` (standalone
+  module resolution, recursive load with dedup/cycle-safety, first-write-wins
+  option merge, base-first deduped hook resolution). This layer is pure and
+  graph-independent so it can run before `Traverse` and be unit-tested directly.
+- `NetPack.Cli/PresetArgs.cs` bridges it to the CLI by **argument augmentation**:
+  it strips `--preset`, resolves presets, and appends tokens for options the user
+  didn't pass (per-verb allow-list), so the command classes stay untouched and CLI
+  flags always win. Options merge first-write-wins; hooks accumulate base-first.
 
 ## Docs system
 

@@ -7,6 +7,8 @@ Usage docs for netpack, in addition to the feature overview in the
 
 - **[Getting started](./getting-started.md)** — install, entry points, and
   the `bundle` / `serve` / `analyze` commands.
+- **[Configuration & presets](./configuration.md)** — shareable JSONC config
+  files, composing presets (`extends`-style), option precedence, and hooks.
 - **[Programmatic use](./programmatic-api.md)** — drive the bundler from a
   Node.js program with the typed `netpack` object (and low-level `run`).
 

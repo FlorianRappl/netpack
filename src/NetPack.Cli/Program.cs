@@ -56,6 +56,20 @@ static class Program
     {
         RegisterAssetProcessors();
 
+        // Resolve presets (--preset and an auto-discovered netpack.json) and fold
+        // their options into the argument list before the verb parser runs. A real
+        // CLI flag always wins, since presets only fill options the user omitted.
+        try
+        {
+            args = PresetArgs.Apply(args);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+            Environment.ExitCode = 1;
+            return;
+        }
+
         Parser.Default.ParseArguments<BundleCommand, GraphCommand, InspectCommand, ServeCommand, AnalyzeCommand, PreviewCommand>(args)
             .MapResult(
                 (BundleCommand opts) => Run(opts),
