@@ -2,21 +2,11 @@
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
-    <!-- Assembly name must NOT be "NetPack": the CLI's binary is "netpack" and on
-         a case-insensitive filesystem (macOS/Windows) NetPack.dll and netpack.dll
-         would collide in the CLI's publish output, clobbering the core assembly.
-         The namespace stays "NetPack" via RootNamespace, so consumers are
-         unaffected (`using NetPack;`), and this matches the package id. -->
     <AssemblyName>NetPack.Core</AssemblyName>
     <AssemblyTitle>netpack</AssemblyTitle>
     <RootNamespace>NetPack</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-
-    <!-- NuGet package metadata (the embeddable core library; the CLI is shipped
-         separately via npm as a native binary). The package id is NetPack.Core
-         ("NetPack" is taken on nuget.org); the assembly + namespace stay NetPack,
-         so consumers still write `using NetPack;`. -->
     <PackageId>NetPack.Core</PackageId>
     <Title>netpack</Title>
     <Authors>Florian Rappl</Authors>
@@ -56,8 +46,8 @@
          bundler (and the Vue/Astro SFC compilers) are built on. Native image
          processing (SkiaSharp) is NOT referenced here — it is provided by a
          consumer through the public IAssetProcessor interface. -->
-    <PackageReference Include="AngleSharp" Version="1.5.2" />
-    <PackageReference Include="AngleSharp.Css" Version="0.18.0" />
+    <PackageReference Include="AngleSharp" Version="1.6.0" />
+    <PackageReference Include="AngleSharp.Css" Version="1.0.0" />
   </ItemGroup>
 
   <ItemGroup>
