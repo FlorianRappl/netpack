@@ -102,11 +102,10 @@ references to graph Nodes — those are built fresh by the `JsVisitor` during th
 walk. This guarantees correctness (the dependency graph is never stale) while
 still eliminating the most expensive step.
 
-### What is NOT cached
+### What is NOT cached (limitations of Phase 1)
 
 - **CSS stylesheets** — `AngleSharp.Css.IStyleSheet` holds a reference to the
-  `BrowsingContext` (DOM engine), making it non-trivially serializable /
-  shareable across builds.
+  `BrowsingContext` (DOM engine), making it non-trivially shareable across builds.
 - **HTML documents** — same reason (AngleSharp `IDocument`).
 - **Node bridge output** (Sass, LESS, PostCSS, Svelte, Solid) — these involve
   an external Node.js process whose output depends on the project's
@@ -114,15 +113,7 @@ still eliminating the most expensive step.
 - **Resolved module paths** — these depend on the `exports` map, aliases, and
   loader configuration which may change between builds.
 - **Rendered bundles** — these depend on the full module graph; any module
-  change could cascade to multiple bundles. Chunk-artifact caching requires a
-  separate invalidation graph.
-
-Future phases could add:
-- **CSS stylesheet cache** — store the serialized stylesheet text and re-parse
-  it, skipping only the Sass/LESS/PostCSS pre-process step.
-- **Chunk-artifact cache** — cache rendered JS/CSS chunks keyed by a hash of
-  all modules in the chunk. When no module in a chunk has changed, reuse the
-  cached render output.
+  change could cascade to multiple bundles.
 
 ## Invalidation model
 
@@ -209,212 +200,185 @@ watcher.Install(async () =>
 ```
 
 The cache survives across rebuilds within the same session. It is discarded
-when the process exits (memory-only for prototype).
+when the process exits (memory-only for Phase 1).
 
 ### Future: shared ModuleIdMap
 
 The current prototype does not share the `ModuleIdMap` between builds. This
-means module IDs differ between cold and warm builds (e.g., `__m { 0: … }`
-vs `__m { 1: … }`). For hot-module replacement (HMR), stable module IDs across
-rebuilds are essential. The existing dev server already passes a persistent
-`ModuleIdMap` to `Traverse.From` — combining this with the `BuildCache` would
-give both stable IDs and cached parses in watch mode.
+means module IDs differ between cold and warm builds. For hot-module
+replacement (HMR), stable module IDs across rebuilds are essential. The
+existing dev server already passes a persistent `ModuleIdMap` to
+`Traverse.From` — combining this with the `BuildCache` would give both stable
+IDs and cached parses in watch mode.
 
-## References
+## Roadmap
 
-- rspack incremental architecture (`crates/rspack_core/src/incremental/`):
-  14-pass incremental system with mutation tracking. This prototype is a
-  simplified adaptation — single cache layer (AST) instead of multi-stage
-  artifact recovery.
-- webpack cache API (`Cache` trait / `before_*` / `after_*` hooks):
-  pluggable cache backends (memory, filesystem). This prototype is
-  memory-only with a fixed cache key strategy.
+The current implementation (Phase 1) caches only parsed JS ASTs. The
+following phases describe a progressive path toward a full incremental
+pipeline.
 
-## Gap analysis: rspack vs netpack incremental build
+### Architecture layers
 
-### Architecture comparison
+netpack's build pipeline has these stages, each of which can be independently
+cached or selectively rebuilt:
 
-| Dimension | rspack | netpack (current) |
-|-----------|--------|-------------------|
-| **Passes** | 14 incremental passes (BUILD_MODULE_GRAPH → EMIT_ASSETS) | 1 pass: parse cache only |
-| **Mutation tracking** | `Mutations` enum: ModuleAdd/Update/Remove, DependencyUpdate, ChunkAdd/Split/Remove/SetHashes | None — no diff between builds |
-| **Artifact recovery** | `Cache.before_*/after_*` recovers 14 artifacts from old compilation | None — full rebuild per invocation |
-| **Cache layers** | 3 layers: parse → codegen → render | 1 layer: parse (AST) |
-| **Cache backends** | DisableCache, MemoryCache, MixedCache (memory + persistent disk) | Memory only |
-| **Generational GC** | `MemoryGCStorage` with `max_generations` | No GC — entries live until process exit |
-| **Chunk graph** | Incremental: invalidate only affected chunk groups | Full rebuild of chunk graph |
-| **Code generation** | Cached per-module-per-chunk with content-hash key | Always regenerated |
-| **Chunk render** | Cached per-chunk with content-hash key | Always re-rendered |
-| **Module IDs** | Stable across rebuilds via artifact recovery | Reset each build (unless persistent `ModuleIdMap` passed) |
-| **Snapshot** | File-system snapshot for persistent cache invalidation | N/A (memory only) |
-| **Persistent disk cache** | Yes — `PersistentCache` with `rspack_storage` | No |
+| Stage | What runs | Cached in Phase 1? | Cache key |
+|-------|-----------|:-------------------:|-----------|
+| **File I/O** | `File.ReadAllBytesAsync` | No | — |
+| **Pre-process** | Sass/LESS/PostCSS/Solid/Svelte bridges | No | — |
+| **Parse** | `Parser.ParseModule`, `CssParser`, `AngleSharp` | ✅ JS only | `(filePath, optionsHash, content)` |
+| **Walk** | `JsVisitor.FindChildren`, `CssVisitor.FindChildren`, `HtmlVisitor.FindChildren` | No | — |
+| **Bundle graph** | `Connected.Apply`, `CssChunkSplitter` | No | — |
+| **Code generation** | `JsxToJavaScriptTranspiler.Transpile` (JSX lowering, import rewriting, runtime injection) | No | — |
+| **Render** | `Bundle.CreateStream` / `Stringify` | No | — |
+| **Write** | `ResultWriter.WriteOut` | No | — |
 
-### Gap details
+### Phase 2 — Code generation cache
 
-#### G1: Multi-pass incremental architecture
+Cache the output of `JsxToJavaScriptTranspiler.Transpile` per module, keyed by
+a hash of the module's parsed AST and its dependency graph. Unchanged modules
+skip both `Parser.ParseModule` AND the `JsVisitor` walk + JSX lowering +
+import rewriting — the three most expensive per-module operations.
 
-rspack defines 14 named passes, each with recovery hooks. netpack has no
-pass system — it's a linear pipeline (Traverse → Render → Write).
+**Work items:**
 
-**Impact**: Without passes, there's no granular way to recover or skip work. A
-single file change causes a full rebuild except for JS parsing.
+- Add `CodeGenEntry` to `BuildCache`: stores the lowered AST body (list of
+  `Ast.Statement`) ready for insertion into the bundle.
+- Invalidation: when a module's imports change (new/removed/changed import
+  specifier), invalidate the codegen cache for that module and all direct
+  dependents.
+- Compute a dependency hash: `hash(moduleContent, importedModules', importedModules'')`, so
+  transitive dependency changes propagate.
+- CLI flag: `--incremental-codegen` (on by default when `--incremental` is on).
+- Tests: 10 modules, change 1 → verify 9 hit codegen cache; change a shared
+  dependency → verify dependents miss cache; verify output is byte-identical to
+  a full build.
 
-#### G2: Mutation tracking
+### Phase 3 — Chunk render cache
 
-rspack's `Mutations` tracks exactly what changed between builds: which modules
-were added, updated, removed; which dependencies changed; which chunks split
-or merged. This drives selective invalidation.
+Cache the rendered output of `Bundle.CreateStream` per chunk, keyed by a hash
+of all module hashes within the chunk plus the chunk's own configuration
+(format, public path, banner). When no module in a chunk has changed, skip the
+entire `Stringify`/`CreateStream` call.
 
-**Impact**: Without mutations, netpack can't selectively invalidate only
-affected parts. Every module must be re-walked.
+**Work items:**
 
-#### G3: Code generation cache
+- Add `RenderEntry` to `BuildCache`: stores the rendered `byte[]` or `Stream`.
+- Compute `ChunkHash` from the hashes of all modules in the chunk, plus the
+  chunk's format/options.
+- In `ResultWriter.WriteOut`, check `BuildCache` before calling
+  `bundle.CreateStream`.
+- Invalidation: any module change in a chunk → chunk hash differs → miss.
+- Tests: 3 chunks, change a module in chunk A → verify chunks B and C hit
+  render cache; verify rendered output is byte-identical.
 
-rspack caches `CodeGenerationResult` per module per runtime. The cache key
-includes the module hash, source hash, and compilation hash. On rebuild,
-unchanged modules reuse their codegen output.
+### Phase 4 — Multi-pass incremental architecture
 
-**Impact**: netpack's `JsxToJavaScriptTranspiler` runs for every module on
-every build. This includes JSX lowering, import rewriting, and runtime
-injection — expensive for large projects.
+Replace the linear "Traverse → Render → Write" pipeline with named passes that
+can be selectively skipped or recovered from a previous build. This is modeled
+directly on the compiler pipeline stages:
 
-#### G4: Chunk render cache
+```csharp
+enum IncrementalPass
+{
+    BuildModuleGraph,   // Traverse.From → build graph
+    FinishModules,      // CSS modules, tree-shaking
+    BuildChunkGraph,    // Connected.Apply, CssChunkSplitter
+    ModulesCodegen,     // JsxToJavaScriptTranspiler
+    ChunksHashes,       // Content hashing
+    ChunkAsset,         // Bundle.CreateStream
+    EmitAssets,         // ResultWriter.WriteOut
+}
+```
 
-rspack caches rendered chunk sources keyed by content hash. If no module in a
-chunk changed, the whole chunk render is skipped.
+Each pass produces one or more **artifacts** (parsed ASTs, codegen results,
+rendered chunks). The cache stores artifacts from the previous build. On
+rebuild, each pass checks whether its artifacts are still valid and recovers
+them instead of recomputing.
 
-**Impact**: netpack's `JsBundle.Stringify` and `CSSBundle`/`HtmlBundle`
-always re-render from scratch. For projects with many chunks, this is
-significant.
+**Work items:**
 
-#### G5: Generational memory GC
+- Define `IArtifact` interface: `IncrementalPass Pass { get; } void Recover(IArtifact old);`
+- Extract artifacts from `BundlerContext` into separate artifact objects
+  (`ModuleGraphArtifact`, `CodeGenArtifact`, `ChunkRenderArtifact`).
+- Store old `BundlerContext` in `BuildCache` for artifact recovery.
+- Before each pass, call `Recover` on the pass's artifacts from the old context.
+- CLI flag: `--incremental` controls which passes are enabled.
+- Tests: build → change 1 file → rebuild → count how many passes were skipped
+  by artifact recovery. Verify output correctness.
 
-rspack's `MemoryGCStorage` keeps artifacts from the last N generations and
-drops older ones. This prevents unbounded memory growth in long-running watch
-sessions.
+### Phase 5 — Mutation tracking and selective invalidation
 
-**Impact**: netpack's cache grows without bound during a session. In theory
-this could exhaust memory, though in practice a single session's AST cache is
-small (kilobytes per module).
+Track exactly what changed between builds — which modules were added,
+updated, or removed — and use this information to selectively invalidate only
+the affected parts of the pipeline.
 
-#### G6: Persistent disk cache
+**Mutation types:**
 
-rspack stores cache artifacts on disk using `rspack_storage`, enabling warm
-builds to survive process restarts.
+- `ModuleAdded(moduleId)` — new file, needs full processing
+- `ModuleUpdated(moduleId)` — content changed, re-parse + re-codegen
+- `ModuleRemoved(moduleId)` — file deleted, remove from graph
+- `DependencyChanged(fromModuleId, toModuleId)` — import specifier changed
 
-**Impact**: netpack always cold-starts after a process restart. The first
-build after restart is always full-cost.
+**Work items:**
 
-#### G7: Incremental chunk graph
+- Compute a diff between the current and previous module graph.
+- In `Traverse.From`, only process modules that appear in the diff.
+- Propagate invalidation: when module A changes, invalidate codegen for all
+  modules that import A transitively.
+- Skip entire passes when no mutations affect their artifacts.
+- Tests: change a leaf module → verify only that module and its ancestors are
+  rebuilt; verify unchanged sibling subtrees hit cache.
 
-rspack's `build_chunk_graph/incremental.rs` selectively rebuilds only chunk
-groups affected by changed modules. Unchanged chunks and their graphs are
-preserved.
+### Phase 6 — Persistent disk cache
 
-**Impact**: netpack's `Connected.Apply` and `CssChunkSplitter` run from
-scratch on every build.
+Store cache artifacts on disk so warm builds survive process restarts. The
+first build after `netpack serve` or `netpack bundle --watch` restarts should
+benefit from the previous session's cache.
 
-#### G8: Stable module IDs
+**Work items:**
 
-rspack recovers `ModuleIdsArtifact` so module IDs are identical between
-rebuilds. This is crucial for HMR and for deterministic output.
+- Add `IPersistentStorage` interface with `Read`/`Write` methods.
+- Implement `JsonFileStorage`: serializes artifacts as JSON to
+  `node_modules/.cache/netpack/`.
+- Add `SnapshotStore`: stores file hashes for source files to detect changes
+  between sessions without re-reading all files.
+- Layer `PersistentCache` under the memory cache: on cold start, pre-populate
+  from disk; on rebuild, write back to disk in the background.
+- CLI flag: `--cache-dir` to customize the cache directory.
+- Tests: build → stop process → restart → build again → verify disk cache
+  hits. Verify cache survives machine reboots (use temp dir as cache dir).
 
-**Impact**: netpack only has stable IDs when the caller passes a persistent
-`ModuleIdMap`. The default is non-deterministic.
+### Phase 7 — Test harness improvements
 
-#### G9: Multi-target test harness
+Expand the test coverage to match the maturity of the cache pipeline:
 
-rspack tests incremental rebuilds across web, node, async-node, and worker
-targets using `describeByWalk` + `createHotIncrementalCase`. Each test case
-simulates the full HMR lifecycle: build → edit file → rebuild → assert output.
-
-**Impact**: netpack's tests are unit-level (cache hit/miss counts). There's no
-integration-level test that edits a file and verifies the rebuild produces
-correct output.
-
-#### G10: Snapshot-based invalidations in hot cases
-
-rspack's hot test cases use `__snapshots__/` directories with `.snap.txt`
-files that capture the expected output at each step (0.snap.txt = initial,
-1.snap.txt = after first edit, etc.).
-
-**Impact**: netpack has no snapshot-based output verification. Tests only
-check that output is valid JS, not that it produces specific values.
-
-### Implementation plan
-
-#### Phase 1 — Stabilize current prototype (this PR)
-
-- [x] G1 partial: JS AST cache layer (parsed Ast.SourceFile)
-- [x] G2 partial: content-hash-based invalidation (implicit mutations via hash diff)
-- [x] G5 alternative: manual cache reset (no GC, but callers can discard)
-- [ ] Add `BuildCache.Clear()` for manual cache invalidation
-- Tests: cache hit/miss, valid output, benchmark, module add/remove/reorder
-
-#### Phase 2 — Code generation cache
-
-| Work item | Description | rspack equivalent |
-|-----------|-------------|-------------------|
-| **CodegenCache** | Cache `JsFragment` (AST + replacements) keyed by `(filePath, contentHash)`. Skip both parse AND `JsVisitor` walk for unchanged modules. | `CodeGenerateCacheArtifact` |
-| **Codegen invalidation** | When a module's imports change, invalidate the codegen cache for that module and all its dependents. | `Mutation::DependencyUpdate` |
-| **Test: codegen cache hit** | 10 modules, only 1 changed. Verify 9 modules skip both parse and walk. | `hotCases/code-generation` |
-
-#### Phase 3 — Multi-pass architecture
-
-| Work item | Description | rspack equivalent |
-|-----------|-------------|-------------------|
-| **Pass enum** | Define `IncrementalPass` enum: `BUILD_MODULE_GRAPH`, `FINISH_MODULES`, `BUILD_CHUNK_GRAPH`, `MODULES_CODEGEN`, `CHUNK_ASSET` | `IncrementalPasses` bitflags |
-| **Artifact trait** | `IArtifact { IncrementalPass Pass { get; } void Recover(IArtifact old); }` | `ArtifactExt` trait + `recover_artifact` |
-| **MemoryCache** | Store old `Compilation`; before each pass, recover artifacts for the pass if incremental is enabled | `MemoryCache` struct |
-| **Test: artifact recovery** | Build → change 1 file → rebuild → verify artifact recovery hits | `MemoryCache.before_build_module_graph` tests |
-
-#### Phase 4 — Chunk render cache
-
-| Work item | Description | rspack equivalent |
-|-----------|-------------|-------------------|
-| **ChunkHash** | Compute hash of all modules in a chunk. Cache key for render. | `chunk.content_hash_by_source_type` |
-| **RenderCache** | Cache `Stream` output of `Bundle.CreateStream` by chunk hash. | `ChunkRenderCacheArtifact` |
-| **Test: chunk render cache hit** | Multiple chunks, only 1 changed. Verify unchanged chunks skip rendering. | `hotCases/chunks` |
-
-#### Phase 5 — Persistent disk cache
-
-| Work item | Description | rspack equivalent |
-|-----------|-------------|-------------------|
-| **Storage backend** | Filesystem-based store for cache artifacts (JSON serialized). | `rspack_storage` crate |
-| **Snapshot** | File-system snapshot of source directories for invalidation. | `snapshot/strategy/` |
-| **MixedCache** | Layer `PersistentCache` under `MemoryCache`. Cold starts check disk; warm builds use memory. | `MixedCache` |
-| **Test: cold start from disk** | Build → restart process → build again → verify disk cache hits | `cacheCases/` |
-
-#### Phase 6 — Mutation tracking
-
-| Work item | Description | rspack equivalent |
-|-----------|-------------|-------------------|
-| **Mutations** | Track added/updated/removed modules between builds. | `Mutations` + `Mutation` enum |
-| **Selective invalidation** | Use mutations to skip passes that have no affected modules. | `Incremental::passes_enabled` |
-| **Dependency tracking** | When module A imports module B, and B changes, invalidate A's codegen. | `DependencyUpdate` mutation |
-| **Test: selective invalidation** | Change leaf module → verify only its chunk and ancestors are rebuilt. | `hotCases/make/clean-isolated-module` |
-
-#### Phase 7 — Test harness parity with rspack
-
-| Work item | Description | rspack equivalent |
-|-----------|-------------|-------------------|
-| **Snapshot tests** | Write expected output per build step (0.snap.txt, 1.snap.txt, …). | `__snapshots__/web/` |
-| **Multi-target** | Run the same test cases with different platforms (web, node). | `Incremental-web.test.js` + `Incremental-node.test.js` |
-| **HMR cycle tests** | Simulate the full HMR lifecycle: build → edit → rebuild → assert. | `hotCases/` per subdirectory |
-| **Error recovery tests** | Broken syntax → fix → rebuild succeeds. Already partially covered. | `hotCases/make/rebuild-abnormal-module` |
-| **Cycle detection tests** | Module cycles survive rebuild correctly. | `hotCases/make/clean-isolated-cycle` |
+- **Snapshot-based output verification**: capture expected bundle output per
+  build step in `__snapshots__/` directories. Each step appends a file
+  (`0.snap.txt`, `1.snap.txt`, …) to verify the exact output after each edit.
+- **Multi-platform**: run the same incremental test scenarios with
+  `Platform.Web`, `Platform.Node`, and `Platform.Deno`.
+- **Full HMR cycle**: simulate the complete hot-reload lifecycle:
+  1. Initial build → assert output
+  2. Edit a source file → trigger rebuild → assert output changed correctly
+  3. Edit again → assert cumulative changes
+  4. Delete a file → assert references cleaned up
+  5. Re-add the file → assert recovered
+- **Error recovery**: inject syntax errors → verify watcher survives → fix
+  syntax → verify rebuild succeeds.
+- **Cycle resilience**: module A imports B, B imports A. Edit A → verify
+  rebuild produces correct output without infinite recursion.
+- **Concurrent edits**: simulate multiple files changing within the debounce
+  window → verify exactly one rebuild with all changes batched.
 
 ### Summary matrix
 
-| Gap | Phase | Effort | Impact |
-|-----|-------|--------|--------|
-| G1 Multi-pass | Phase 3 | 🔴 Large | Full incremental pipeline |
-| G2 Mutation tracking | Phase 6 | 🟡 Medium | Selective invalidation |
-| G3 Codegen cache | Phase 2 | 🟡 Medium | Skip JsVisitor for unchanged modules |
-| G4 Chunk render cache | Phase 4 | 🟡 Medium | Skip rendering for unchanged chunks |
-| G5 Generational GC | Phase 1 | 🟢 Small | `BuildCache.Clear()` only |
-| G6 Persistent cache | Phase 5 | 🔴 Large | Disk-based storage |
-| G7 Incremental chunk graph | Phase 6 | 🟡 Medium | Skip chunk-graph rebuild |
-| G8 Stable module IDs | Phase 3 | 🟢 Small | Share `ModuleIdMap` with cache |
-| G9 Multi-target harness | Phase 7 | 🟡 Medium | Snapshot + platform tests |
-| G10 Snapshot assertions | Phase 7 | 🟢 Small | `__snapshots__/` test files |
+| Phase | Scope | Effort | Key benefit |
+|-------|-------|--------|-------------|
+| 1 | Parse cache (JS AST) | ✅ Done | Skip `Parser.ParseModule` for unchanged files |
+| 2 | Codegen cache | 🟡 Medium | Skip `JsVisitor` walk + JSX lowering for unchanged modules |
+| 3 | Chunk render cache | 🟡 Medium | Skip `Bundle.CreateStream` for unchanged chunks |
+| 4 | Multi-pass architecture | 🔴 Large | Granular pass control + artifact recovery |
+| 5 | Mutation tracking | 🟡 Medium | Selective invalidation — only rebuild affected modules |
+| 6 | Persistent disk cache | 🔴 Large | Warm builds survive process restarts |
+| 7 | Test harness | 🟡 Medium | Snapshot tests + HMR cycles + error/cycle/concurrent tests |
