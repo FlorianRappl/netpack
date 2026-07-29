@@ -48,10 +48,10 @@ public class Node(string fileName, int bytes, int? variantWidth = null, int? var
     /// <summary>
     /// Per-import inline override from a <c>?inline=</c> query parameter.
     /// <c>null</c> means no override (use the global threshold).
-    /// <c>0</c> (<c>?inline=always</c>) forces inlining regardless of size.
     /// <c>-1</c> (<c>?inline=never</c>) prevents inlining regardless of size.
     /// A positive value overrides the threshold in bytes for this asset
-    /// (<c>?inline=100</c> → 100&#x202F;KB → 102400).
+    /// (<c>?inline=100</c> → 100&#x202F;KB → 102400,
+    /// <c>?inline=always</c> → <see cref="int.MaxValue"/>).
     /// </summary>
     public int? InlineLimitOverride => inlineLimitOverride;
 

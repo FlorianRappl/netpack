@@ -802,7 +802,7 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
 
         if (value.Equals("always", StringComparison.OrdinalIgnoreCase))
         {
-            return 0;
+            return int.MaxValue;
         }
 
         if (value.Equals("never", StringComparison.OrdinalIgnoreCase))

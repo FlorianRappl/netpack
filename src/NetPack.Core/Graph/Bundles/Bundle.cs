@@ -63,7 +63,6 @@ public abstract class Bundle(BundlerContext context, Node root, BundleFlags flag
     public static bool IsInlined(Node node, Asset asset, OutputOptions options)
     {
         if (node.InlineLimitOverride == -1) return false;
-        if (node.InlineLimitOverride == 0) return true;
         if (node.InlineLimitOverride > 0)
             return asset.Content.Length <= node.InlineLimitOverride.Value;
 
