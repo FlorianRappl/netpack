@@ -58,41 +58,34 @@ public abstract class Bundle(BundlerContext context, Node root, BundleFlags flag
     public abstract Task<Stream> CreateStream(OutputOptions options);
 
     /// <summary>
-    /// When the asset is small enough to inline (considering both the global
-    /// <paramref name="options"/>.<see cref="OutputOptions.InlineLimit"/> and any
-    /// per-import <c>?inline=</c> override stored on the node), returns its data
-    /// URI; otherwise null. A node with <c>InlineLimitOverride == 0</c> is always
-    /// inlined; <c>-1</c> is never inlined; a positive value overrides the
-    /// threshold for this specific asset; <c>null</c> falls back to the global
-    /// limit.
+    /// True when an asset should be inlined into its referencing bundles rather
+    /// than emitted as a separate file, considering both the global threshold and
+    /// any per-import <c>?inline=</c> override on the node.
+    /// </summary>
+    public static bool IsInlined(Node node, Asset asset, OutputOptions options)
+    {
+        // ?inline=never — force external, regardless of size or global threshold.
+        if (node.InlineLimitOverride == -1) return false;
+
+        // ?inline=always — force inline, regardless of size or global threshold.
+        if (node.InlineLimitOverride == 0) return true;
+
+        // ?inline=N KB — per-import numeric threshold override.
+        if (node.InlineLimitOverride > 0)
+            return asset.Content.Length <= node.InlineLimitOverride.Value;
+
+        // No per-import override — use the global threshold.
+        return options.InlineLimit > 0 && asset.Content.Length <= options.InlineLimit;
+    }
+
+    /// <summary>
+    /// When the asset should be inlined, returns its data URI; otherwise null.
     /// </summary>
     protected string? TryGetInlineDataUri(Node node, OutputOptions options)
     {
-        // Per-import `?inline=never` — force external, regardless of size.
-        if (node.InlineLimitOverride == -1)
+        if (_context.Assets.TryGetValue(node, out var asset) && IsInlined(node, asset, options))
         {
-            return null;
-        }
-
-        // Per-import `?inline=always` — force inline, regardless of size.
-        if (node.InlineLimitOverride == 0)
-        {
-            if (_context.Assets.TryGetValue(node, out var asset))
-            {
-                return Helpers.ToDataUri(node.Extension, asset.Content);
-            }
-
-            return null;
-        }
-
-        // Per-import numeric — override the threshold for this asset.
-        var limit = node.InlineLimitOverride ?? options.InlineLimit;
-
-        if (limit > 0
-            && _context.Assets.TryGetValue(node, out var assetNode)
-            && assetNode.Content.Length <= limit)
-        {
-            return Helpers.ToDataUri(node.Extension, assetNode.Content);
+            return Helpers.ToDataUri(node.Extension, asset.Content);
         }
 
         return null;

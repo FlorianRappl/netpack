@@ -32,9 +32,9 @@ abstract class ResultWriter(BundlerContext context)
 
         await Parallel.ForEachAsync(_context.Assets.Values, async (asset, ct) =>
         {
-            // Assets below the inline limit are embedded as data URIs in their
-            // referencing bundles — no separate file to emit.
-            if (options.InlineLimit > 0 && asset.Content.Length <= options.InlineLimit)
+            // Assets that are inlined (via global threshold or per-import ?inline=
+            // override) are embedded as data URIs — no separate file to emit.
+            if (Bundle.IsInlined(asset.Root, asset, options))
             {
                 return;
             }
