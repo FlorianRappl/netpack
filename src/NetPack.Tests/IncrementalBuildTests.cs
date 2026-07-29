@@ -237,4 +237,173 @@ public class IncrementalBuildTests
             Directory.Delete(dir, recursive: true);
         }
     }
+
+    [Fact]
+    public async Task New_module_leads_to_fresh_parse_and_valid_output()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "netpack-cache-" + Path.GetRandomFileName());
+        Directory.CreateDirectory(dir);
+
+        try
+        {
+            await File.WriteAllTextAsync(Path.Combine(dir, "package.json"), "{}");
+            await File.WriteAllTextAsync(Path.Combine(dir, "main.js"),
+                "import { a } from './a.js'; export default a;");
+            await File.WriteAllTextAsync(Path.Combine(dir, "a.js"), "export const a = 1;");
+
+            var cache = new BuildCache();
+
+            // First build.
+            using (var g1 = await Traverse.From(Path.Combine(dir, "main.js"), Array.Empty<string>(), Array.Empty<string>(), buildCache: cache))
+            {
+                var b1 = g1.Context.Bundles.Values.OfType<JsBundle>().First(b => b.IsPrimary);
+                b1.Stringify(new OutputOptions { IsOptimizing = false, IsReloading = false });
+            }
+
+            // Add a new module between a.js and main.js.
+            await File.WriteAllTextAsync(Path.Combine(dir, "b.js"), "export const b = 42;");
+            await File.WriteAllTextAsync(Path.Combine(dir, "a.js"),
+                "import { b } from './b.js'; export const a = b + 1;");
+
+            // Second build.
+            using (var g2 = await Traverse.From(Path.Combine(dir, "main.js"), Array.Empty<string>(), Array.Empty<string>(), buildCache: cache))
+            {
+                var b2 = g2.Context.Bundles.Values.OfType<JsBundle>().First(b => b.IsPrimary);
+                var output = b2.Stringify(new OutputOptions { IsOptimizing = false, IsReloading = false });
+
+                var reparse = Parser.ParseModule(output, "out.js", new ParserOptions { Tolerant = true, Jsx = false, TypeScript = false });
+                Assert.Empty(reparse.Diagnostics);
+            }
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Removed_module_is_detected_and_rebuild_succeeds()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "netpack-cache-" + Path.GetRandomFileName());
+        Directory.CreateDirectory(dir);
+
+        try
+        {
+            await File.WriteAllTextAsync(Path.Combine(dir, "package.json"), "{}");
+            await File.WriteAllTextAsync(Path.Combine(dir, "main.js"),
+                "import { a } from './a.js'; export default a;");
+            await File.WriteAllTextAsync(Path.Combine(dir, "a.js"),
+                "import { b } from './b.js'; export const a = b;");
+            await File.WriteAllTextAsync(Path.Combine(dir, "b.js"), "export const b = 99;");
+
+            var cache = new BuildCache();
+
+            // First build — populate cache.
+            using (var g1 = await Traverse.From(Path.Combine(dir, "main.js"), Array.Empty<string>(), Array.Empty<string>(), buildCache: cache))
+            {
+                var b1 = g1.Context.Bundles.Values.OfType<JsBundle>().First(b => b.IsPrimary);
+                b1.Stringify(new OutputOptions { IsOptimizing = false, IsReloading = false });
+            }
+
+            // Remove b.js from the dependency chain.
+            File.Delete(Path.Combine(dir, "b.js"));
+            await File.WriteAllTextAsync(Path.Combine(dir, "a.js"), "export const a = 1;");
+
+            // Second build — should succeed without broken references to b.js.
+            cache.ResetCounters();
+            using (var g2 = await Traverse.From(Path.Combine(dir, "main.js"), Array.Empty<string>(), Array.Empty<string>(), buildCache: cache))
+            {
+                var b2 = g2.Context.Bundles.Values.OfType<JsBundle>().First(b => b.IsPrimary);
+                var output = b2.Stringify(new OutputOptions { IsOptimizing = false, IsReloading = false });
+
+                var reparse = Parser.ParseModule(output, "out.js", new ParserOptions { Tolerant = true, Jsx = false, TypeScript = false });
+                Assert.Empty(reparse.Diagnostics);
+            }
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Rebuild_handles_import_order_change()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "netpack-cache-" + Path.GetRandomFileName());
+        Directory.CreateDirectory(dir);
+
+        try
+        {
+            await File.WriteAllTextAsync(Path.Combine(dir, "package.json"), "{}");
+            await File.WriteAllTextAsync(Path.Combine(dir, "main.js"),
+                "import { a } from './a.js'; import { x } from './x.js'; export default a + x;");
+            await File.WriteAllTextAsync(Path.Combine(dir, "a.js"), "export const a = 1;");
+            await File.WriteAllTextAsync(Path.Combine(dir, "x.js"), "export const x = 10;");
+
+            var cache = new BuildCache();
+
+            // First build.
+            using (var g1 = await Traverse.From(Path.Combine(dir, "main.js"), Array.Empty<string>(), Array.Empty<string>(), buildCache: cache))
+            {
+                var b1 = g1.Context.Bundles.Values.OfType<JsBundle>().First(b => b.IsPrimary);
+                b1.Stringify(new OutputOptions { IsOptimizing = false, IsReloading = false });
+            }
+
+            // Change the import order in main.js.
+            await File.WriteAllTextAsync(Path.Combine(dir, "main.js"),
+                "import { x } from './x.js'; import { a } from './a.js'; export default a + x;");
+
+            // Rebuild — order changed, but both modules cached.
+            cache.ResetCounters();
+            using (var g2 = await Traverse.From(Path.Combine(dir, "main.js"), Array.Empty<string>(), Array.Empty<string>(), buildCache: cache))
+            {
+                var b2 = g2.Context.Bundles.Values.OfType<JsBundle>().First(b => b.IsPrimary);
+                var output = b2.Stringify(new OutputOptions { IsOptimizing = false, IsReloading = false });
+
+                var reparse = Parser.ParseModule(output, "out.js", new ParserOptions { Tolerant = true, Jsx = false, TypeScript = false });
+                Assert.Empty(reparse.Diagnostics);
+            }
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Cache_survives_non_source_file_addition()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "netpack-cache-" + Path.GetRandomFileName());
+        Directory.CreateDirectory(dir);
+
+        try
+        {
+            await File.WriteAllTextAsync(Path.Combine(dir, "package.json"), "{}");
+            await File.WriteAllTextAsync(Path.Combine(dir, "main.js"), "export default 1;");
+
+            var cache = new BuildCache();
+
+            // First build.
+            using (var g1 = await Traverse.From(Path.Combine(dir, "main.js"), Array.Empty<string>(), Array.Empty<string>(), buildCache: cache))
+            {
+                var b1 = g1.Context.Bundles.Values.OfType<JsBundle>().First(b => b.IsPrimary);
+                b1.Stringify(new OutputOptions { IsOptimizing = false, IsReloading = false });
+            }
+
+            // Add a non-source file (image). Should not affect JS cache.
+            await File.WriteAllBytesAsync(Path.Combine(dir, "icon.png"), new byte[] { 1, 2, 3 });
+
+            cache.ResetCounters();
+            using (var g2 = await Traverse.From(Path.Combine(dir, "main.js"), Array.Empty<string>(), Array.Empty<string>(), buildCache: cache))
+            {
+                var b2 = g2.Context.Bundles.Values.OfType<JsBundle>().First(b => b.IsPrimary);
+                var output = b2.Stringify(new OutputOptions { IsOptimizing = false, IsReloading = false });
+                Assert.Contains("exports.default = 1", output);
+            }
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
 }
