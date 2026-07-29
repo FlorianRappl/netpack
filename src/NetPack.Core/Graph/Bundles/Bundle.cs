@@ -57,30 +57,19 @@ public abstract class Bundle(BundlerContext context, Node root, BundleFlags flag
 
     public abstract Task<Stream> CreateStream(OutputOptions options);
 
-    /// <summary>
-    /// True when an asset should be inlined into its referencing bundles rather
-    /// than emitted as a separate file, considering both the global threshold and
-    /// any per-import <c>?inline=</c> override on the node.
-    /// </summary>
+    /// <summary>True when an asset should be inlined as a data URI rather than
+    /// emitted as a file. Respects the global <c>--inline-limit</c> and any
+    /// per-import <c>?inline=</c> override on the node.</summary>
     public static bool IsInlined(Node node, Asset asset, OutputOptions options)
     {
-        // ?inline=never — force external, regardless of size or global threshold.
         if (node.InlineLimitOverride == -1) return false;
-
-        // ?inline=always — force inline, regardless of size or global threshold.
         if (node.InlineLimitOverride == 0) return true;
-
-        // ?inline=N KB — per-import numeric threshold override.
         if (node.InlineLimitOverride > 0)
             return asset.Content.Length <= node.InlineLimitOverride.Value;
 
-        // No per-import override — use the global threshold.
         return options.InlineLimit > 0 && asset.Content.Length <= options.InlineLimit;
     }
 
-    /// <summary>
-    /// When the asset should be inlined, returns its data URI; otherwise null.
-    /// </summary>
     protected string? TryGetInlineDataUri(Node node, OutputOptions options)
     {
         if (_context.Assets.TryGetValue(node, out var asset) && IsInlined(node, asset, options))
