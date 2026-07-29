@@ -57,6 +57,47 @@ public abstract class Bundle(BundlerContext context, Node root, BundleFlags flag
 
     public abstract Task<Stream> CreateStream(OutputOptions options);
 
+    /// <summary>
+    /// When the asset is small enough to inline (considering both the global
+    /// <paramref name="options"/>.<see cref="OutputOptions.InlineLimit"/> and any
+    /// per-import <c>?inline=</c> override stored on the node), returns its data
+    /// URI; otherwise null. A node with <c>InlineLimitOverride == 0</c> is always
+    /// inlined; <c>-1</c> is never inlined; a positive value overrides the
+    /// threshold for this specific asset; <c>null</c> falls back to the global
+    /// limit.
+    /// </summary>
+    protected string? TryGetInlineDataUri(Node node, OutputOptions options)
+    {
+        // Per-import `?inline=never` — force external, regardless of size.
+        if (node.InlineLimitOverride == -1)
+        {
+            return null;
+        }
+
+        // Per-import `?inline=always` — force inline, regardless of size.
+        if (node.InlineLimitOverride == 0)
+        {
+            if (_context.Assets.TryGetValue(node, out var asset))
+            {
+                return Helpers.ToDataUri(node.Extension, asset.Content);
+            }
+
+            return null;
+        }
+
+        // Per-import numeric — override the threshold for this asset.
+        var limit = node.InlineLimitOverride ?? options.InlineLimit;
+
+        if (limit > 0
+            && _context.Assets.TryGetValue(node, out var assetNode)
+            && assetNode.Content.Length <= limit)
+        {
+            return Helpers.ToDataUri(node.Extension, assetNode.Content);
+        }
+
+        return null;
+    }
+
     protected string GetReference(Node node)
     {
         if (_context.Bundles.TryGetValue(node, out var bundle))

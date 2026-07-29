@@ -98,6 +98,8 @@ export interface BundleOptions extends CommonOptions {
   packages?: PackagesMode;
   /** Rebuild on file changes (long-running; use `signal` to stop). */
   watch?: boolean;
+  /** Maximum size in bytes to inline assets as data URIs (0 = disabled). */
+  inlineLimit?: number;
 }
 
 export interface ServeOptions extends CommonOptions {
@@ -111,6 +113,8 @@ export interface ServeOptions extends CommonOptions {
   loader?: Record<string, string>;
   /** Text placed on top of the entry JS bundle, followed by a newline. */
   banner?: string;
+  /** Maximum size in bytes to inline assets as data URIs (0 = disabled). */
+  inlineLimit?: number;
 }
 
 export interface GraphOptions extends CommonOptions {

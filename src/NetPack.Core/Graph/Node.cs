@@ -2,7 +2,7 @@ namespace NetPack.Graph;
 
 using System.Collections.Concurrent;
 
-public class Node(string fileName, int bytes, int? variantWidth = null, int? variantHeight = null, string? variantFormat = null)
+public class Node(string fileName, int bytes, int? variantWidth = null, int? variantHeight = null, string? variantFormat = null, int? inlineLimitOverride = null)
 {
     public string FileName => fileName;
 
@@ -44,6 +44,16 @@ public class Node(string fileName, int bytes, int? variantWidth = null, int? var
     /// <summary>True when this node is a resized and/or re-encoded variant of
     /// another file's content rather than a plain reference to it.</summary>
     public bool IsVariant => variantWidth is not null || variantHeight is not null || variantFormat is not null;
+
+    /// <summary>
+    /// Per-import inline override from a <c>?inline=</c> query parameter.
+    /// <c>null</c> means no override (use the global threshold).
+    /// <c>0</c> (<c>?inline=always</c>) forces inlining regardless of size.
+    /// <c>-1</c> (<c>?inline=never</c>) prevents inlining regardless of size.
+    /// A positive value overrides the threshold in bytes for this asset
+    /// (<c>?inline=100</c> → 100&#x202F;KB → 102400).
+    /// </summary>
+    public int? InlineLimitOverride => inlineLimitOverride;
 
     public ConcurrentBag<Node> Children = [];
 

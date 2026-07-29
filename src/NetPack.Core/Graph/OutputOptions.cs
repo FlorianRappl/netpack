@@ -61,4 +61,15 @@ public record OutputOptions
     /// Disabled with <c>--no-preload</c>.
     /// </summary>
     public bool EnableModulePreload { get; init; } = true;
+
+    /// <summary>
+    /// Maximum file size in bytes for assets to be inlined as data URIs instead
+    /// of emitted as separate files. 0 (the default) disables inlining. When set
+    /// (e.g. 4096), any asset file up to that size is embedded as a
+    /// <c>data:…;base64,…</c> URI wherever it is referenced — in JS imports,
+    /// CSS <c>url()</c> values, and HTML <c>src</c>/<c>href</c> attributes —
+    /// saving a network roundtrip for small assets like icons, fonts, or tiny
+    /// images.
+    /// </summary>
+    public int InlineLimit { get; init; } = 0;
 }

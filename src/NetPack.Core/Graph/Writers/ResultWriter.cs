@@ -32,6 +32,13 @@ abstract class ResultWriter(BundlerContext context)
 
         await Parallel.ForEachAsync(_context.Assets.Values, async (asset, ct) =>
         {
+            // Assets below the inline limit are embedded as data URIs in their
+            // referencing bundles — no separate file to emit.
+            if (options.InlineLimit > 0 && asset.Content.Length <= options.InlineLimit)
+            {
+                return;
+            }
+
             var fn = asset.GetFileName();
             using var dst = OpenWrite(fn);
             using var src = await asset.CreateStream(options);

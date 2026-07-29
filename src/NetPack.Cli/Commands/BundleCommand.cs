@@ -72,6 +72,9 @@ public class BundleCommand : ICommand
     [Option("preload", Default = true, HelpText = "Emit <link rel=\"modulepreload\"> for shared JS bundles (use --no-preload to disable).")]
     public bool Preload { get; set; } = true;
 
+    [Option("inline-limit", Default = 0, HelpText = "Maximum size in bytes to inline assets as data URIs instead of emitting files (0 = disabled).")]
+    public int InlineLimit { get; set; } = 0;
+
     private static bool ParsePackages(string packages) => packages.ToLowerInvariant() switch
     {
         "external" => true,
@@ -157,6 +160,7 @@ public class BundleCommand : ICommand
             PublicPath = PublicPath,
             Banner = Banner,
             EnableModulePreload = Preload,
+            InlineLimit = InlineLimit,
         };
 
         if (Clean && Directory.Exists(outdir))

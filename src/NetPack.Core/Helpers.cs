@@ -5,6 +5,51 @@ using NetPack.Graph;
 
 public static class Helpers
 {
+    /// <summary>
+    /// Returns the MIME type for a file extension (leading dot optional). Falls
+    /// back to <c>application/octet-stream</c> for unknown extensions.
+    /// </summary>
+    public static string GetMimeType(string extension)
+    {
+        // Normalize: strip leading dot if present, lowercase.
+        var ext = extension.ToLowerInvariant();
+        if (ext.StartsWith('.'))
+        {
+            ext = ext[1..]; // ".png" → "png"
+        }
+
+        return ext switch
+        {
+            "png" => "image/png",
+            "jpg" or "jpeg" => "image/jpeg",
+            "gif" => "image/gif",
+            "svg" => "image/svg+xml",
+            "webp" => "image/webp",
+            "avif" => "image/avif",
+            "bmp" => "image/bmp",
+            "ico" => "image/x-icon",
+            "woff" => "font/woff",
+            "woff2" => "font/woff2",
+            "ttf" => "font/ttf",
+            "otf" => "font/otf",
+            "json" => "application/json",
+            "txt" => "text/plain",
+            "css" => "text/css",
+            "wasm" => "application/wasm",
+            _ => "application/octet-stream",
+        };
+    }
+
+    /// <summary>
+    /// Converts asset bytes to a data URI using the file extension to pick the
+    /// MIME type (e.g. <c>data:image/png;base64,iVBORw…</c>).
+    /// </summary>
+    public static string ToDataUri(string extension, byte[] content)
+    {
+        var mime = GetMimeType(extension);
+        var base64 = Convert.ToBase64String(content);
+        return $"data:{mime};base64,{base64}";
+    }
     private static readonly HashSet<char> invalid = [.. Path.GetInvalidFileNameChars()];
 
     public static readonly HashSet<string> BundleTypes = [".css", ".js", ".html"];
