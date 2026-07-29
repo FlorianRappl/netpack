@@ -66,6 +66,9 @@ public class BundleCommand : ICommand
     [Option("watch", Default = false, HelpText = "Rebuild and write to the output directory whenever a source file changes (no dev server).")]
     public bool Watch { get; set; } = false;
 
+    [Option("watch-delay", Default = 200, HelpText = "Debounce delay in milliseconds for watch mode (default 200).")]
+    public int WatchDelay { get; set; } = 200;
+
     [Option("clear-screen", Default = false, HelpText = "Clear the terminal on rebuild.")]
     public bool ClearScreen { get; set; } = false;
 
@@ -174,7 +177,7 @@ public class BundleCommand : ICommand
 
         if (Watch)
         {
-            using var watcher = new FileWatcher<DiskResultWriter>(writer, invalidateDirectory: _resolutionCache.Invalidate);
+            using var watcher = new FileWatcher<DiskResultWriter>(writer, WatchDelay, invalidateDirectory: _resolutionCache.Invalidate);
             watcher.Install(() =>
             {
                 if (ClearScreen)

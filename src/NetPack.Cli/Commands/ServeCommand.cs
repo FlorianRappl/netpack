@@ -63,6 +63,9 @@ public class ServeCommand : ICommand
     [Option("inline-limit", Default = 0, HelpText = "Maximum size in bytes to inline assets as data URIs instead of emitting files (0 = disabled).")]
     public int InlineLimit { get; set; } = 0;
 
+    [Option("watch-delay", Default = 200, HelpText = "Debounce delay in milliseconds for watch mode (default 200).")]
+    public int WatchDelay { get; set; } = 200;
+
     private async Task<(MemoryResultWriter Writer, Dictionary<int, string> Factories)> Compile()
     {
         var file = Path.Combine(Environment.CurrentDirectory, FilePath);
@@ -162,7 +165,7 @@ public class ServeCommand : ICommand
 
         var initial = await Compile();
         _factories = initial.Factories;
-        using var watcher = new FileWatcher<MemoryResultWriter>(initial.Writer, invalidateDirectory: _resolutionCache.Invalidate);
+        using var watcher = new FileWatcher<MemoryResultWriter>(initial.Writer, WatchDelay, invalidateDirectory: _resolutionCache.Invalidate);
 
         var address = $"http://localhost:{Port}";
         var app = LiveServer.Create(address, watcher, () => _hmrMessage);
