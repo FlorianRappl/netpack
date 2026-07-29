@@ -28,6 +28,7 @@ public class IncrementalRebuildTests
         // Step 1: Rebuild — output should reflect change
         var output1 = await test.Rebuild();
         test.AssertValidJs();
+        test.AssertCacheHits(minExpected: 1); // main.js unchanged → cache hit
 
         // Outputs differ between steps (different content)
         Assert.NotEqual(output0, output1);

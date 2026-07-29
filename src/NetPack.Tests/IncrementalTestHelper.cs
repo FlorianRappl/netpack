@@ -32,6 +32,7 @@ public class IncrementalTestHelper : IDisposable
 {
     private string _dir = null!;
     private string _entry = null!;
+    private BuildCache? _cache;
     private string _lastOutput = "";
     private int _step;
     private readonly List<string> _outputs = [];
@@ -41,6 +42,12 @@ public class IncrementalTestHelper : IDisposable
 
     /// <summary>The current step number (0-indexed).</summary>
     public int Step => _step;
+
+    /// <summary>Cache hits from the last build.</summary>
+    public int CacheHits => _cache?.Hits ?? 0;
+
+    /// <summary>Cache misses from the last build.</summary>
+    public int CacheMisses => _cache?.Misses ?? 0;
 
     /// <summary>
     /// Creates a temporary project directory and writes the entry file plus
@@ -62,15 +69,18 @@ public class IncrementalTestHelper : IDisposable
     }
 
     /// <summary>
-    /// Runs a build. Call this for both initial and subsequent builds.
-    /// Stores the output for later assertion via <see cref="Outputs"/>.
+    /// Runs a build with incremental cache support. The first call creates and
+    /// populates the cache; subsequent calls reuse it for faster rebuilds.
     /// </summary>
     public async Task<string> Build(OutputOptions? options = null)
     {
         options ??= new OutputOptions { IsOptimizing = false, IsReloading = false };
+        _cache ??= new BuildCache();
+        _cache.ResetCounters();
 
         using var graph = await Traverse.From(
-            Path.Combine(_dir, _entry), Array.Empty<string>(), Array.Empty<string>());
+            Path.Combine(_dir, _entry), Array.Empty<string>(), Array.Empty<string>(),
+            buildCache: _cache);
 
         var bundle = graph.Context.Bundles.Values.OfType<JsBundle>().First(b => b.IsPrimary);
         _lastOutput = bundle.Stringify(options);
@@ -128,6 +138,17 @@ public class IncrementalTestHelper : IDisposable
     {
         Assert.True(_outputs.Count > step, $"No output recorded for step {step}");
         Assert.DoesNotContain(substring, _outputs[step]);
+    }
+
+    /// <summary>
+    /// Asserts that <see cref="CacheHits"/> is within the expected range.
+    /// </summary>
+    public void AssertCacheHits(int minExpected, int maxExpected = int.MaxValue)
+    {
+        Assert.True(CacheHits >= minExpected,
+            $"Expected at least {minExpected} cache hits, got {CacheHits}");
+        Assert.True(CacheHits <= maxExpected,
+            $"Expected at most {maxExpected} cache hits, got {CacheHits}");
     }
 
     public void Dispose()
