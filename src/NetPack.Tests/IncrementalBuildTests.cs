@@ -1,6 +1,7 @@
 namespace NetPack.Tests;
 
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -175,6 +176,61 @@ public class IncrementalBuildTests
 
             // All modules + entry = 11 files. Double hits possible for re-processed nodes.
             Assert.True(cache.Hits > 0, $"Expected some cache hits among 11 files, got {cache.Hits}");
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Warm_build_is_faster_than_cold_build()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "netpack-cache-" + Path.GetRandomFileName());
+        Directory.CreateDirectory(dir);
+
+        try
+        {
+            await File.WriteAllTextAsync(Path.Combine(dir, "package.json"), "{}");
+
+            // Create 20 modules with non-trivial content to make parsing measurable.
+            for (var i = 0; i < 20; i++)
+            {
+                await File.WriteAllTextAsync(
+                    Path.Combine(dir, $"m{i}.js"),
+                    $"export function fn{i}() {{ return {i} * 2 + 1; }}\n" +
+                    $"export const v{i} = fn{i}();\n");
+            }
+
+            await File.WriteAllTextAsync(Path.Combine(dir, "main.js"),
+                string.Join("\n", Enumerable.Range(0, 20).Select(i =>
+                    $"import {{ v{i} }} from './m{i}.js';")) +
+                "\nexport default " + string.Join(" + ", Enumerable.Range(0, 20).Select(i => $"v{i}")) + ";");
+
+            var cache = new BuildCache();
+
+            // Cold build.
+            var cold = Stopwatch.StartNew();
+            using (var g1 = await Traverse.From(Path.Combine(dir, "main.js"), Array.Empty<string>(), Array.Empty<string>(), buildCache: cache))
+            {
+                var b1 = g1.Context.Bundles.Values.OfType<JsBundle>().First(b => b.IsPrimary);
+                b1.Stringify(new OutputOptions { IsOptimizing = false, IsReloading = false });
+            }
+            cold.Stop();
+
+            // Warm build — should hit cache for all 21 files.
+            var warm = Stopwatch.StartNew();
+            using (var g2 = await Traverse.From(Path.Combine(dir, "main.js"), Array.Empty<string>(), Array.Empty<string>(), buildCache: cache))
+            {
+                var b2 = g2.Context.Bundles.Values.OfType<JsBundle>().First(b => b.IsPrimary);
+                b2.Stringify(new OutputOptions { IsOptimizing = false, IsReloading = false });
+            }
+            warm.Stop();
+
+            // Warm build should be measurably faster (at least 20% improvement).
+            var ratio = (double)warm.ElapsedMilliseconds / Math.Max(cold.ElapsedMilliseconds, 1);
+            Assert.True(ratio < 0.9, 
+                $"Warm build ({warm.ElapsedMilliseconds}ms) should be faster than cold ({cold.ElapsedMilliseconds}ms). Ratio: {ratio:F2}");
         }
         finally
         {

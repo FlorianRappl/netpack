@@ -1149,7 +1149,7 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
         // Store parsed AST in cache for next rebuild.
         if (_buildCache is not null)
         {
-            var contentHash = await ComputeContentHash(current.FileName, content);
+            var contentHash = await ComputeContentHash(current.FileName, content, _context);
             _buildCache.Put(current.FileName, contentHash, ast);
         }
 
@@ -1315,7 +1315,7 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
 
         if (_buildCache is not null && !_context.UseSolid)
         {
-            var contentHash = await ComputeContentHash(current.FileName, newContent);
+            var contentHash = await ComputeContentHash(current.FileName, newContent, _context);
 
             if (_buildCache.Get(current.FileName, contentHash)?.Fragment is Syntax.Ast.SourceFile cachedAst)
             {
@@ -1329,9 +1329,13 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
         _context.JsFragments.TryAdd(current, fragment);
     }
 
-    private static async Task<string> ComputeContentHash(string filePath, string content)
+    private static async Task<string> ComputeContentHash(string filePath, string content, BundlerContext context)
     {
-        using var stream = new MemoryStream(Encoding.UTF8.GetBytes(content));
+        // Include build options in the cache key so that changing platform, format,
+        // defines, or loaders invalidates cached ASTs.
+        var optKey = $"{context.Platform.GetType().Name}:{context.Defines.Count}:{context.UserConditions.Count}:{context.Loaders.Count}";
+        var key = $"{filePath}:{optKey}:{content}";
+        using var stream = new MemoryStream(Encoding.UTF8.GetBytes(key));
         return await Hash.ComputeHash(stream);
     }
 
