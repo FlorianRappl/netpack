@@ -55,6 +55,10 @@ public sealed record BundleOptions
 
     /// <summary>Keep every bare (node_modules) import external.</summary>
     public bool ExternalPackages { get; init; }
+
+    /// <summary>Maximum size in bytes for assets inlined as data URIs
+    /// (<c>--inline-limit</c>). 0 (default) disables inlining.</summary>
+    public int InlineLimit { get; init; }
 }
 
 /// <summary>The result of a bundle: emitted-file metadata plus each file's bytes.</summary>
@@ -78,6 +82,7 @@ public static class Bundler
         EntryNames = options.EntryNames,
         PublicPath = options.PublicPath,
         Banner = options.Banner,
+        InlineLimit = options.InlineLimit,
     };
 
     private static Task<Traverse> BuildGraph(string entryPath, BundleOptions options) => Traverse.From(

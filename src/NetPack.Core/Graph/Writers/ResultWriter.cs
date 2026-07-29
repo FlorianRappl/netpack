@@ -32,6 +32,13 @@ abstract class ResultWriter(BundlerContext context)
 
         await Parallel.ForEachAsync(_context.Assets.Values, async (asset, ct) =>
         {
+            // Assets that are inlined (via global threshold or per-import ?inline=
+            // override) are embedded as data URIs — no separate file to emit.
+            if (Bundle.IsInlined(asset.Root, asset, options))
+            {
+                return;
+            }
+
             var fn = asset.GetFileName();
             using var dst = OpenWrite(fn);
             using var src = await asset.CreateStream(options);

@@ -690,7 +690,7 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
         // `import img from './logo.png?width=200&height=100&format=webp'`. An
         // explicitly passed-in `variant` (from an HTML <img> width/height
         // attribute or a CSS background-size) wins if both are somehow present.
-        var (path, queryVariant) = ParseVariantQuery(name);
+        var (path, queryVariant, inlineOverride) = ParseVariantQuery(name);
         var width = variant.Width ?? queryVariant.Width;
         var height = variant.Height ?? queryVariant.Height;
         var format = variant.Format ?? queryVariant.Format;
@@ -698,7 +698,7 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
         try
         {
             var file = await Resolve(parent.ParentDir, path);
-            var module = await AddToBundle(bundle, file, width, height, format);
+            var module = await AddToBundle(bundle, file, width, height, format, inlineOverride);
 
             if (bundle is null)
             {
@@ -739,16 +739,17 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
     /// <summary>
     /// Splits a trailing `?...` query string off a reference/import specifier
     /// and picks out `width`/`height`/`format` params for an on-the-fly image
-    /// variant. Any other query params are accepted and silently ignored
-    /// (resolution only ever needs the part before the `?`).
+    /// variant, and `inline` for a per-import inlining override. Any other
+    /// query params are accepted and silently ignored (resolution only ever
+    /// needs the part before the `?`).
     /// </summary>
-    private static (string Path, (int? Width, int? Height, string? Format) Variant) ParseVariantQuery(string name)
+    private static (string Path, (int? Width, int? Height, string? Format) Variant, int? InlineOverride) ParseVariantQuery(string name)
     {
         var index = name.IndexOf('?');
 
         if (index < 0)
         {
-            return (name, default);
+            return (name, default, null);
         }
 
         var path = name[..index];
@@ -756,6 +757,7 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
         int? width = null;
         int? height = null;
         string? format = null;
+        int? inlineOverride = null;
 
         foreach (var pair in query.Split('&', StringSplitOptions.RemoveEmptyEntries))
         {
@@ -775,9 +777,45 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
             {
                 format = value.ToLowerInvariant();
             }
+            else if (key == "inline")
+            {
+                inlineOverride = ParseInlineOverride(value);
+            }
         }
 
-        return (path, (width, height, format));
+        return (path, (width, height, format), inlineOverride);
+    }
+
+    /// <summary>
+    /// Parses the value of a <c>?inline=</c> query parameter:
+    /// <c>always</c> → 0 (force inline),
+    /// <c>never</c> → -1 (block inline),
+    /// a positive integer → threshold override in KB (converted to bytes).
+    /// Anything else returns null (no override).
+    /// </summary>
+    private static int? ParseInlineOverride(string value)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            return null;
+        }
+
+        if (value.Equals("always", StringComparison.OrdinalIgnoreCase))
+        {
+            return int.MaxValue;
+        }
+
+        if (value.Equals("never", StringComparison.OrdinalIgnoreCase))
+        {
+            return -1;
+        }
+
+        if (int.TryParse(value, out var kb) && kb > 0)
+        {
+            return kb * 1024;
+        }
+
+        return null;
     }
 
     private async Task ProcessAsset(Node current, byte[] bytes)
@@ -1311,7 +1349,7 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
                 await ProcessInlineModule(current, bytes, JsonString(Convert.ToBase64String(bytes)), bundle);
                 break;
             case "dataurl":
-                var dataUrl = $"data:{GetMimeType(current.Extension)};base64,{Convert.ToBase64String(bytes)}";
+                var dataUrl = ToDataUri(current.Extension, bytes);
                 await ProcessInlineModule(current, bytes, JsonString(dataUrl), bundle);
                 break;
             case "empty":
@@ -1349,27 +1387,6 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
     // Uses the source-generated type info (not the reflection-based overload) so
     // the AoT build stays trim/native-AoT safe.
     private static string JsonString(string value) => JsonSerializer.Serialize(value, SourceGenerationContext.Default.String);
-
-    private static string GetMimeType(string extension) => extension.ToLowerInvariant() switch
-    {
-        ".png" => "image/png",
-        ".jpg" or ".jpeg" => "image/jpeg",
-        ".gif" => "image/gif",
-        ".svg" => "image/svg+xml",
-        ".webp" => "image/webp",
-        ".avif" => "image/avif",
-        ".bmp" => "image/bmp",
-        ".ico" => "image/x-icon",
-        ".woff" => "font/woff",
-        ".woff2" => "font/woff2",
-        ".ttf" => "font/ttf",
-        ".otf" => "font/otf",
-        ".json" => "application/json",
-        ".txt" => "text/plain",
-        ".css" => "text/css",
-        ".wasm" => "application/wasm",
-        _ => "application/octet-stream",
-    };
 
     private async Task ProcessHtml(Node current, byte[] bytes, Bundle bundle)
     {
@@ -1525,14 +1542,14 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
     /// it becomes its own <see cref="Node"/> — and, later, its own resized
     /// <see cref="Asset"/> — instead of collapsing onto the original file's node.
     /// </summary>
-    private static string GetModuleKey(string fileName, int? variantWidth, int? variantHeight, string? variantFormat)
-        => variantWidth is null && variantHeight is null && variantFormat is null
+    private static string GetModuleKey(string fileName, int? variantWidth, int? variantHeight, string? variantFormat, int? inlineLimitOverride)
+        => variantWidth is null && variantHeight is null && variantFormat is null && inlineLimitOverride is null
             ? fileName
-            : $"{fileName}?w={variantWidth}&h={variantHeight}&f={variantFormat}";
+            : $"{fileName}?w={variantWidth}&h={variantHeight}&f={variantFormat}&inline={inlineLimitOverride}";
 
-    private async Task<Node> AddToBundle(Bundle? bundle, string fileName, int? variantWidth = null, int? variantHeight = null, string? variantFormat = null)
+    private async Task<Node> AddToBundle(Bundle? bundle, string fileName, int? variantWidth = null, int? variantHeight = null, string? variantFormat = null, int? inlineLimitOverride = null)
     {
-        var key = GetModuleKey(fileName, variantWidth, variantHeight, variantFormat);
+        var key = GetModuleKey(fileName, variantWidth, variantHeight, variantFormat, inlineLimitOverride);
 
         if (!_context.Modules.TryGetValue(key, out var node))
         {
@@ -1541,18 +1558,18 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
                 return await task;
             }
 
-            node = await _reserved.GetOrAdd(key, (_) => AddNewNodeToBundle(bundle, fileName, variantWidth, variantHeight, variantFormat));
+            node = await _reserved.GetOrAdd(key, (_) => AddNewNodeToBundle(bundle, fileName, variantWidth, variantHeight, variantFormat, inlineLimitOverride));
             _reserved.TryRemove(key, out _);
         }
 
         return node;
     }
 
-    private async Task<Node> AddNewNodeToBundle(Bundle? bundle, string fileName, int? variantWidth = null, int? variantHeight = null, string? variantFormat = null)
+    private async Task<Node> AddNewNodeToBundle(Bundle? bundle, string fileName, int? variantWidth = null, int? variantHeight = null, string? variantFormat = null, int? inlineLimitOverride = null)
     {
         var bytes = await File.ReadAllBytesAsync(fileName);
-        var node = new Node(fileName, bytes.Length, variantWidth, variantHeight, variantFormat);
-        _context.Modules.TryAdd(GetModuleKey(fileName, variantWidth, variantHeight, variantFormat), node);
+        var node = new Node(fileName, bytes.Length, variantWidth, variantHeight, variantFormat, inlineLimitOverride);
+        _context.Modules.TryAdd(GetModuleKey(fileName, variantWidth, variantHeight, variantFormat, inlineLimitOverride), node);
 
         if (bundle is null)
         {

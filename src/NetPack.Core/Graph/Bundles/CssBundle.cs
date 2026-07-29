@@ -27,7 +27,7 @@ public sealed class CssBundle(BundlerContext context, Node root, BundleFlags fla
             {
                 var property = replacement.Key;
                 var node = replacement.Value;
-                var url = Helpers.PublicUrl(options.PublicPath, GetReference(node));
+                var url = TryGetInlineDataUri(node, options) ?? Helpers.PublicUrl(options.PublicPath, GetReference(node));
                 property.Value = Regex.Replace(property.Value, @"url\(.*\)", $"url('{url}')");
             }
 

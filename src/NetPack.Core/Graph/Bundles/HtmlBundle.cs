@@ -39,7 +39,7 @@ public sealed class HtmlBundle(BundlerContext context, Graph.Node root, BundleFl
             {
                 var element = replacement.Key;
                 var node = replacement.Value;
-                var url = Helpers.PublicUrl(options.PublicPath, GetReference(node));
+                var url = TryGetInlineDataUri(node, options) ?? Helpers.PublicUrl(options.PublicPath, GetReference(node));
 
                 switch (element.LocalName)
                 {

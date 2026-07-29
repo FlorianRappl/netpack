@@ -50,7 +50,7 @@ public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags
         SourceMap = null;
 
         var format = JsModuleFormats.For(options.Format, options.PublicPath);
-        var transpiler = new JsxToJavaScriptTranspiler(this, options.IsReloading, format);
+        var transpiler = new JsxToJavaScriptTranspiler(this, format, options);
         var ast = transpiler.Transpile();
 
         if (options.IsOptimizing)
@@ -144,11 +144,12 @@ public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags
 
     private static Ast.StringLiteral MakeString(string text) => new(text, text);
 
-    internal sealed class JsxToJavaScriptTranspiler(JsBundle bundle, bool reloading, JsModuleFormat format) : Ast.AstRewriter
+    internal sealed class JsxToJavaScriptTranspiler(JsBundle bundle, JsModuleFormat format, OutputOptions options) : Ast.AstRewriter
     {
         private readonly JsBundle _bundle = bundle;
-        private readonly bool _reloading = reloading;
+        private readonly bool _reloading = options.IsReloading;
         private readonly JsModuleFormat _format = format;
+        private readonly OutputOptions _options = options;
         private JsFragment? _current;
         private bool _currentUsesJsx;
 
@@ -377,6 +378,16 @@ public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags
                 if (_bundle._context.Assets.TryGetValue(reference, out var asset) && node.Specifiers.Count == 1 && node.Specifiers[0] is Ast.ImportDefaultSpecifier specifier)
                 {
                     var local = specifier.Local;
+                    var inline = _bundle.TryGetInlineDataUri(reference, _options);
+
+                    if (inline is not null)
+                    {
+                        return new Ast.VariableStatement(Ast.VariableKind.Const, new List<Ast.VariableDeclarator>
+                        {
+                            new Ast.VariableDeclarator(local, MakeString(inline)),
+                        });
+                    }
+
                     var file = asset.GetFileName();
                     var declarator = new Ast.VariableDeclarator(local, _format.AutoReference(file));
                     return new Ast.VariableStatement(Ast.VariableKind.Const, new List<Ast.VariableDeclarator> { declarator });
@@ -528,6 +539,13 @@ public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags
             {
                 if (_bundle._context.Assets.TryGetValue(reference, out var asset))
                 {
+                    var inline = _bundle.TryGetInlineDataUri(reference, _options);
+
+                    if (inline is not null)
+                    {
+                        return MakeString(inline);
+                    }
+
                     var file = asset.GetFileName();
                     return _format.AutoReference(file);
                 }
