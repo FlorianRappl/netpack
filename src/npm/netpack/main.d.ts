@@ -60,6 +60,8 @@ export interface BundleOptions extends CommonOptions {
   packages?: PackagesMode;
   /** Rebuild on file changes (long-running; use `signal` to stop). */
   watch?: boolean;
+  /** Debounce delay in milliseconds for watch mode (default 200). */
+  watchDelay?: number;
   /** Maximum size in bytes to inline assets as data URIs (0 = disabled). */
   inlineLimit?: number;
 }

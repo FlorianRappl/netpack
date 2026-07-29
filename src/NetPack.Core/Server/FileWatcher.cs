@@ -4,15 +4,20 @@ class FileWatcher<T> : IDisposable
     where T : IFileLocator
 {
     private readonly FileSystemWatcher _watcher;
-    private readonly Queue<Func<Task>> _taskQueue = new();
     private readonly Action<string>? _invalidateDirectory;
-    private Task _current = Task.CompletedTask;
+    private readonly object _lock = new();
+    private CancellationTokenSource? _debounceCts;
+    private Task _rebuild = Task.CompletedTask;
+    private bool _pending;
     private TaskCompletionSource _tcs = new();
     private T _result;
 
-    public FileWatcher(T result, string? root = null, Action<string>? invalidateDirectory = null)
+    private readonly int _debounceMs;
+
+    public FileWatcher(T result, int debounceMs = 200, string? root = null, Action<string>? invalidateDirectory = null)
     {
         _result = result;
+        _debounceMs = debounceMs;
         _invalidateDirectory = invalidateDirectory;
         _watcher = new FileSystemWatcher(root ?? Environment.CurrentDirectory)
         {
@@ -27,24 +32,10 @@ class FileWatcher<T> : IDisposable
 
     public void Install(Func<Task<T>> trigger)
     {
-        async Task Restart()
-        {
-            _result = await trigger();
-
-            if (!_tcs.Task.IsCompleted)
-            {
-                var currentTcs = _tcs;
-                _tcs = new TaskCompletionSource();
-                currentTcs.SetResult();
-            }
-
-            await ProcessNext();
-        }
-
         void OnChange(object sender, FileSystemEventArgs e)
         {
             var shouldInvalidate = e.ChangeType is WatcherChangeTypes.Created or WatcherChangeTypes.Deleted or WatcherChangeTypes.Renamed;
-            var shouldRestart = _result.HasFile(e.FullPath)
+            var shouldRebuild = _result.HasFile(e.FullPath)
                 || (shouldInvalidate && _result.HasDirectory(Path.GetDirectoryName(e.FullPath)!));
 
             if (shouldInvalidate)
@@ -52,19 +43,33 @@ class FileWatcher<T> : IDisposable
                 _invalidateDirectory?.Invoke(Path.GetDirectoryName(e.FullPath)!);
             }
 
-            if (_taskQueue.Count > 0)
+            if (!shouldRebuild)
             {
                 return;
             }
 
-            if (shouldRestart)
+            lock (_lock)
             {
-                _taskQueue.Enqueue(Restart);
+                // Cancel any pending debounce timer — we just received a newer change.
+                _debounceCts?.Cancel();
 
-                if (_current.IsCompleted)
+                // If a rebuild is already running, mark pending and we'll queue after.
+                if (!_rebuild.IsCompleted)
                 {
-                    _current = Task.Delay(200).ContinueWith(_ => ProcessNext());
+                    _pending = true;
+                    return;
                 }
+
+                // Start a fresh debounce timer.
+                _debounceCts = new CancellationTokenSource();
+                var token = _debounceCts.Token;
+                _pending = false;
+
+                _rebuild = Task.Delay(_debounceMs, token).ContinueWith(_ =>
+                {
+                    if (token.IsCancellationRequested) return Task.CompletedTask;
+                    return DoRebuild(trigger);
+                }, token).Unwrap();
             }
         }
 
@@ -74,18 +79,46 @@ class FileWatcher<T> : IDisposable
         _watcher.Renamed += OnChange;
     }
 
-    private Task ProcessNext()
+    private async Task DoRebuild(Func<Task<T>> trigger)
     {
-        if (_taskQueue.TryDequeue(out var processNext))
+        try
         {
-            return processNext();
+            Console.WriteLine("[netpack] File change detected — rebuilding ...");
+            _result = await trigger();
+            Console.WriteLine("[netpack] Rebuild complete.");
+
+            // Signal any waiters (e.g. the dev server's Next) that a new result is ready.
+            if (!_tcs.Task.IsCompleted)
+            {
+                var currentTcs = _tcs;
+                _tcs = new TaskCompletionSource();
+                currentTcs.SetResult();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[netpack] Rebuild failed: {ex.Message}");
         }
 
-        return Task.CompletedTask;
+        // If more changes arrived during the rebuild, start another.
+        bool restart;
+        lock (_lock)
+        {
+            restart = _pending;
+            _pending = false;
+        }
+
+        if (restart)
+        {
+            Console.WriteLine("[netpack] Changes arrived during rebuild — triggering another ...");
+            await DoRebuild(trigger);
+        }
     }
 
     public void Dispose()
     {
         _watcher.Dispose();
+        _debounceCts?.Cancel();
+        _debounceCts?.Dispose();
     }
 }
