@@ -123,10 +123,18 @@ static class PresetArgs
         }
 
         // Variants: one arg set per variant. Each inherits base options.
+        // CLI args that conflict with variant overrides act as filters — only
+        // variants whose settings match the explicit CLI flags are built.
         var result = new List<string[]>();
 
         foreach (var (variantName, variantOptions) in resolved.Options.Variants)
         {
+            // Skip variants that don't match explicit CLI overrides.
+            if (!VariantMatchesCliArgs(variantOptions, present, passthrough, allowed))
+            {
+                continue;
+            }
+
             var merged = MergeOptions(resolved.Options, variantOptions);
             var injected = new List<string>();
 
@@ -150,6 +158,58 @@ static class PresetArgs
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// When the user explicitly passed a CLI flag that also appears in a variant's
+    /// overrides, only build variants whose override matches the CLI value.
+    /// Example: --platform web filters out variants with platform: node.
+    /// </summary>
+    private static bool VariantMatchesCliArgs(
+        PresetConfig variant,
+        HashSet<string> presentCliOptions,
+        List<string> passthrough,
+        HashSet<string> allowed)
+    {
+        // Check platform: if user passed --platform X, variant must match.
+        if (presentCliOptions.Contains("platform") && variant.Platform is not null)
+        {
+            var cliPlatform = GetCliValue(passthrough, "--platform");
+            if (cliPlatform is not null && !string.Equals(cliPlatform, variant.Platform, StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+        }
+
+        // Check format similarly.
+        if (presentCliOptions.Contains("format") && variant.Format is not null)
+        {
+            var cliFormat = GetCliValue(passthrough, "--format");
+            if (cliFormat is not null && !string.Equals(cliFormat, variant.Format, StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static string? GetCliValue(List<string> args, string flag)
+    {
+        for (var i = 0; i < args.Count; i++)
+        {
+            if (args[i] == flag && i + 1 < args.Count)
+            {
+                return args[i + 1];
+            }
+
+            if (args[i].StartsWith(flag + "=", StringComparison.Ordinal))
+            {
+                return args[i][(flag.Length + 1)..];
+            }
+        }
+
+        return null;
     }
 
     private static PresetConfig MergeOptions(PresetConfig base_, PresetConfig v)
