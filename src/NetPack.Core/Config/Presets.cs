@@ -218,25 +218,6 @@ public static class Presets
             var config = JsonSerializer.Deserialize(json, ConfigSourceGenerationContext.Default.PresetConfig)
                 ?? new PresetConfig();
 
-            // Parse variants manually (bypasses AOT source-gen for nested generics).
-            // JSONC comments are tolerated — JsonDocument with comments option handles them.
-            using var doc = JsonDocument.Parse(json, new JsonDocumentOptions
-            {
-                AllowTrailingCommas = true,
-                CommentHandling = JsonCommentHandling.Skip,
-            });
-            if (doc.RootElement.TryGetProperty("variants", out var variantsElement))
-            {
-                config.Variants = [];
-                foreach (var prop in variantsElement.EnumerateObject())
-                {
-                    var variant = JsonSerializer.Deserialize(prop.Value.GetRawText(),
-                        ConfigSourceGenerationContext.Default.BasePresetConfig)
-                        ?? new BasePresetConfig();
-                    config.Variants[prop.Name] = variant;
-                }
-            }
-
             return config;
         }
         catch (JsonException ex)

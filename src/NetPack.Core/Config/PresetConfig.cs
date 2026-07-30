@@ -70,10 +70,9 @@ public sealed class PresetConfig : BasePresetConfig
     /// <summary>
     /// Named variants that override base options for multi-build scenarios.
     /// Each variant is a <see cref="BasePresetConfig"/> so it cannot define its
-    /// own sub-variants. Deserialized manually from raw JSON to avoid AOT
-    /// source-gen issues with nested generic types.
+    /// own sub-variants.
     /// </summary>
-    [JsonIgnore]
+    [JsonPropertyName("variants")]
     public Dictionary<string, BasePresetConfig>? Variants { get; set; }
 }
 
