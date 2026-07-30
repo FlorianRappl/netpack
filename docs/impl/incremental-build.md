@@ -207,24 +207,49 @@ across sessions.
 
 ## 10. Test infrastructure
 
-(Partially merged — PR #22)
+✅ Done — 29 tests across 2 classes, covering:
 
-The `IncrementalTestHelper` provides a reusable multi-step rebuild pattern
-for verifying correctness across all phases:
+### IncrementalBuildTests (16 tests — cache correctness)
+| Test | Coverage |
+|------|----------|
+| Second_build_hits_cache | Phase 1 cache hit on warm rebuild |
+| Changed_file_misses_cache | Content change → Phase 1 miss |
+| Cache_hit_produces_valid_output | Phase 1 cache round-trips valid JS |
+| Multiple_modules_benefit_from_cache | 11 modules → Phase 1 hits |
+| Warm_build_is_faster_than_cold | Phase 1 speedup benchmark |
+| New_module_leads_to_fresh_parse | Module addition → rebuild succeeds |
+| Removed_module_is_detected | Module deletion → rebuild succeeds |
+| Rebuild_handles_import_order_change | Import order swap → valid output |
+| Cache_survives_non_source_file_addition | Non-JS files don't break cache |
+| Second_build_hits_codegen_cache | Phase 2 codegen cache hit |
+| Changed_file_invalidates_codegen_cache | Content change → codegen miss |
+| Codegen_cache_hit_produces_valid_output | Phase 2 cache round-trips valid JS |
+| Multiple_modules_benefit_from_codegen_cache | 11 modules → Phase 2 hits |
+| Warm_build_with_codegen_is_faster | Phase 2 benchmark |
+| Codegen_cache_survives_module_addition | New module → unchanged deps still hit |
+| Codegen_cache_survives_import_order_change | Import swap → unchanged deps still hit |
 
-```
-Setup → Build → Assert → Edit → Rebuild → Assert → ...
-```
+### IncrementalRebuildTests (13 tests — rspack-mirroring scenarios)
+| Test | rspack equivalent |
+|------|------------------|
+| Snapshot_based_output_verification | HotStep `toMatchFileSnapshotSync` |
+| Cascading invalidation (4-module chain) | Module dependency propagation |
+| Broken syntax → fix → rebuild succeeds | Per-step error/warning arrays |
+| Multi-file edit batching (3 files) | Multiple file changes in one step |
+| Identical content → identical output | Hash stability (`LAST_HASH`/`CURRENT_HASH`) |
+| Circular dependencies survive rebuild | Cycle resilience |
+| Shared dependency rebuild (2 entries) | Code-split chunk rebuild |
+| Single_edit_changes_output | HotStep content change |
+| Adding / removing modules | File addition / deletion |
+| Three consecutive edits | Multi-step mutation sequence |
+| Import order change | Dependency reordering |
+| Non-imported file addition | Unrelated file immunity |
 
-6 rebuild tests (add/remove modules, import order change, consecutive edits)
-exercise the pattern. Future phases add:
-
-- Snapshot-based output verification (`__snapshots__/`)
-- Multi-platform (web, node, deno)
-- Full HMR cycle (edit → rebuild → hot-update)
-- Error recovery (broken syntax → fix → rebuild)
-- Module cycle resilience
-- Concurrent edit batching
+### Snapshot system
+- `EnableSnapshots(className, methodName)` — stores under `__snapshots__/<Class>.<Method>/step_N.js`
+- `AssertMatchesSnapshot(step)` — compares or writes snapshots
+- `NETPACK_UPDATE_SNAPSHOTS=1` — regenerate all snapshots
+- `AssertCacheStatsSnapshot(step, hits, misses, codegenHits, codegenMisses)` — per-step cache audit
 
 ## 11. Success metrics
 
@@ -249,12 +274,13 @@ exercise the pattern. Future phases add:
 
 ## 13. Current status
 
-| Phase | Status | PR |
-|-------|--------|----|
-| 1 — Parse cache | ✅ Merged | #21 |
-| Test infrastructure | ✅ Merged | #22 |
-| 2 — Codegen cache | Planned | — |
-| 3 — Chunk render | Planned | — |
-| 4 — Multi-pass | Planned | — |
-| 5 — Mutations | Planned | — |
-| 6 — Disk cache | Planned | — |
+| Phase | Status | Notes |
+|-------|--------|-------|
+| 1 — Parse cache | ✅ Done | PR #21 |
+| Test infrastructure | ✅ Done | PR #22 |
+| 2 — Codegen cache | ✅ Done | — |
+| 3 — Chunk render | ✅ Done | — |
+| 4 — Multi-pass | ✅ Done | — |
+| 5 — Mutations | ✅ Done | — |
+| 6 — Disk cache | ✅ Done | — |
+| CLI integration | ✅ Done | ServeCommand + BundleCommand |

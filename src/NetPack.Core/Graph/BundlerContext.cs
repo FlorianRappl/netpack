@@ -163,6 +163,38 @@ public sealed class BundlerContext(string root, FeatureFlags features, ModuleIdM
     /// </summary>
     public ConcurrentDictionary<int, string> ModuleFactories = [];
 
+    /// <summary>
+    /// Optional Phase 2 codegen cache. When set, the <c>JsxToJavaScriptTranspiler</c>
+    /// caches lowered module bodies keyed by content hash, skipping the expensive
+    /// <c>Visit()</c> traversal (JSX lowering + import rewriting) for unchanged
+    /// modules during warm rebuilds. Requires a stable <see cref="ModuleIdMap"/>
+    /// across rebuilds.
+    /// </summary>
+    public CodegenCache? CodegenCache { get; set; }
+
+    /// <summary>
+    /// Optional Phase 3 render cache. When set, the final rendered bundle bytes
+    /// are cached keyed by a hash of all module content hashes in the bundle,
+    /// skipping the entire render pipeline (printing, mangling, formatting) for
+    /// unchanged chunks during warm rebuilds.
+    /// </summary>
+    public RenderCache? RenderCache { get; set; }
+
+    /// <summary>
+    /// Optional Phase 4 pass context. Tracks which incremental passes have been
+    /// executed and what artifacts they produced, enabling artifact recovery on
+    /// warm rebuilds.
+    /// </summary>
+    public PassContext? PassContext { get; set; }
+
+    /// <summary>
+    /// Optional Phase 5 build snapshot. Records every module processed during
+    /// a build (file path → content hash). On warm rebuild, diffing against a
+    /// previous snapshot produces a <see cref="MutationSet"/> for selective
+    /// invalidation.
+    /// </summary>
+    public BuildSnapshot? Snapshot { get; set; }
+
     private readonly ModuleIdMap _moduleIds = moduleIds ?? new ModuleIdMap();
 
     private readonly object _usageLock = new();

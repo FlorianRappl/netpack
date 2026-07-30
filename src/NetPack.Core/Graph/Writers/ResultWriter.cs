@@ -28,6 +28,8 @@ abstract class ResultWriter(BundlerContext context)
 
         await AssignHashedNames(options);
 
+        _context.PassContext?.Store(IncrementalPass.ChunksHashes, "completed", true);
+
         var emitted = new ConcurrentBag<EmittedFile>();
 
         await Parallel.ForEachAsync(_context.Assets.Values, async (asset, ct) =>
@@ -73,6 +75,8 @@ abstract class ResultWriter(BundlerContext context)
                 emitted.Add(new EmittedFile(mapName, map.Length, Modules: 0, IsBundle: false));
             }
         });
+
+        _context.PassContext?.Store(IncrementalPass.ChunkAsset, "completed", emitted.Count);
 
         Finished?.Invoke(this, EventArgs.Empty);
         return emitted.OrderBy(f => f.Name, StringComparer.Ordinal).ToArray();

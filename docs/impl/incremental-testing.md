@@ -192,3 +192,29 @@ dotnet test src/NetPack.Tests/NetPack.Tests.csproj
 
 5. Use `test.AssertOutputContains(step, substring)` to verify specific
    content at each step.
+
+6. Enable snapshot-based verification for regression safety:
+   ```csharp
+   test.EnableSnapshots(nameof(TestClass), nameof(TestMethod));
+   test.AssertMatchesSnapshot(0); // per step
+   test.AssertCacheStatsSnapshot(0, expectedCodegenHits: 2);
+   ```
+   Run with `NETPACK_UPDATE_SNAPSHOTS=1` to regenerate all snapshots.
+
+### Test coverage (29 tests, all passing)
+
+**Phase 1 cache (9 tests)** — `IncrementalBuildTests`:
+cache hit, cache miss, valid output, multiple modules, speed benchmark,
+module addition, module removal, import order change, non-source file immunity.
+
+**Phase 2 codegen cache (7 tests)** — `IncrementalBuildTests`:
+warm hit, content invalidation, valid output, multiple modules, speed
+benchmark, module addition survival, import order change survival.
+
+**rspack-mirroring rebuild tests (13 tests)** — `IncrementalRebuildTests`:
+snapshot verification, cascading invalidation (4-module chain), error
+recovery (broken syntax → fix → rebuild), multi-file edit batching,
+hash stability (identical output on no-op rebuild), circular dependency
+rebuild, shared chunk rebuild (2 entries), single edit change,
+module addition/removal, 3 consecutive edits, import order change,
+non-imported file addition.

@@ -49,6 +49,24 @@ public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags
     {
         SourceMap = null;
 
+        // Phase 3 render cache: skip the entire render pipeline for unchanged chunks.
+        if (TryGetRenderCache(options) is { } cached)
+        {
+            // When source maps were emitted, the cache stores the map bytes
+            // alongside the bundle bytes (separator: first 4 bytes are map length).
+            if (options.WithSourceMaps && cached.Length > 4)
+            {
+                var mapLen = BitConverter.ToInt32(cached, 0);
+                if (mapLen > 0 && mapLen <= cached.Length - 4)
+                {
+                    SourceMap = new byte[mapLen];
+                    Array.Copy(cached, 4, SourceMap, 0, mapLen);
+                    return Encoding.UTF8.GetString(cached.AsSpan(4 + mapLen));
+                }
+            }
+            return Encoding.UTF8.GetString(cached);
+        }
+
         var format = JsModuleFormats.For(options.Format, options.PublicPath);
         var transpiler = new JsxToJavaScriptTranspiler(this, format, options);
         var ast = transpiler.Transpile();
@@ -76,6 +94,24 @@ public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags
         }
 
         VerifyOutput(code);
+
+        // Cache the rendered bytes for Phase 3. When source maps are enabled,
+        // prepend the source map bytes with a 4-byte length header so the cache
+        // hit path can recover the map.
+        var codeBytes = Encoding.UTF8.GetBytes(code);
+        if (SourceMap is { } map)
+        {
+            var combined = new byte[4 + map.Length + codeBytes.Length];
+            BitConverter.TryWriteBytes(combined.AsSpan(0, 4), map.Length);
+            Array.Copy(map, 0, combined, 4, map.Length);
+            Array.Copy(codeBytes, 0, combined, 4 + map.Length, codeBytes.Length);
+            PutRenderCache(options, combined);
+        }
+        else
+        {
+            PutRenderCache(options, codeBytes);
+        }
+
         return code;
     }
 
@@ -182,12 +218,33 @@ public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags
                 }
 
                 _current = fragment;
-                _currentUsesJsx = false;
-                var ast = (Ast.SourceFile)Visit(fragment.Ast)!;
-                ast = InjectAutoJsxImport(ast, fragment, _currentUsesJsx);
+
+                // --- Phase 2 codegen cache: skip Visit() for unchanged modules ---
+                List<Ast.Statement> loweredBody;
+                var codegenCache = context.CodegenCache;
+                var cacheKey = fragment.ContentHash;
+
+                if (codegenCache is not null && cacheKey is not null)
+                {
+                    if (codegenCache.Get(fragment.Root.FileName, cacheKey) is { } entry)
+                    {
+                        loweredBody = entry.Body;
+                        _currentUsesJsx = entry.UsesJsx;
+                    }
+                    else
+                    {
+                        (loweredBody, _currentUsesJsx) = VisitAndLower(fragment);
+                        codegenCache.Put(fragment.Root.FileName, cacheKey, loweredBody, _currentUsesJsx, null);
+                    }
+                }
+                else
+                {
+                    (loweredBody, _currentUsesJsx) = VisitAndLower(fragment);
+                }
+
                 var body = new List<Ast.Statement>();
 
-                foreach (var statement in ast.Body)
+                foreach (var statement in loweredBody)
                 {
                     if (statement is Ast.EmptyStatement || statement is Ast.TypeOnlyDeclaration)
                     {
@@ -277,6 +334,28 @@ public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags
         }
 
         private int GetId(GraphNode node) => _bundle._context.GetModuleId(node);
+
+        /// <summary>
+        /// Runs the expensive per-module lowering: clones the fragment's AST
+        /// (to avoid mutating the cached Phase 1 AST), then Visits it (JSX lowering,
+        /// import rewriting, constant folding), then injects an auto JSX import
+        /// if the module uses JSX with a default runtime (e.g. Preact). Returns
+        /// the lowered body and whether JSX was used.
+        /// </summary>
+        private (List<Ast.Statement> Body, bool UsesJsx) VisitAndLower(JsFragment fragment)
+        {
+            _currentUsesJsx = false;
+            // Clone the AST to prevent Visit() from mutating the Phase 1 cached
+            // source (RewriteList modifies the body list in place).
+            var source = new Ast.SourceFile(
+                fragment.Ast.FileName,
+                new List<Ast.Statement>(fragment.Ast.Body),
+                fragment.Ast.Diagnostics,
+                fragment.Ast.Source);
+            var ast = (Ast.SourceFile)Visit(source)!;
+            ast = InjectAutoJsxImport(ast, fragment, _currentUsesJsx);
+            return (new List<Ast.Statement>(ast.Body), _currentUsesJsx);
+        }
 
         private static Ast.NumericLiteral IdLiteral(int id) => new(id.ToString(System.Globalization.CultureInfo.InvariantCulture));
 
