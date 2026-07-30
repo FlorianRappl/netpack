@@ -177,7 +177,12 @@ public static class Presets
                 ?? new PresetConfig();
 
             // Parse variants manually (bypasses AOT source-gen for nested generics).
-            using var doc = JsonDocument.Parse(json);
+            // JSONC comments are tolerated — JsonDocument with comments option handles them.
+            using var doc = JsonDocument.Parse(json, new JsonDocumentOptions
+            {
+                AllowTrailingCommas = true,
+                CommentHandling = JsonCommentHandling.Skip,
+            });
             if (doc.RootElement.TryGetProperty("variants", out var variantsElement))
             {
                 config.Variants = [];
