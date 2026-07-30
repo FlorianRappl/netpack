@@ -12,6 +12,12 @@ public class BundleCommand : ICommand
 {
     private readonly DirectoryListingCache _resolutionCache = new();
 
+    // Kept alive during watch mode for warm rebuild cache hits.
+    private readonly BuildCache _buildCache = new();
+    private readonly CodegenCache _codegenCache = new();
+    private readonly RenderCache _renderCache = new();
+    private readonly PassContext _passContext = new();
+
     [Value(0, HelpText = "The entry point file where the bundler should start.")]
     public string FilePath { get; set; } = "";
 
@@ -203,7 +209,8 @@ public class BundleCommand : ICommand
         using var graph = await Traverse.From(
             file, Externals, Shared, platform: ParsePlatform(Platform),
             defines: defines, aliases: aliases, loaders: loaders,
-            conditions: Conditions, externalPackages: externalPackages, directoryFiles: Watch ? _resolutionCache : null);
+            conditions: Conditions, externalPackages: externalPackages, directoryFiles: Watch ? _resolutionCache : null,
+            buildCache: _buildCache, codegenCache: _codegenCache, renderCache: _renderCache, passContext: _passContext);
         var result = new DiskResultWriter(graph.Context, outdir);
         var emitted = await result.WriteOut(options);
         watch.Stop();

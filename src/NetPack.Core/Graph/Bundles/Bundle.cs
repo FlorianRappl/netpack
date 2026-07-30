@@ -1,5 +1,7 @@
 namespace NetPack.Graph.Bundles;
 
+using System.Text;
+
 public abstract class Bundle(BundlerContext context, Node root, BundleFlags flags)
 {
     protected readonly BundlerContext _context = context;
@@ -93,5 +95,64 @@ public abstract class Bundle(BundlerContext context, Node root, BundleFlags flag
         {
             return Path.GetFileName(node.FileName);
         }
+    }
+
+    // -- render cache --------------------------------------------------------
+
+    /// <summary>
+    /// Computes a stable key for the render cache: bundle name + output config
+    /// + all module content hashes. When no module content has changed, the same
+    /// key is produced and the cached bytes can be reused.
+    /// </summary>
+    protected string ComputeRenderKey(OutputOptions options)
+    {
+        var sb = new StringBuilder();
+        sb.Append(Name);
+        sb.Append('|');
+        sb.Append(options.Format);
+        sb.Append('|');
+        sb.Append(options.PublicPath ?? "");
+        sb.Append('|');
+        sb.Append(options.Banner ?? "");
+        sb.Append('|');
+        sb.Append(options.IsOptimizing ? '1' : '0');
+        sb.Append('|');
+        sb.Append(options.IsReloading ? '1' : '0');
+        sb.Append('|');
+        sb.Append(options.WithSourceMaps ? '1' : '0');
+
+        foreach (var node in Items.OrderBy(n => n.FileName, StringComparer.Ordinal))
+        {
+            sb.Append('|');
+            // Use the content hash stored on the node (set during Traverse).
+            // Falls back to file name when no hash is available (CSS/HTML).
+            sb.Append(node.ContentHash ?? node.FileName);
+        }
+
+        return sb.ToString();
+    }
+
+    protected byte[]? TryGetRenderCache(OutputOptions options)
+    {
+        var cache = _context.RenderCache;
+        if (cache is null)
+        {
+            return null;
+        }
+
+        var key = ComputeRenderKey(options);
+        return cache.Get(key);
+    }
+
+    protected void PutRenderCache(OutputOptions options, byte[] bytes)
+    {
+        var cache = _context.RenderCache;
+        if (cache is null)
+        {
+            return;
+        }
+
+        var key = ComputeRenderKey(options);
+        cache.Put(key, bytes);
     }
 }

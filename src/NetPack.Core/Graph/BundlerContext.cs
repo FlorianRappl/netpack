@@ -163,6 +163,33 @@ public sealed class BundlerContext(string root, FeatureFlags features, ModuleIdM
     /// </summary>
     public ConcurrentDictionary<int, string> ModuleFactories = [];
 
+    /// <summary>
+    /// Optional codegen cache. When set, the <c>JsxToJavaScriptTranspiler</c>
+    /// caches lowered module bodies keyed by content hash, skipping the
+    /// <c>Visit()</c> traversal for unchanged modules during warm rebuilds.
+    /// Requires a stable <see cref="ModuleIdMap"/> across rebuilds.
+    /// </summary>
+    public CodegenCache? CodegenCache { get; set; }
+
+    /// <summary>
+    /// Optional render cache. When set, the final rendered bundle bytes are
+    /// cached keyed by a hash of all module content hashes in the bundle,
+    /// skipping the render pipeline for unchanged chunks.
+    /// </summary>
+    public RenderCache? RenderCache { get; set; }
+
+    /// <summary>
+    /// Optional pass context. Tracks which incremental passes have been
+    /// executed and what artifacts they produced, enabling artifact recovery.
+    /// </summary>
+    public PassContext? PassContext { get; set; }
+
+    /// <summary>
+    /// Optional build snapshot. Records every module processed during a build
+    /// (file path → content hash) for cross-build change detection.
+    /// </summary>
+    public BuildSnapshot? Snapshot { get; set; }
+
     private readonly ModuleIdMap _moduleIds = moduleIds ?? new ModuleIdMap();
 
     private readonly object _usageLock = new();

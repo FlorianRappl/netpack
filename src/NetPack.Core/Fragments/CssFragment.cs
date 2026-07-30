@@ -10,4 +10,9 @@ public class CssFragment(Node root, ICssStyleSheet stylesheet, IDictionary<ICssP
     public ICssStyleSheet Stylesheet => stylesheet;
 
     public IDictionary<ICssProperty, Node> Replacements => replacements;
+
+    /// <summary>
+    /// Content hash of the CSS source (after preprocessor transpilation).
+    /// </summary>
+    public string? ContentHash { get; set; }
 }

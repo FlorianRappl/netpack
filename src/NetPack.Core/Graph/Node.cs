@@ -58,4 +58,9 @@ public class Node(string fileName, int bytes, int? variantWidth = null, int? var
     public ConcurrentBag<Node> Children = [];
 
     public ConcurrentBag<Node> References = [];
+
+    /// <summary>
+    /// Content hash of this module's source (after define/env substitution).
+    /// </summary>
+    public string? ContentHash { get; set; }
 }

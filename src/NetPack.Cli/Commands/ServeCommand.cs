@@ -21,6 +21,12 @@ public class ServeCommand : ICommand
     // for addressing an already loaded module during a hot update.
     private readonly ModuleIdMap _moduleIds = new();
 
+    // Kept alive across recompiles for warm rebuild cache hits.
+    private readonly BuildCache _buildCache = new();
+    private readonly CodegenCache _codegenCache = new();
+    private readonly RenderCache _renderCache = new();
+    private readonly PassContext _passContext = new();
+
     // The previous compile's per-module factory sources, used to diff.
     private Dictionary<int, string> _factories = new();
 
@@ -73,7 +79,7 @@ public class ServeCommand : ICommand
         var aliases = BundleCommand.ParseKeyValues(Alias, "alias");
         var loaders = BundleCommand.ParseKeyValues(Loader, "loader");
         Console.WriteLine("[netpack] Starting build ...");
-        using var graph = await Traverse.From(file, Externals, Shared, _moduleIds, devServer: true, defines: defines, aliases: aliases, loaders: loaders, directoryFiles: _resolutionCache);
+        using var graph = await Traverse.From(file, Externals, Shared, _moduleIds, devServer: true, defines: defines, aliases: aliases, loaders: loaders, directoryFiles: _resolutionCache, buildCache: _buildCache, codegenCache: _codegenCache, renderCache: _renderCache, passContext: _passContext);
         var compilation = new MemoryResultWriter(graph.Context);
         var options = new OutputOptions
         {

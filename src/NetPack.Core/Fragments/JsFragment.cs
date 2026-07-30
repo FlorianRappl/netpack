@@ -45,4 +45,9 @@ public class JsFragment(GraphNode root, SourceFile ast, IDictionary<Node, GraphN
     /// Local identifier used for <see cref="AutoJsxImportModule"/>.
     /// </summary>
     public string? AutoJsxImportIdentifier { get; set; }
+
+    /// <summary>
+    /// Content hash of the module source (after define/env substitution).
+    /// </summary>
+    public string? ContentHash { get; set; }
 }

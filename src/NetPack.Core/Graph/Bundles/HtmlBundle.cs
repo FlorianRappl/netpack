@@ -20,8 +20,16 @@ public sealed class HtmlBundle(BundlerContext context, Graph.Node root, BundleFl
 
     public override Task<Stream> CreateStream(OutputOptions options)
     {
+        // Render cache.
+        if (TryGetRenderCache(options) is { } cached)
+        {
+            return Task.FromResult<Stream>(new MemoryStream(cached));
+        }
+
         var src = new MemoryStream();
         Stringify(src, options);
+        src.Position = 0;
+        PutRenderCache(options, src.ToArray());
         src.Position = 0;
         return Task.FromResult<Stream>(src);
     }

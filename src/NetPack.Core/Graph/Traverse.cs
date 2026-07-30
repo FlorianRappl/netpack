@@ -14,12 +14,13 @@ using NetPack.Json;
 using NetPack.Syntax;
 using static NetPack.Helpers;
 
-public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds = null, DirectoryListingCache? directoryFiles = null) : IDisposable
+public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds = null, DirectoryListingCache? directoryFiles = null, BuildCache? buildCache = null) : IDisposable
 {
     private readonly BundlerContext _context = new(root, features, moduleIds);
     private readonly BrowsingContext _browser = new(Configuration.Default.WithCss());
     private readonly ConcurrentDictionary<string, Task<Node>> _reserved = [];
     private readonly DirectoryListingCache? _directoryFiles = directoryFiles;
+    private readonly BuildCache? _buildCache = buildCache;
     private readonly NodeJs _njs = new(root);
     private bool _devServer;
 
@@ -54,12 +55,16 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
 
     public static Task<Traverse> From(string path) => From(path, [], []);
 
-    public static async Task<Traverse> From(string path, IEnumerable<string> externals, IEnumerable<string> shared, ModuleIdMap? moduleIds = null, bool devServer = false, Platform platform = Platform.Web, IReadOnlyDictionary<string, string>? defines = null, IReadOnlyDictionary<string, string>? aliases = null, IReadOnlyDictionary<string, string>? loaders = null, IEnumerable<string>? conditions = null, bool externalPackages = false, string? mode = null, IReadOnlyDictionary<string, string>? envVars = null, DirectoryListingCache? directoryFiles = null)
+    public static async Task<Traverse> From(string path, IEnumerable<string> externals, IEnumerable<string> shared, ModuleIdMap? moduleIds = null, bool devServer = false, Platform platform = Platform.Web, IReadOnlyDictionary<string, string>? defines = null, IReadOnlyDictionary<string, string>? aliases = null, IReadOnlyDictionary<string, string>? loaders = null, IEnumerable<string>? conditions = null, bool externalPackages = false, string? mode = null, IReadOnlyDictionary<string, string>? envVars = null, DirectoryListingCache? directoryFiles = null, BuildCache? buildCache = null, CodegenCache? codegenCache = null, RenderCache? renderCache = null, PassContext? passContext = null, BuildSnapshot? snapshot = null)
     {
         var root = Path.GetDirectoryName(path)!;
         var packageRoot = FindRoot(root);
         var features = await FindFeatures(packageRoot);
-        var traverse = new Traverse(packageRoot ?? root, features, moduleIds, directoryFiles) { _devServer = devServer };
+        var traverse = new Traverse(packageRoot ?? root, features, moduleIds, directoryFiles, buildCache) { _devServer = devServer };
+        traverse.Context.CodegenCache = codegenCache;
+        traverse.Context.RenderCache = renderCache;
+        traverse.Context.PassContext = passContext;
+        traverse.Context.Snapshot = snapshot;
         traverse.Context.Platform = PlatformTargets.For(platform);
         traverse.Context.Defines = BuildDefines(defines, devServer, mode);
         traverse.Context.EnvVars = envVars ?? new Dictionary<string, string>();
@@ -148,6 +153,12 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
 
     private async Task Run(params IEnumerable<string> entryPoints)
     {
+        var pc = _context.PassContext;
+        if (pc is not null)
+        {
+            pc.Store(IncrementalPass.BuildModuleGraph, "started", true);
+        }
+
         var queue = new List<Task>();
         Node? primaryEntry = null;
 
@@ -183,6 +194,11 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
             await SetupReactRefresh(primaryEntry);
         }
 
+        if (pc is not null)
+        {
+            pc.Store(IncrementalPass.BuildModuleGraph, "completed", _context.Modules.Count);
+        }
+
         Finish();
     }
 
@@ -209,6 +225,12 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
 
     private void Finish()
     {
+        var pc = _context.PassContext;
+        if (pc is not null)
+        {
+            pc.Store(IncrementalPass.FinishModules, "started", true);
+        }
+
         var bundles = _context.Bundles;
         var connected = new Connected((i, nodes) => $"common.{i:0000}{nodes.First().Type}");
         var graphs = connected.Apply(bundles.Keys);
@@ -222,6 +244,12 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
             }
 
             bundle.Items = [.. graph.Value];
+        }
+
+        if (_context.PassContext is not null)
+        {
+            _context.PassContext.Store(IncrementalPass.FinishModules, "completed", _context.Bundles.Count);
+            _context.PassContext.Store(IncrementalPass.BuildChunkGraph, "completed", _context.Bundles.Count);
         }
     }
 
@@ -907,6 +935,16 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
         var sheet = await parser.ParseStyleSheetAsync(stream);
         var visitor = new CssVisitor(bundle, current, InnerProcess);
         var fragment = await visitor.FindChildren(sheet);
+
+        // Compute content hash for CSS fragments so render cache can detect changes.
+        if (_context.Snapshot is not null || _context.RenderCache is not null)
+        {
+            stream.Position = 0;
+            var cssHash = await Hash.ComputeHash(stream);
+            fragment.ContentHash = cssHash;
+            current.ContentHash = cssHash;
+        }
+
         _context.CssFragments.TryAdd(current, fragment);
     }
 
@@ -1144,9 +1182,23 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
     {
         var options = ParserOptions.ForFile(current.FileName);
         var ast = Parser.ParseModule(content, current.FileName, options);
+
+        // Store parsed AST in cache for next rebuild.
+        if (_buildCache is not null)
+        {
+            var contentHash = await ComputeContentHash(current.FileName, content, _context);
+            _buildCache.Put(current.FileName, contentHash, ast);
+        }
+
+        var fragment = await ParseJsModuleFromAst(bundle, current, ast);
+        ApplyJsxFactory(current, content, options.TypeScript, fragment);
+        return fragment;
+    }
+
+    private async Task<JsFragment> ParseJsModuleFromAst(Bundle bundle, Node current, Syntax.Ast.SourceFile ast)
+    {
         var visitor = new JsVisitor(bundle, current, InnerProcess);
         var fragment = await visitor.FindChildren(ast);
-        ApplyJsxFactory(current, content, options.TypeScript, fragment);
         RegisterCssImports(bundle, fragment);
         return fragment;
     }
@@ -1294,8 +1346,48 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
             newContent = await CompileSolid(newContent, current.FileName);
         }
 
-        var fragment = await ParseJsModule(bundle, current, newContent);
+        // Compute content hash for parse and codegen caches.
+        // Solid-compiled files bypass both (their output is opaque).
+        var wantHash = (_buildCache is not null || _context.CodegenCache is not null) && !_context.UseSolid;
+        var contentHash = wantHash
+            ? await ComputeContentHash(current.FileName, newContent, _context)
+            : null;
+
+        JsFragment? cachedFragment = null;
+
+        if (_buildCache is not null && contentHash is not null)
+        {
+            if (_buildCache.Get(current.FileName, contentHash)?.Fragment is Syntax.Ast.SourceFile cachedAst)
+            {
+                cachedFragment = await ParseJsModuleFromAst(bundle, current, cachedAst);
+                var options = ParserOptions.ForFile(current.FileName);
+                ApplyJsxFactory(current, content, options.TypeScript, cachedFragment);
+            }
+        }
+
+        var fragment = cachedFragment ?? await ParseJsModule(bundle, current, newContent);
+        fragment.ContentHash = contentHash;
+        current.ContentHash = contentHash;
         _context.JsFragments.TryAdd(current, fragment);
+
+        // Record raw file hash in the build snapshot for cross-build comparison.
+        if (_context.Snapshot is not null)
+        {
+            var absPath = Path.GetFullPath(Path.Combine(_context.Root, current.FileName));
+            using var fs = File.OpenRead(absPath);
+            var fileHash = await Hash.ComputeHash(fs);
+            _context.Snapshot.Record(absPath, fileHash);
+        }
+    }
+
+    private static async Task<string> ComputeContentHash(string filePath, string content, BundlerContext context)
+    {
+        // Include build options in the cache key so that changing platform, format,
+        // defines, or loaders invalidates cached ASTs.
+        var optKey = $"{context.Platform.GetType().Name}:{context.Defines.Count}:{context.UserConditions.Count}:{context.Loaders.Count}";
+        var key = $"{filePath}:{optKey}:{content}";
+        using var stream = new MemoryStream(Encoding.UTF8.GetBytes(key));
+        return await Hash.ComputeHash(stream);
     }
 
     /// <summary>True for a JSX-bearing source file (<c>.jsx</c>/<c>.tsx</c>).</summary>
