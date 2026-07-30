@@ -48,9 +48,8 @@ static class PresetArgs
         = new Dictionary<string, IReadOnlyList<string>>();
 
     /// <summary>
-    /// When the resolved preset contains variants, returns multiple argument sets
-    /// (one per variant, with variant overrides applied). When there are no variants,
-    /// returns a single-item list with the original (or preset-augmented) args.
+    /// Returns one arg set per variant when the resolved preset contains variants,
+    /// or a single-item list for the normal (non-variant) path.
     /// </summary>
     public static IReadOnlyList<string[]> Apply(string[] args)
     {
@@ -122,14 +121,12 @@ static class PresetArgs
             return [[.. passthrough, .. injected]];
         }
 
-        // Variants: one arg set per variant. Each inherits base options.
-        // CLI args that conflict with variant overrides act as filters — only
-        // variants whose settings match the explicit CLI flags are built.
+        // Variants: one arg set per variant. CLI args that conflict with a
+        // variant's overrides act as filters — only matching variants are built.
         var result = new List<string[]>();
 
         foreach (var (variantName, variantOptions) in resolved.Options.Variants)
         {
-            // Skip variants that don't match explicit CLI overrides.
             if (!VariantMatchesCliArgs(variantOptions, present, passthrough, allowed))
             {
                 continue;
@@ -138,7 +135,6 @@ static class PresetArgs
             var merged = MergeOptions(resolved.Options, variantOptions);
             var injected = new List<string>();
 
-            // Each variant gets its own subdirectory unless explicitly overridden.
             if (variantOptions.OutDir is null)
             {
                 merged.OutDir = merged.OutDir is not null
@@ -181,7 +177,6 @@ static class PresetArgs
             }
         }
 
-        // Check format similarly.
         if (presentCliOptions.Contains("format") && variant.Format is not null)
         {
             var cliFormat = GetCliValue(passthrough, "--format");
