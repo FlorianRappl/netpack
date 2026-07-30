@@ -25,6 +25,14 @@ public sealed class PresetConfig
     [JsonPropertyName("hooks")]
     public Dictionary<string, List<string>>? Hooks { get; set; }
 
+    /// <summary>
+    /// Named variants that override base options for multi-build scenarios.
+    /// Deserialized manually from raw JSON to avoid AOT source-gen issues with
+    /// nested generic types.
+    /// </summary>
+    [JsonIgnore]
+    public Dictionary<string, PresetConfig>? Variants { get; set; }
+
     [JsonPropertyName("outdir")] public string? OutDir { get; set; }
 
     [JsonPropertyName("minify")] public bool? Minify { get; set; }

@@ -104,6 +104,7 @@ public static class Presets
             result.Packages ??= c.Packages;
             result.Banner ??= c.Banner;
             result.Port ??= c.Port;
+            result.Variants ??= c.Variants;
         }
 
         return result;
@@ -172,8 +173,24 @@ public static class Presets
 
         try
         {
-            return JsonSerializer.Deserialize(json, ConfigSourceGenerationContext.Default.PresetConfig)
+            var config = JsonSerializer.Deserialize(json, ConfigSourceGenerationContext.Default.PresetConfig)
                 ?? new PresetConfig();
+
+            // Parse variants manually (bypasses AOT source-gen for nested generics).
+            using var doc = JsonDocument.Parse(json);
+            if (doc.RootElement.TryGetProperty("variants", out var variantsElement))
+            {
+                config.Variants = [];
+                foreach (var prop in variantsElement.EnumerateObject())
+                {
+                    var variant = JsonSerializer.Deserialize(prop.Value.GetRawText(),
+                        ConfigSourceGenerationContext.Default.PresetConfig)
+                        ?? new PresetConfig();
+                    config.Variants[prop.Name] = variant;
+                }
+            }
+
+            return config;
         }
         catch (JsonException ex)
         {

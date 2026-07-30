@@ -47,11 +47,16 @@ static class PresetArgs
     public static IReadOnlyDictionary<string, IReadOnlyList<string>> Hooks { get; private set; }
         = new Dictionary<string, IReadOnlyList<string>>();
 
-    public static string[] Apply(string[] args)
+    /// <summary>
+    /// When the resolved preset contains variants, returns multiple argument sets
+    /// (one per variant, with variant overrides applied). When there are no variants,
+    /// returns a single-item list with the original (or preset-augmented) args.
+    /// </summary>
+    public static IReadOnlyList<string[]> Apply(string[] args)
     {
         if (args.Length == 0 || !AllowedByVerb.TryGetValue(args[0], out var allowed))
         {
-            return args;
+            return [args];
         }
 
         // Peel off --preset references; pass everything else through untouched.
@@ -93,24 +98,82 @@ static class PresetArgs
 
         if (entryRefs.Count == 0)
         {
-            return args;
+            return [args];
         }
 
         var resolved = Presets.Resolve(entryRefs, baseDir);
         Hooks = resolved.Hooks;
 
         var present = PresentOptionNames(passthrough);
-        var injected = new List<string>();
 
-        foreach (var (name, tokens) in Candidates(resolved.Options))
+        // If no variants, return single arg set (original behavior).
+        if (resolved.Options.Variants is null || resolved.Options.Variants.Count == 0)
         {
-            if (allowed.Contains(name) && !present.Contains(name))
+            var injected = new List<string>();
+
+            foreach (var (name, tokens) in Candidates(resolved.Options))
             {
-                injected.AddRange(tokens);
+                if (allowed.Contains(name) && !present.Contains(name))
+                {
+                    injected.AddRange(tokens);
+                }
             }
+
+            return [[.. passthrough, .. injected]];
         }
 
-        return [.. passthrough, .. injected];
+        // Variants: one arg set per variant. Each inherits base options.
+        var result = new List<string[]>();
+
+        foreach (var (variantName, variantOptions) in resolved.Options.Variants)
+        {
+            var merged = MergeOptions(resolved.Options, variantOptions);
+            var injected = new List<string>();
+
+            // Each variant gets its own subdirectory unless explicitly overridden.
+            if (variantOptions.OutDir is null)
+            {
+                merged.OutDir = merged.OutDir is not null
+                    ? Path.Combine(merged.OutDir, variantName)
+                    : variantName;
+            }
+
+            foreach (var (name, tokens) in Candidates(merged))
+            {
+                if (allowed.Contains(name) && !present.Contains(name))
+                {
+                    injected.AddRange(tokens);
+                }
+            }
+
+            result.Add([.. passthrough, .. injected]);
+        }
+
+        return result;
+    }
+
+    private static PresetConfig MergeOptions(PresetConfig base_, PresetConfig v)
+    {
+        return new PresetConfig
+        {
+            OutDir = v.OutDir ?? base_.OutDir,
+            Minify = v.Minify ?? base_.Minify,
+            SourceMap = v.SourceMap ?? base_.SourceMap,
+            Clean = v.Clean ?? base_.Clean,
+            Format = v.Format ?? base_.Format,
+            Platform = v.Platform ?? base_.Platform,
+            EntryNames = v.EntryNames ?? base_.EntryNames,
+            PublicPath = v.PublicPath ?? base_.PublicPath,
+            Packages = v.Packages ?? base_.Packages,
+            Banner = v.Banner ?? base_.Banner,
+            Port = v.Port ?? base_.Port,
+            External = v.External ?? base_.External,
+            Shared = v.Shared ?? base_.Shared,
+            Conditions = v.Conditions ?? base_.Conditions,
+            Define = v.Define ?? base_.Define,
+            Alias = v.Alias ?? base_.Alias,
+            Loader = v.Loader ?? base_.Loader,
+        };
     }
 
     private static HashSet<string> PresentOptionNames(IEnumerable<string> args)
