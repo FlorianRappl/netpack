@@ -45,6 +45,9 @@ public class BundleCommand : ICommand
     [Option("platform", Default = "web", HelpText = "The target runtime (web, node, deno). Decides which modules stay external as runtime built-ins.")]
     public string Platform { get; set; } = "web";
 
+    [Option("target", HelpText = "Comma-separated list of target runtimes, e.g. --target web,node. When set, overrides --platform and emits to <outdir>/<target>/ subdirectories.")]
+    public string? Target { get; set; }
+
     [Option("define", HelpText = "Replace a global identifier with a constant expression, e.g. --define process.env.NODE_ENV=\"production\".")]
     public IEnumerable<string> Define { get; set; } = [];
 
@@ -172,42 +175,84 @@ public class BundleCommand : ICommand
             InlineLimit = InlineLimit,
         };
 
-        if (Clean && Directory.Exists(outdir))
+        // Resolve targets: --target overrides --platform.
+        var targets = ParseTargets();
+
+        if (targets.Count > 1)
         {
-            Directory.Delete(outdir, true);
-        }
+            Console.WriteLine("[netpack] Multi-target build: {0}", string.Join(", ", targets.Select(t => t.ToString().ToLowerInvariant())));
 
-        Directory.CreateDirectory(outdir);
-
-        var writer = await BuildOnce(file, outdir, options, mergedDefines, aliases, loaders, externalPackages);
-
-        if (Watch)
-        {
-            using var watcher = new FileWatcher<DiskResultWriter>(writer, WatchDelay, invalidateDirectory: _resolutionCache.Invalidate);
-            watcher.Install(() =>
+            foreach (var target in targets)
             {
-                if (ClearScreen)
-                {
-                    Console.Clear();
-                }
+                Console.WriteLine();
+                var targetOutDir = Path.Combine(outdir, target.ToString().ToLowerInvariant());
+                Directory.CreateDirectory(targetOutDir);
 
-                return BuildOnce(file, outdir, options, mergedDefines, aliases, loaders, externalPackages);
-            });
+                await BuildOnce(file, targetOutDir, options, mergedDefines, aliases, loaders, externalPackages, target);
+            }
+
             Console.WriteLine();
-            Console.WriteLine("[netpack] Watching for changes — press Ctrl+C to stop.");
-            await Task.Delay(Timeout.Infinite);
+            Console.WriteLine("[netpack] Multi-target build complete ({0} targets):", targets.Count);
+            foreach (var target in targets)
+            {
+                var dir = Path.Combine(OutDir, target.ToString().ToLowerInvariant());
+                Console.WriteLine("  {0,-6} → {1}", target.ToString().ToLowerInvariant() + ":", dir);
+            }
         }
+        else
+        {
+            var target = targets.First();
+
+            if (Clean && Directory.Exists(outdir))
+            {
+                Directory.Delete(outdir, true);
+            }
+
+            Directory.CreateDirectory(outdir);
+
+            var writer = await BuildOnce(file, outdir, options, mergedDefines, aliases, loaders, externalPackages, target);
+
+            if (Watch)
+            {
+                using var watcher = new FileWatcher<DiskResultWriter>(writer, WatchDelay, invalidateDirectory: _resolutionCache.Invalidate);
+                watcher.Install(() =>
+                {
+                    if (ClearScreen)
+                    {
+                        Console.Clear();
+                    }
+
+                    return BuildOnce(file, outdir, options, mergedDefines, aliases, loaders, externalPackages, target);
+                });
+                Console.WriteLine();
+                Console.WriteLine("[netpack] Watching for changes — press Ctrl+C to stop.");
+                await Task.Delay(Timeout.Infinite);
+            }
+        }
+    }
+
+    private List<NetPack.Graph.Platform> ParseTargets()
+    {
+        if (!string.IsNullOrWhiteSpace(Target))
+        {
+            return Target.Split(',')
+                .Select(s => s.Trim().ToLowerInvariant())
+                .Select(ParsePlatform)
+                .ToList();
+        }
+
+        return [ParsePlatform(Platform)];
     }
 
     private async Task<DiskResultWriter> BuildOnce(
         string file, string outdir, OutputOptions options,
         IReadOnlyDictionary<string, string> defines, IReadOnlyDictionary<string, string> aliases,
-        IReadOnlyDictionary<string, string> loaders, bool externalPackages)
+        IReadOnlyDictionary<string, string> loaders, bool externalPackages, NetPack.Graph.Platform platform)
     {
         var watch = Stopwatch.StartNew();
-        Console.WriteLine("[netpack] Bundling '{0}' ...", FilePath);
+        Console.WriteLine("[netpack] Bundling '{0}' ({1}) ...", FilePath, platform.ToString().ToLowerInvariant());
         using var graph = await Traverse.From(
-            file, Externals, Shared, platform: ParsePlatform(Platform),
+            file, Externals, Shared, platform: platform,
             defines: defines, aliases: aliases, loaders: loaders,
             conditions: Conditions, externalPackages: externalPackages, directoryFiles: Watch ? _resolutionCache : null,
             buildCache: _buildCache, codegenCache: _codegenCache, renderCache: _renderCache, passContext: _passContext);

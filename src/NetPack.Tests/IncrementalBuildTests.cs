@@ -1798,4 +1798,145 @@ public class IncrementalBuildTests
             System.IO.Directory.Delete(dir, recursive: true);
         }
     }
+
+    // --- Multi-target tests ---
+
+    [Fact]
+    public async Task Parse_cache_is_shared_across_targets()
+    {
+        var dir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "netpack-mt-" + System.IO.Path.GetRandomFileName());
+        System.IO.Directory.CreateDirectory(dir);
+
+        try
+        {
+            await System.IO.File.WriteAllTextAsync(System.IO.Path.Combine(dir, "package.json"), "{}");
+            await System.IO.File.WriteAllTextAsync(System.IO.Path.Combine(dir, "entry.js"),
+                "export default 42;");
+
+            var sharedCache = new NetPack.BuildCache();
+            var opts = new NetPack.Graph.OutputOptions { IsOptimizing = false, IsReloading = false };
+
+            // Build for web (cold — populates cache).
+            using (var graph = await NetPack.Graph.Traverse.From(
+                       System.IO.Path.Combine(dir, "entry.js"),
+                       [], [], platform: NetPack.Graph.Platform.Web,
+                       buildCache: sharedCache))
+            {
+                graph.Context.Bundles.Values
+                    .OfType<NetPack.Graph.Bundles.JsBundle>().First(b => b.IsPrimary)
+                    .Stringify(opts);
+            }
+
+            sharedCache.ResetCounters();
+
+            // Build for node (warm — cache hit from web build).
+            using (var graph = await NetPack.Graph.Traverse.From(
+                       System.IO.Path.Combine(dir, "entry.js"),
+                       [], [], platform: NetPack.Graph.Platform.Node,
+                       buildCache: sharedCache))
+            {
+                graph.Context.Bundles.Values
+                    .OfType<NetPack.Graph.Bundles.JsBundle>().First(b => b.IsPrimary)
+                    .Stringify(opts);
+            }
+
+            Assert.True(sharedCache.Hits > 0,
+                $"Parse cache should hit across targets. Hits={sharedCache.Hits}");
+        }
+        finally
+        {
+            System.IO.Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Different_targets_produce_different_output_for_node_builtins()
+    {
+        var dir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "netpack-mt2-" + System.IO.Path.GetRandomFileName());
+        System.IO.Directory.CreateDirectory(dir);
+
+        try
+        {
+            await System.IO.File.WriteAllTextAsync(System.IO.Path.Combine(dir, "package.json"), "{}");
+            await System.IO.File.WriteAllTextAsync(System.IO.Path.Combine(dir, "entry.js"),
+                "import fs from 'fs'; export default typeof fs;");
+
+            var opts = new NetPack.Graph.OutputOptions { IsOptimizing = false, IsReloading = false };
+
+            string webOutput;
+            using (var graph = await NetPack.Graph.Traverse.From(
+                       System.IO.Path.Combine(dir, "entry.js"),
+                       [], [], platform: NetPack.Graph.Platform.Web))
+            {
+                webOutput = graph.Context.Bundles.Values
+                    .OfType<NetPack.Graph.Bundles.JsBundle>().First(b => b.IsPrimary)
+                    .Stringify(opts);
+            }
+
+            string nodeOutput;
+            using (var graph = await NetPack.Graph.Traverse.From(
+                       System.IO.Path.Combine(dir, "entry.js"),
+                       [], [], platform: NetPack.Graph.Platform.Node))
+            {
+                nodeOutput = graph.Context.Bundles.Values
+                    .OfType<NetPack.Graph.Bundles.JsBundle>().First(b => b.IsPrimary)
+                    .Stringify(opts);
+            }
+
+            Assert.NotEqual(webOutput, nodeOutput);
+            Assert.DoesNotContain("node:fs", webOutput);
+            Assert.Contains("node:fs", nodeOutput);
+        }
+        finally
+        {
+            System.IO.Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Multi_target_builds_all_three_platforms()
+    {
+        var dir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "netpack-mt3-" + System.IO.Path.GetRandomFileName());
+        System.IO.Directory.CreateDirectory(dir);
+
+        try
+        {
+            await System.IO.File.WriteAllTextAsync(System.IO.Path.Combine(dir, "package.json"), "{}");
+            await System.IO.File.WriteAllTextAsync(System.IO.Path.Combine(dir, "entry.js"),
+                "export default 'hello';");
+
+            var sharedCache = new NetPack.BuildCache();
+            var opts = new NetPack.Graph.OutputOptions { IsOptimizing = false, IsReloading = false };
+            var platforms = new[] { NetPack.Graph.Platform.Web, NetPack.Graph.Platform.Node, NetPack.Graph.Platform.Deno };
+
+            string? firstOutput = null;
+
+            foreach (var platform in platforms)
+            {
+                using var graph = await NetPack.Graph.Traverse.From(
+                    System.IO.Path.Combine(dir, "entry.js"),
+                    [], [], platform: platform,
+                    buildCache: sharedCache);
+
+                var output = graph.Context.Bundles.Values
+                    .OfType<NetPack.Graph.Bundles.JsBundle>().First(b => b.IsPrimary)
+                    .Stringify(opts);
+
+                Assert.NotEmpty(output);
+
+                if (firstOutput is null)
+                {
+                    firstOutput = output;
+                }
+            }
+
+            // Parse cache should have hits for the second and third platforms.
+            Assert.True(sharedCache.Hits > 0,
+                $"Parse cache should hit across targets. Hits={sharedCache.Hits}");
+        }
+        finally
+        {
+            System.IO.Directory.Delete(dir, recursive: true);
+        }
+    }
 }
