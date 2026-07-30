@@ -132,7 +132,7 @@ static class PresetArgs
                 continue;
             }
 
-            var merged = MergeOptions(resolved.Options, variantOptions);
+            var merged = Config.Presets.MergeVariant(resolved.Options, variantOptions);
             var injected = new List<string>();
 
             if (variantOptions.OutDir is null)
@@ -162,7 +162,7 @@ static class PresetArgs
     /// Example: --platform web filters out variants with platform: node.
     /// </summary>
     private static bool VariantMatchesCliArgs(
-        PresetConfig variant,
+        BasePresetConfig variant,
         HashSet<string> presentCliOptions,
         List<string> passthrough,
         HashSet<string> allowed)
@@ -207,30 +207,6 @@ static class PresetArgs
         return null;
     }
 
-    private static PresetConfig MergeOptions(PresetConfig base_, PresetConfig v)
-    {
-        return new PresetConfig
-        {
-            OutDir = v.OutDir ?? base_.OutDir,
-            Minify = v.Minify ?? base_.Minify,
-            SourceMap = v.SourceMap ?? base_.SourceMap,
-            Clean = v.Clean ?? base_.Clean,
-            Format = v.Format ?? base_.Format,
-            Platform = v.Platform ?? base_.Platform,
-            EntryNames = v.EntryNames ?? base_.EntryNames,
-            PublicPath = v.PublicPath ?? base_.PublicPath,
-            Packages = v.Packages ?? base_.Packages,
-            Banner = v.Banner ?? base_.Banner,
-            Port = v.Port ?? base_.Port,
-            External = v.External ?? base_.External,
-            Shared = v.Shared ?? base_.Shared,
-            Conditions = v.Conditions ?? base_.Conditions,
-            Define = v.Define ?? base_.Define,
-            Alias = v.Alias ?? base_.Alias,
-            Loader = v.Loader ?? base_.Loader,
-        };
-    }
-
     private static HashSet<string> PresentOptionNames(IEnumerable<string> args)
     {
         var names = new HashSet<string>(StringComparer.Ordinal);
@@ -265,7 +241,7 @@ static class PresetArgs
     /// so a preset can enable but never spuriously disable them; a repeated/keyed
     /// option is emitted in full only when the user supplied none of its own.
     /// </summary>
-    private static IEnumerable<(string Name, string[] Tokens)> Candidates(PresetConfig o)
+    private static IEnumerable<(string Name, string[] Tokens)> Candidates(BasePresetConfig o)
     {
         if (o.OutDir is not null) yield return ("outdir", ["--outdir", o.OutDir]);
         if (o.Minify == true) yield return ("minify", ["--minify"]);

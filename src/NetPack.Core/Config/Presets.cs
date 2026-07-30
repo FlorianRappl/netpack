@@ -115,7 +115,7 @@ public static class Presets
                 {
                     if (result.Variants.TryGetValue(name, out var existing))
                     {
-                        result.Variants[name] = MergeOptions(existing, variant);
+                        result.Variants[name] = MergeVariant(existing, variant);
                     }
                     else
                     {
@@ -128,9 +128,9 @@ public static class Presets
         return result;
     }
 
-    private static PresetConfig MergeOptions(PresetConfig base_, PresetConfig overrides)
+    public static BasePresetConfig MergeVariant(BasePresetConfig base_, BasePresetConfig overrides)
     {
-        return new PresetConfig
+        return new BasePresetConfig
         {
             OutDir = overrides.OutDir ?? base_.OutDir,
             Minify = overrides.Minify ?? base_.Minify,
@@ -231,8 +231,8 @@ public static class Presets
                 foreach (var prop in variantsElement.EnumerateObject())
                 {
                     var variant = JsonSerializer.Deserialize(prop.Value.GetRawText(),
-                        ConfigSourceGenerationContext.Default.PresetConfig)
-                        ?? new PresetConfig();
+                        ConfigSourceGenerationContext.Default.BasePresetConfig)
+                        ?? new BasePresetConfig();
                     config.Variants[prop.Name] = variant;
                 }
             }

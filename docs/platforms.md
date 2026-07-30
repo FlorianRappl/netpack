@@ -11,27 +11,6 @@ npx netpack bundle src/server.js --platform node
 npx netpack bundle src/main.ts --platform deno
 ```
 
-## Multi-target builds (`--target`)
-
-When a project targets more than one runtime, `--target` accepts a
-comma-separated list and builds for each platform in one command, sharing the
-parse cache across targets so the second and subsequent builds are
-substantially faster:
-
-```sh
-npx netpack bundle src/index.ts --target web,node --outdir dist
-```
-
-Output:
-```
-dist/web/app.js
-dist/node/app.js
-```
-
-`--target` overrides `--platform`. A single target behaves identically to
-`--platform`. The parse cache is shared across targets — the second target's
-build skips re-parsing every unchanged source file.
-
 | `--platform` | Built-ins kept external | `browser` field |
 | --- | --- | --- |
 | `web` (default) | none | used |
