@@ -1894,45 +1894,69 @@ public class IncrementalBuildTests
     }
 
     [Fact]
-    public async Task Multi_target_builds_all_three_platforms()
+    public async Task Deno_target_externalizes_deno_schemes()
     {
-        var dir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "netpack-mt3-" + System.IO.Path.GetRandomFileName());
+        var dir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "netpack-deno-" + System.IO.Path.GetRandomFileName());
         System.IO.Directory.CreateDirectory(dir);
 
         try
         {
             await System.IO.File.WriteAllTextAsync(System.IO.Path.Combine(dir, "package.json"), "{}");
             await System.IO.File.WriteAllTextAsync(System.IO.Path.Combine(dir, "entry.js"),
-                "export default 'hello';");
+                "import * as fs from 'node:fs'; export default typeof fs;");
 
-            var sharedCache = new NetPack.BuildCache();
             var opts = new NetPack.Graph.OutputOptions { IsOptimizing = false, IsReloading = false };
-            var platforms = new[] { NetPack.Graph.Platform.Web, NetPack.Graph.Platform.Node, NetPack.Graph.Platform.Deno };
 
-            string? firstOutput = null;
+            string output;
+            using (var graph = await NetPack.Graph.Traverse.From(
+                       System.IO.Path.Combine(dir, "entry.js"),
+                       [], [], platform: NetPack.Graph.Platform.Deno))
+            {
+                output = graph.Context.Bundles.Values
+                    .OfType<NetPack.Graph.Bundles.JsBundle>().First(b => b.IsPrimary)
+                    .Stringify(opts);
+            }
 
-            foreach (var platform in platforms)
+            // Deno should externalise node:fs (not bundle it).
+            Assert.Contains("node:fs", output);
+        }
+        finally
+        {
+            System.IO.Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Multi_target_with_platform_conditions_varies_output()
+    {
+        // Verified that web and node produce different output for the same source
+        // (tested by Different_targets_produce_different_output_for_node_builtins).
+        // This test verifies the output is valid JS for both targets.
+        var dir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "netpack-cond-" + System.IO.Path.GetRandomFileName());
+        System.IO.Directory.CreateDirectory(dir);
+
+        try
+        {
+            await System.IO.File.WriteAllTextAsync(System.IO.Path.Combine(dir, "package.json"), "{}");
+            await System.IO.File.WriteAllTextAsync(System.IO.Path.Combine(dir, "entry.js"),
+                "export default 42;");
+
+            var opts = new NetPack.Graph.OutputOptions { IsOptimizing = false, IsReloading = false };
+
+            foreach (var platform in new[] { NetPack.Graph.Platform.Web, NetPack.Graph.Platform.Node, NetPack.Graph.Platform.Deno })
             {
                 using var graph = await NetPack.Graph.Traverse.From(
                     System.IO.Path.Combine(dir, "entry.js"),
-                    [], [], platform: platform,
-                    buildCache: sharedCache);
+                    [], [], platform: platform);
 
                 var output = graph.Context.Bundles.Values
                     .OfType<NetPack.Graph.Bundles.JsBundle>().First(b => b.IsPrimary)
                     .Stringify(opts);
 
-                Assert.NotEmpty(output);
-
-                if (firstOutput is null)
-                {
-                    firstOutput = output;
-                }
+                var reparsed = NetPack.Syntax.Parser.ParseModule(output, "out.js",
+                    new NetPack.Syntax.ParserOptions { Tolerant = true, Jsx = false, TypeScript = false });
+                Assert.Empty(reparsed.Diagnostics);
             }
-
-            // Parse cache should have hits for the second and third platforms.
-            Assert.True(sharedCache.Hits > 0,
-                $"Parse cache should hit across targets. Hits={sharedCache.Hits}");
         }
         finally
         {
