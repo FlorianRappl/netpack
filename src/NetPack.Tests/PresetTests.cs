@@ -161,4 +161,35 @@ public class PresetTests
             Directory.Delete(dir, recursive: true);
         }
     }
+
+    [Fact]
+    public void Variants_are_parsed_from_preset_json()
+    {
+        var dir = Dir();
+
+        try
+        {
+            Write(dir, "netpack.json", @"{
+                ""outdir"": ""dist"",
+                ""variants"": {
+                    ""web"": { ""platform"": ""web"", ""minify"": true },
+                    ""node"": { ""platform"": ""node"" }
+                }
+            }");
+
+            var resolved = Presets.Resolve([Path.Combine(dir, "netpack.json")], dir);
+
+            Assert.NotNull(resolved.Options.Variants);
+            Assert.Equal(2, resolved.Options.Variants!.Count);
+            Assert.True(resolved.Options.Variants!.ContainsKey("web"));
+            Assert.True(resolved.Options.Variants!.ContainsKey("node"));
+            Assert.Equal("web", resolved.Options.Variants!["web"].Platform);
+            Assert.Equal("node", resolved.Options.Variants!["node"].Platform);
+            Assert.True(resolved.Options.Variants!["web"].Minify);
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
 }

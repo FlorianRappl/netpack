@@ -104,9 +104,52 @@ public static class Presets
             result.Packages ??= c.Packages;
             result.Banner ??= c.Banner;
             result.Port ??= c.Port;
+
+            // Merge variants: same-name variants from different presets combine
+            // their overrides (later wins on conflicts per field).
+            if (c.Variants is not null)
+            {
+                result.Variants ??= [];
+
+                foreach (var (name, variant) in c.Variants)
+                {
+                    if (result.Variants.TryGetValue(name, out var existing))
+                    {
+                        result.Variants[name] = MergeVariant(existing, variant);
+                    }
+                    else
+                    {
+                        result.Variants[name] = variant;
+                    }
+                }
+            }
         }
 
         return result;
+    }
+
+    public static BasePresetConfig MergeVariant(BasePresetConfig base_, BasePresetConfig overrides)
+    {
+        return new BasePresetConfig
+        {
+            OutDir = overrides.OutDir ?? base_.OutDir,
+            Minify = overrides.Minify ?? base_.Minify,
+            SourceMap = overrides.SourceMap ?? base_.SourceMap,
+            Clean = overrides.Clean ?? base_.Clean,
+            External = overrides.External ?? base_.External,
+            Shared = overrides.Shared ?? base_.Shared,
+            Format = overrides.Format ?? base_.Format,
+            Platform = overrides.Platform ?? base_.Platform,
+            Define = overrides.Define ?? base_.Define,
+            Alias = overrides.Alias ?? base_.Alias,
+            Loader = overrides.Loader ?? base_.Loader,
+            EntryNames = overrides.EntryNames ?? base_.EntryNames,
+            PublicPath = overrides.PublicPath ?? base_.PublicPath,
+            Conditions = overrides.Conditions ?? base_.Conditions,
+            Packages = overrides.Packages ?? base_.Packages,
+            Banner = overrides.Banner ?? base_.Banner,
+            Port = overrides.Port ?? base_.Port,
+        };
     }
 
     /// <summary>
@@ -172,8 +215,10 @@ public static class Presets
 
         try
         {
-            return JsonSerializer.Deserialize(json, ConfigSourceGenerationContext.Default.PresetConfig)
+            var config = JsonSerializer.Deserialize(json, ConfigSourceGenerationContext.Default.PresetConfig)
                 ?? new PresetConfig();
+
+            return config;
         }
         catch (JsonException ex)
         {

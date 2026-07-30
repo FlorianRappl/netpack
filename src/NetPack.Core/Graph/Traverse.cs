@@ -1382,10 +1382,10 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
 
     private static async Task<string> ComputeContentHash(string filePath, string content, BundlerContext context)
     {
-        // Include build options in the cache key so that changing platform, format,
-        // defines, or loaders invalidates cached ASTs.
-        var optKey = $"{context.Platform.GetType().Name}:{context.Defines.Count}:{context.UserConditions.Count}:{context.Loaders.Count}";
-        var key = $"{filePath}:{optKey}:{content}";
+        // The content already includes define/env substitutions, which are the only
+        // build options that affect parsing. Platform, format, loaders, and conditions
+        // affect graph resolution, not the AST — so they are not part of the key.
+        var key = $"{filePath}:{content}";
         using var stream = new MemoryStream(Encoding.UTF8.GetBytes(key));
         return await Hash.ComputeHash(stream);
     }

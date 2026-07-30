@@ -5,6 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
+    <RollForward>Major</RollForward>
     <!-- The main project publishes AOT; the test project does not need to. -->
     <PublishAot>false</PublishAot>
   </PropertyGroup>

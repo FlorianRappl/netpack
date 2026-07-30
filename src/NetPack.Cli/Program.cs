@@ -1,4 +1,4 @@
-﻿namespace NetPack;
+namespace NetPack;
 
 using NetPack.Assets;
 using NetPack.Commands;
@@ -56,12 +56,11 @@ static class Program
     {
         RegisterAssetProcessors();
 
-        // Resolve presets (--preset and an auto-discovered netpack.json) and fold
-        // their options into the argument list before the verb parser runs. A real
-        // CLI flag always wins, since presets only fill options the user omitted.
+        IReadOnlyList<string[]> allArgs;
+
         try
         {
-            args = PresetArgs.Apply(args);
+            allArgs = PresetArgs.Apply(args);
         }
         catch (Exception ex)
         {
@@ -70,15 +69,27 @@ static class Program
             return;
         }
 
-        Parser.Default.ParseArguments<BundleCommand, GraphCommand, InspectCommand, ServeCommand, AnalyzeCommand, PreviewCommand>(args)
-            .MapResult(
-                (BundleCommand opts) => Run(opts),
-                (GraphCommand opts) => Run(opts),
-                (InspectCommand opts) => Run(opts),
-                (ServeCommand opts) => Run(opts),
-                (AnalyzeCommand opts) => Run(opts),
-                (PreviewCommand opts) => Run(opts),
-                ShowError
-            );
+        var exitCode = 0;
+
+        foreach (var variantArgs in allArgs)
+        {
+            var result = Parser.Default.ParseArguments<BundleCommand, GraphCommand, InspectCommand, ServeCommand, AnalyzeCommand, PreviewCommand>(variantArgs)
+                .MapResult(
+                    (BundleCommand opts) => Run(opts),
+                    (GraphCommand opts) => Run(opts),
+                    (InspectCommand opts) => Run(opts),
+                    (ServeCommand opts) => Run(opts),
+                    (AnalyzeCommand opts) => Run(opts),
+                    (PreviewCommand opts) => Run(opts),
+                    ShowError
+                );
+
+            if (result != 0)
+            {
+                exitCode = result;
+            }
+        }
+
+        Environment.ExitCode = exitCode;
     }
 }

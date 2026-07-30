@@ -12,11 +12,11 @@ public class BundleCommand : ICommand
 {
     private readonly DirectoryListingCache _resolutionCache = new();
 
-    // Kept alive during watch mode for warm rebuild cache hits.
-    private readonly BuildCache _buildCache = new();
-    private readonly CodegenCache _codegenCache = new();
-    private readonly RenderCache _renderCache = new();
-    private readonly PassContext _passContext = new();
+    // Shared across variant runs so multi-target builds (via presets) reuse the parse cache.
+    private static readonly BuildCache _buildCache = new();
+    private static readonly CodegenCache _codegenCache = new();
+    private static readonly RenderCache _renderCache = new();
+    private static readonly PassContext _passContext = new();
 
     [Value(0, HelpText = "The entry point file where the bundler should start.")]
     public string FilePath { get; set; } = "";
@@ -172,6 +172,8 @@ public class BundleCommand : ICommand
             InlineLimit = InlineLimit,
         };
 
+        var platform = ParsePlatform(Platform);
+
         if (Clean && Directory.Exists(outdir))
         {
             Directory.Delete(outdir, true);
@@ -179,7 +181,7 @@ public class BundleCommand : ICommand
 
         Directory.CreateDirectory(outdir);
 
-        var writer = await BuildOnce(file, outdir, options, mergedDefines, aliases, loaders, externalPackages);
+        var writer = await BuildOnce(file, outdir, options, mergedDefines, aliases, loaders, externalPackages, platform);
 
         if (Watch)
         {
@@ -191,7 +193,7 @@ public class BundleCommand : ICommand
                     Console.Clear();
                 }
 
-                return BuildOnce(file, outdir, options, mergedDefines, aliases, loaders, externalPackages);
+                return BuildOnce(file, outdir, options, mergedDefines, aliases, loaders, externalPackages, platform);
             });
             Console.WriteLine();
             Console.WriteLine("[netpack] Watching for changes — press Ctrl+C to stop.");
@@ -202,12 +204,12 @@ public class BundleCommand : ICommand
     private async Task<DiskResultWriter> BuildOnce(
         string file, string outdir, OutputOptions options,
         IReadOnlyDictionary<string, string> defines, IReadOnlyDictionary<string, string> aliases,
-        IReadOnlyDictionary<string, string> loaders, bool externalPackages)
+        IReadOnlyDictionary<string, string> loaders, bool externalPackages, NetPack.Graph.Platform platform)
     {
         var watch = Stopwatch.StartNew();
-        Console.WriteLine("[netpack] Bundling '{0}' ...", FilePath);
+        Console.WriteLine("[netpack] Bundling '{0}' ({1}) ...", FilePath, platform.ToString().ToLowerInvariant());
         using var graph = await Traverse.From(
-            file, Externals, Shared, platform: ParsePlatform(Platform),
+            file, Externals, Shared, platform: platform,
             defines: defines, aliases: aliases, loaders: loaders,
             conditions: Conditions, externalPackages: externalPackages, directoryFiles: Watch ? _resolutionCache : null,
             buildCache: _buildCache, codegenCache: _codegenCache, renderCache: _renderCache, passContext: _passContext);

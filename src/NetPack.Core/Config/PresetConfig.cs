@@ -5,15 +5,11 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 
 /// <summary>
-/// A netpack <b>preset</b>: a transportable JSON(C) bundle of CLI options, plus
-/// optional composition (<see cref="Presets"/>) and lifecycle <see cref="Hooks"/>.
-///
-/// Every option field is <b>nullable</b> so "unset" is distinguishable from "set
-/// to its default" — presets resolve <i>first-write-wins</i> across the chain
-/// (see <see cref="NetPack.Config.Presets"/>). A preset is just convenience for
-/// the CLI flags, except <see cref="Hooks"/>, which are only expressible here.
+/// Base options shared by top-level presets and variants. Contains every field
+/// except <see cref="PresetConfig.Variants"/> — so variants cannot recursively
+/// define sub-variants.
 /// </summary>
-public sealed class PresetConfig
+public class BasePresetConfig
 {
     /// <summary>Other presets to compose in (by path or package reference), each
     /// applied after this one — i.e. this preset's own values take precedence.</summary>
@@ -60,6 +56,26 @@ public sealed class PresetConfig
     [JsonPropertyName("port")] public int? Port { get; set; }
 }
 
+/// <summary>
+/// A netpack <b>preset</b>: a transportable JSON(C) bundle of CLI options, plus
+/// optional composition (<see cref="Presets"/>) and lifecycle <see cref="Hooks"/>.
+///
+/// Every option field is <b>nullable</b> so "unset" is distinguishable from "set
+/// to its default" — presets resolve <i>first-write-wins</i> across the chain
+/// (see <see cref="NetPack.Config.Presets"/>). A preset is just convenience for
+/// the CLI flags, except <see cref="Hooks"/>, which are only expressible here.
+/// </summary>
+public sealed class PresetConfig : BasePresetConfig
+{
+    /// <summary>
+    /// Named variants that override base options for multi-build scenarios.
+    /// Each variant is a <see cref="BasePresetConfig"/> so it cannot define its
+    /// own sub-variants.
+    /// </summary>
+    [JsonPropertyName("variants")]
+    public Dictionary<string, BasePresetConfig>? Variants { get; set; }
+}
+
 /// <summary>The outcome of resolving a preset chain.</summary>
 public sealed class ResolvedPresets
 {
@@ -86,16 +102,18 @@ public sealed class ResolvedPresets
 }
 
 /// <summary>
-/// Source-generated JSON context for <see cref="PresetConfig"/>. Configured for
-/// JSONC — comments and trailing commas are tolerated, since preset files are
-/// hand-authored — and kept separate from the main context so those lenient
-/// options don't leak into the bundler's other JSON handling.
+/// Source-generated JSON context for <see cref="PresetConfig"/> and
+/// <see cref="BasePresetConfig"/>. Configured for JSONC — comments and trailing
+/// commas are tolerated, since preset files are hand-authored — and kept separate
+/// from the main context so those lenient options don't leak into the bundler's
+/// other JSON handling.
 /// </summary>
 [JsonSourceGenerationOptions(
     AllowTrailingCommas = true,
     ReadCommentHandling = JsonCommentHandling.Skip,
     PropertyNameCaseInsensitive = true)]
 [JsonSerializable(typeof(PresetConfig))]
+[JsonSerializable(typeof(BasePresetConfig))]
 internal partial class ConfigSourceGenerationContext : JsonSerializerContext
 {
 }

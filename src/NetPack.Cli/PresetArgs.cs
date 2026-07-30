@@ -47,11 +47,15 @@ static class PresetArgs
     public static IReadOnlyDictionary<string, IReadOnlyList<string>> Hooks { get; private set; }
         = new Dictionary<string, IReadOnlyList<string>>();
 
-    public static string[] Apply(string[] args)
+    /// <summary>
+    /// Returns one arg set per variant when the resolved preset contains variants,
+    /// or a single-item list for the normal (non-variant) path.
+    /// </summary>
+    public static IReadOnlyList<string[]> Apply(string[] args)
     {
         if (args.Length == 0 || !AllowedByVerb.TryGetValue(args[0], out var allowed))
         {
-            return args;
+            return [args];
         }
 
         // Peel off --preset references; pass everything else through untouched.
@@ -93,24 +97,114 @@ static class PresetArgs
 
         if (entryRefs.Count == 0)
         {
-            return args;
+            return [args];
         }
 
         var resolved = Presets.Resolve(entryRefs, baseDir);
         Hooks = resolved.Hooks;
 
         var present = PresentOptionNames(passthrough);
-        var injected = new List<string>();
 
-        foreach (var (name, tokens) in Candidates(resolved.Options))
+        // If no variants, return single arg set (original behavior).
+        if (resolved.Options.Variants is null || resolved.Options.Variants.Count == 0)
         {
-            if (allowed.Contains(name) && !present.Contains(name))
+            var injected = new List<string>();
+
+            foreach (var (name, tokens) in Candidates(resolved.Options))
             {
-                injected.AddRange(tokens);
+                if (allowed.Contains(name) && !present.Contains(name))
+                {
+                    injected.AddRange(tokens);
+                }
+            }
+
+            return [[.. passthrough, .. injected]];
+        }
+
+        // Variants: one arg set per variant. CLI args that conflict with a
+        // variant's overrides act as filters — only matching variants are built.
+        var result = new List<string[]>();
+
+        foreach (var (variantName, variantOptions) in resolved.Options.Variants)
+        {
+            if (!VariantMatchesCliArgs(variantOptions, present, passthrough, allowed))
+            {
+                continue;
+            }
+
+            var merged = Config.Presets.MergeVariant(resolved.Options, variantOptions);
+            var injected = new List<string>();
+
+            if (variantOptions.OutDir is null)
+            {
+                merged.OutDir = merged.OutDir is not null
+                    ? Path.Combine(merged.OutDir, variantName)
+                    : variantName;
+            }
+
+            foreach (var (name, tokens) in Candidates(merged))
+            {
+                if (allowed.Contains(name) && !present.Contains(name))
+                {
+                    injected.AddRange(tokens);
+                }
+            }
+
+            result.Add([.. passthrough, .. injected]);
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// When the user explicitly passed a CLI flag that also appears in a variant's
+    /// overrides, only build variants whose override matches the CLI value.
+    /// Example: --platform web filters out variants with platform: node.
+    /// </summary>
+    private static bool VariantMatchesCliArgs(
+        BasePresetConfig variant,
+        HashSet<string> presentCliOptions,
+        List<string> passthrough,
+        HashSet<string> allowed)
+    {
+        // Check platform: if user passed --platform X, variant must match.
+        if (presentCliOptions.Contains("platform") && variant.Platform is not null)
+        {
+            var cliPlatform = GetCliValue(passthrough, "--platform");
+            if (cliPlatform is not null && !string.Equals(cliPlatform, variant.Platform, StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
             }
         }
 
-        return [.. passthrough, .. injected];
+        if (presentCliOptions.Contains("format") && variant.Format is not null)
+        {
+            var cliFormat = GetCliValue(passthrough, "--format");
+            if (cliFormat is not null && !string.Equals(cliFormat, variant.Format, StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static string? GetCliValue(List<string> args, string flag)
+    {
+        for (var i = 0; i < args.Count; i++)
+        {
+            if (args[i] == flag && i + 1 < args.Count)
+            {
+                return args[i + 1];
+            }
+
+            if (args[i].StartsWith(flag + "=", StringComparison.Ordinal))
+            {
+                return args[i][(flag.Length + 1)..];
+            }
+        }
+
+        return null;
     }
 
     private static HashSet<string> PresentOptionNames(IEnumerable<string> args)
@@ -147,7 +241,7 @@ static class PresetArgs
     /// so a preset can enable but never spuriously disable them; a repeated/keyed
     /// option is emitted in full only when the user supplied none of its own.
     /// </summary>
-    private static IEnumerable<(string Name, string[] Tokens)> Candidates(PresetConfig o)
+    private static IEnumerable<(string Name, string[] Tokens)> Candidates(BasePresetConfig o)
     {
         if (o.OutDir is not null) yield return ("outdir", ["--outdir", o.OutDir]);
         if (o.Minify == true) yield return ("minify", ["--minify"]);
