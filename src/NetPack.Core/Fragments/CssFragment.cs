@@ -13,8 +13,6 @@ public class CssFragment(Node root, ICssStyleSheet stylesheet, IDictionary<ICssP
 
     /// <summary>
     /// Content hash of the CSS source (after preprocessor transpilation).
-    /// Set during graph traversal; used by the render cache for CSS bundle
-    /// invalidation.
     /// </summary>
     public string? ContentHash { get; set; }
 }

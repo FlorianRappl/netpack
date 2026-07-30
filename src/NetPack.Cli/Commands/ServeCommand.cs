@@ -21,9 +21,7 @@ public class ServeCommand : ICommand
     // for addressing an already loaded module during a hot update.
     private readonly ModuleIdMap _moduleIds = new();
 
-    // Incremental build caches — kept alive across recompiles so warm rebuilds
-    // benefit from Phase 1 (parse), Phase 2 (codegen), Phase 3 (render), and
-    // Phase 4 (pass tracking) caches.
+    // Kept alive across recompiles for warm rebuild cache hits.
     private readonly BuildCache _buildCache = new();
     private readonly CodegenCache _codegenCache = new();
     private readonly RenderCache _renderCache = new();

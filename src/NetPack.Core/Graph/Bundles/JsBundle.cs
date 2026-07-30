@@ -49,7 +49,7 @@ public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags
     {
         SourceMap = null;
 
-        // Phase 3 render cache: skip the entire render pipeline for unchanged chunks.
+        // Render cache: skip transpile + print + mangle for unchanged chunks.
         if (TryGetRenderCache(options) is { } cached)
         {
             // When source maps were emitted, the cache stores the map bytes
@@ -95,7 +95,7 @@ public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags
 
         VerifyOutput(code);
 
-        // Cache the rendered bytes for Phase 3. When source maps are enabled,
+        // Cache rendered bytes. When source maps are enabled, prepend the map
         // prepend the source map bytes with a 4-byte length header so the cache
         // hit path can recover the map.
         var codeBytes = Encoding.UTF8.GetBytes(code);
@@ -219,7 +219,7 @@ public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags
 
                 _current = fragment;
 
-                // --- Phase 2 codegen cache: skip Visit() for unchanged modules ---
+                // Codegen cache: skip Visit() for unchanged modules.
                 List<Ast.Statement> loweredBody;
                 var codegenCache = context.CodegenCache;
                 var cacheKey = fragment.ContentHash;
@@ -336,17 +336,14 @@ public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags
         private int GetId(GraphNode node) => _bundle._context.GetModuleId(node);
 
         /// <summary>
-        /// Runs the expensive per-module lowering: clones the fragment's AST
-        /// (to avoid mutating the cached Phase 1 AST), then Visits it (JSX lowering,
-        /// import rewriting, constant folding), then injects an auto JSX import
-        /// if the module uses JSX with a default runtime (e.g. Preact). Returns
-        /// the lowered body and whether JSX was used.
+        /// Clones the fragment's AST before visiting to avoid mutating the
+        /// cached parse result (RewriteList modifies the body list in place).
+        /// Returns the lowered body and whether JSX was used.
         /// </summary>
         private (List<Ast.Statement> Body, bool UsesJsx) VisitAndLower(JsFragment fragment)
         {
             _currentUsesJsx = false;
-            // Clone the AST to prevent Visit() from mutating the Phase 1 cached
-            // source (RewriteList modifies the body list in place).
+            // Clone: Visit() mutates the body list in place via RewriteList.
             var source = new Ast.SourceFile(
                 fragment.Ast.FileName,
                 new List<Ast.Statement>(fragment.Ast.Body),

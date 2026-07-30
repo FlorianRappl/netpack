@@ -97,13 +97,12 @@ public abstract class Bundle(BundlerContext context, Node root, BundleFlags flag
         }
     }
 
-    // -- Phase 3 render cache helpers ---------------------------------------
+    // -- render cache --------------------------------------------------------
 
     /// <summary>
-    /// Computes a stable key for this bundle's render cache entry: the bundle
-    /// name + output config + all module content hashes in the bundle. When
-    /// no module content has changed, the same key is produced and the cached
-    /// bytes can be reused.
+    /// Computes a stable key for the render cache: bundle name + output config
+    /// + all module content hashes. When no module content has changed, the same
+    /// key is produced and the cached bytes can be reused.
     /// </summary>
     protected string ComputeRenderKey(OutputOptions options)
     {
@@ -133,10 +132,6 @@ public abstract class Bundle(BundlerContext context, Node root, BundleFlags flag
         return sb.ToString();
     }
 
-    /// <summary>
-    /// Checks the Phase 3 render cache for this bundle's rendered bytes.
-    /// Returns the cached bytes on hit, null on miss.
-    /// </summary>
     protected byte[]? TryGetRenderCache(OutputOptions options)
     {
         var cache = _context.RenderCache;
@@ -149,9 +144,6 @@ public abstract class Bundle(BundlerContext context, Node root, BundleFlags flag
         return cache.Get(key);
     }
 
-    /// <summary>
-    /// Stores this bundle's rendered bytes in the Phase 3 render cache.
-    /// </summary>
     protected void PutRenderCache(OutputOptions options, byte[] bytes)
     {
         var cache = _context.RenderCache;

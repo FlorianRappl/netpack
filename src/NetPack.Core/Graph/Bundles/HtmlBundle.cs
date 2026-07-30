@@ -20,7 +20,7 @@ public sealed class HtmlBundle(BundlerContext context, Graph.Node root, BundleFl
 
     public override Task<Stream> CreateStream(OutputOptions options)
     {
-        // Phase 3 render cache.
+        // Render cache.
         if (TryGetRenderCache(options) is { } cached)
         {
             return Task.FromResult<Stream>(new MemoryStream(cached));

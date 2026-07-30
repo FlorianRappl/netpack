@@ -8,7 +8,7 @@ public sealed class CssBundle(BundlerContext context, Node root, BundleFlags fla
 {
     public override Task<Stream> CreateStream(OutputOptions options)
     {
-        // Phase 3 render cache.
+        // Render cache.
         if (TryGetRenderCache(options) is { } cached)
         {
             return Task.FromResult<Stream>(new MemoryStream(cached));

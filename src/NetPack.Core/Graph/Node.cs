@@ -61,7 +61,6 @@ public class Node(string fileName, int bytes, int? variantWidth = null, int? var
 
     /// <summary>
     /// Content hash of this module's source (after define/env substitution).
-    /// Set during graph traversal; used by render cache to detect content changes.
     /// </summary>
     public string? ContentHash { get; set; }
 }

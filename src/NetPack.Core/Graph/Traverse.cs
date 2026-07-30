@@ -1346,8 +1346,8 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
             newContent = await CompileSolid(newContent, current.FileName);
         }
 
-        // Compute content hash for both Phase 1 parse cache and Phase 2 codegen
-        // cache. Solid-compiled files bypass both caches (their output is opaque).
+        // Compute content hash for parse and codegen caches.
+        // Solid-compiled files bypass both (their output is opaque).
         var wantHash = (_buildCache is not null || _context.CodegenCache is not null) && !_context.UseSolid;
         var contentHash = wantHash
             ? await ComputeContentHash(current.FileName, newContent, _context)
@@ -1370,8 +1370,7 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
         current.ContentHash = contentHash;
         _context.JsFragments.TryAdd(current, fragment);
 
-        // Phase 5: record this module in the build snapshot using a raw file hash
-        // (independent of build options, suitable for cross-build comparison).
+        // Record raw file hash in the build snapshot for cross-build comparison.
         if (_context.Snapshot is not null)
         {
             var absPath = Path.GetFullPath(Path.Combine(_context.Root, current.FileName));

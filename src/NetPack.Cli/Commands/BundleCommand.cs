@@ -12,8 +12,7 @@ public class BundleCommand : ICommand
 {
     private readonly DirectoryListingCache _resolutionCache = new();
 
-    // Incremental build caches — kept alive across rebuilds during watch mode
-    // so warm rebuilds benefit from all cache layers.
+    // Kept alive during watch mode for warm rebuild cache hits.
     private readonly BuildCache _buildCache = new();
     private readonly CodegenCache _codegenCache = new();
     private readonly RenderCache _renderCache = new();
