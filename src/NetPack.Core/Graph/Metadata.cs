@@ -83,6 +83,8 @@ class Metadata(Traverse graph, MemoryResultWriter compilation) : IFileLocator
                     Exports = exports,
                     Imports = imports,
                     Inputs = inputs,
+                    EntryPoint = bundle.IsPrimary ? path : null,
+                    Flags = bundle.IsPrimary ? "entry" : "shared",
                 };
             }
         }

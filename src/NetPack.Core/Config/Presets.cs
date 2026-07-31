@@ -104,6 +104,7 @@ public static class Presets
             result.Packages ??= c.Packages;
             result.Banner ??= c.Banner;
             result.Port ??= c.Port;
+            result.SplitChunks ??= c.SplitChunks;
 
             // Merge variants: same-name variants from different presets combine
             // their overrides (later wins on conflicts per field).
@@ -149,6 +150,7 @@ public static class Presets
             Packages = overrides.Packages ?? base_.Packages,
             Banner = overrides.Banner ?? base_.Banner,
             Port = overrides.Port ?? base_.Port,
+            SplitChunks = overrides.SplitChunks ?? base_.SplitChunks,
         };
     }
 

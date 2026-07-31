@@ -29,7 +29,7 @@ static class PresetArgs
         {
             "outdir", "minify", "sourcemap", "clean", "external", "shared", "format",
             "platform", "define", "alias", "loader", "entry-names", "public-path",
-            "conditions", "packages", "banner",
+            "conditions", "packages", "banner", "split-chunks",
         },
         ["serve"] = new(StringComparer.Ordinal)
         {
@@ -254,6 +254,7 @@ static class PresetArgs
         if (o.Packages is not null) yield return ("packages", ["--packages", o.Packages]);
         if (o.Banner is not null) yield return ("banner", ["--banner", o.Banner]);
         if (o.Port is not null) yield return ("port", ["--port", o.Port.Value.ToString(CultureInfo.InvariantCulture)]);
+        if (o.SplitChunks is not null) yield return ("split-chunks", ["--split-chunks", System.Text.Json.JsonSerializer.Serialize(o.SplitChunks, SplitChunksSourceGenerationContext.Default.SplitChunksConfig)]);
 
         if (o.External is { Count: > 0 }) yield return ("external", Repeat("--external", o.External));
         if (o.Shared is { Count: > 0 }) yield return ("shared", Repeat("--shared", o.Shared));
