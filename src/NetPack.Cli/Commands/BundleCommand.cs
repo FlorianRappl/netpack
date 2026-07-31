@@ -84,6 +84,9 @@ public class BundleCommand : ICommand
     [Option("inline-limit", Default = 0, HelpText = "Maximum size in bytes to inline assets as data URIs instead of emitting files (0 = disabled).")]
     public int InlineLimit { get; set; } = 0;
 
+    [Option("split-chunks", HelpText = "splitChunks configuration as JSON, e.g. --split-chunks '{\"cacheGroups\":{\"vendors\":{\"test\":\"**/node_modules/**\",\"name\":\"vendors\"}}}'.")]
+    public string? SplitChunksJson { get; set; }
+
     private static bool ParsePackages(string packages) => packages.ToLowerInvariant() switch
     {
         "external" => true,
@@ -120,6 +123,16 @@ public class BundleCommand : ICommand
         "system" or "systemjs" => ModuleFormat.SystemJs,
         _ => throw new InvalidOperationException($"Unknown output format '{format}'. Available: esm, cjs, umd, systemjs."),
     };
+
+    internal static NetPack.Config.SplitChunksConfig? ParseSplitChunks(string? json)
+    {
+        if (string.IsNullOrEmpty(json))
+        {
+            return null;
+        }
+
+        return System.Text.Json.JsonSerializer.Deserialize(json, NetPack.Config.SplitChunksSourceGenerationContext.Default.SplitChunksConfig);
+    }
 
     private static NetPack.Graph.Platform ParsePlatform(string platform) => platform.ToLowerInvariant() switch
     {
@@ -181,7 +194,7 @@ public class BundleCommand : ICommand
 
         Directory.CreateDirectory(outdir);
 
-        var writer = await BuildOnce(file, outdir, options, mergedDefines, aliases, loaders, externalPackages, platform);
+        var writer = await BuildOnce(file, outdir, options, mergedDefines, aliases, loaders, externalPackages, platform, ParseSplitChunks(SplitChunksJson));
 
         if (Watch)
         {
@@ -193,7 +206,7 @@ public class BundleCommand : ICommand
                     Console.Clear();
                 }
 
-                return BuildOnce(file, outdir, options, mergedDefines, aliases, loaders, externalPackages, platform);
+                return BuildOnce(file, outdir, options, mergedDefines, aliases, loaders, externalPackages, platform, ParseSplitChunks(SplitChunksJson));
             });
             Console.WriteLine();
             Console.WriteLine("[netpack] Watching for changes — press Ctrl+C to stop.");
@@ -204,7 +217,8 @@ public class BundleCommand : ICommand
     private async Task<DiskResultWriter> BuildOnce(
         string file, string outdir, OutputOptions options,
         IReadOnlyDictionary<string, string> defines, IReadOnlyDictionary<string, string> aliases,
-        IReadOnlyDictionary<string, string> loaders, bool externalPackages, NetPack.Graph.Platform platform)
+        IReadOnlyDictionary<string, string> loaders, bool externalPackages, NetPack.Graph.Platform platform,
+        NetPack.Config.SplitChunksConfig? splitChunks)
     {
         var watch = Stopwatch.StartNew();
         Console.WriteLine("[netpack] Bundling '{0}' ({1}) ...", FilePath, platform.ToString().ToLowerInvariant());
@@ -212,7 +226,8 @@ public class BundleCommand : ICommand
             file, Externals, Shared, platform: platform,
             defines: defines, aliases: aliases, loaders: loaders,
             conditions: Conditions, externalPackages: externalPackages, directoryFiles: Watch ? _resolutionCache : null,
-            buildCache: _buildCache, codegenCache: _codegenCache, renderCache: _renderCache, passContext: _passContext);
+            buildCache: _buildCache, codegenCache: _codegenCache, renderCache: _renderCache, passContext: _passContext,
+            splitChunks: splitChunks);
         var result = new DiskResultWriter(graph.Context, outdir);
         var emitted = await result.WriteOut(options);
         watch.Stop();

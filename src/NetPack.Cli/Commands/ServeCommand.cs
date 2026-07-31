@@ -72,6 +72,9 @@ public class ServeCommand : ICommand
     [Option("watch-delay", Default = 200, HelpText = "Debounce delay in milliseconds for watch mode (default 200).")]
     public int WatchDelay { get; set; } = 200;
 
+    [Option("split-chunks", HelpText = "splitChunks configuration as JSON.")]
+    public string? SplitChunksJson { get; set; }
+
     private async Task<(MemoryResultWriter Writer, Dictionary<int, string> Factories)> Compile()
     {
         var file = Path.Combine(Environment.CurrentDirectory, FilePath);
@@ -79,7 +82,7 @@ public class ServeCommand : ICommand
         var aliases = BundleCommand.ParseKeyValues(Alias, "alias");
         var loaders = BundleCommand.ParseKeyValues(Loader, "loader");
         Console.WriteLine("[netpack] Starting build ...");
-        using var graph = await Traverse.From(file, Externals, Shared, _moduleIds, devServer: true, defines: defines, aliases: aliases, loaders: loaders, directoryFiles: _resolutionCache, buildCache: _buildCache, codegenCache: _codegenCache, renderCache: _renderCache, passContext: _passContext);
+        using var graph = await Traverse.From(file, Externals, Shared, _moduleIds, devServer: true, defines: defines, aliases: aliases, loaders: loaders, directoryFiles: _resolutionCache, buildCache: _buildCache, codegenCache: _codegenCache, renderCache: _renderCache, passContext: _passContext, splitChunks: BundleCommand.ParseSplitChunks(SplitChunksJson));
         var compilation = new MemoryResultWriter(graph.Context);
         var options = new OutputOptions
         {

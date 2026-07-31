@@ -108,3 +108,71 @@ design:
 Presets are part of `NetPack.Core` (`NetPack.Config.Presets`), so a managed host
 can resolve the same files and read the merged options and hook list without the
 CLI. See [.NET libraries](./dotnet-libraries.md).
+
+## splitChunks
+
+netpack already chooses sensible chunk boundaries by default — shared modules
+are automatically extracted into separate chunks without any configuration. The
+`splitChunks` option is an **expert setting** for when you need precise control
+over chunk grouping (custom vendor bundles, size thresholds, priority rules).
+
+```jsonc
+// netpack.json
+{
+  "splitChunks": {
+    "minSize": 20000,
+    "minChunks": 1,
+    "cacheGroups": {
+      "vendors": {
+        "test": "**/node_modules/**",
+        "name": "vendors",
+        "priority": -10,
+        "enforce": true
+      }
+    }
+  }
+}
+```
+
+In practice the `splitChunks` object is most naturally authored inside a preset
+rather than passed as a raw JSON string on the CLI — though `--split-chunks` is
+available for one-off experiments:
+
+```sh
+npx netpack bundle src/index.html --split-chunks '{...}'
+```
+
+### Available options
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `chunks` | `string` | `"async"` | Which chunks to select: `"all"`, `"async"`, or `"initial"`. |
+| `minSize` | `int` | `20000` | Minimum size in bytes for a chunk to be created. |
+| `minChunks` | `int` | `1` | Minimum number of chunks that must share a module before splitting. |
+| `maxSize` | `int` | `0` | Maximum chunk size before further splitting (0 = off). |
+| `maxAsyncRequests` | `int` | `30` | Maximum parallel requests for async chunks. |
+| `maxInitialRequests` | `int` | `30` | Maximum parallel requests for entry points. |
+
+### cacheGroup options
+
+| Option | Type | Description |
+|---|---|---|
+| `test` | `string` | Glob pattern matching module paths (`**/node_modules/**`, `**/lib/**`). |
+| `name` | `string` | Name for the output chunk. Defaults to the cacheGroup key. |
+| `priority` | `int` | Priority when a module matches multiple groups (higher wins). Default `0`. |
+| `enforce` | `bool` | When `true`, creates the chunk regardless of `minSize` / `minChunks`. |
+| `minChunks` | `int` | Overrides the top-level `minChunks` for this group. |
+| `minSize` | `int` | Overrides the top-level `minSize` for this group. |
+| `chunks` | `string` | Overrides the top-level `chunks` filter for this group. |
+
+The `"default"` cacheGroup is built-in and can be disabled by setting it explicitly:
+
+```jsonc
+{
+  "splitChunks": {
+    "cacheGroups": {
+      "default": {}
+    }
+  }
+}
+```

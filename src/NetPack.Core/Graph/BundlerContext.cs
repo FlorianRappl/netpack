@@ -190,6 +190,13 @@ public sealed class BundlerContext(string root, FeatureFlags features, ModuleIdM
     /// </summary>
     public BuildSnapshot? Snapshot { get; set; }
 
+    /// <summary>
+    /// Optional split-chunks configuration from <c>netpack.json</c> or
+    /// <c>--split-chunks</c>, controlling how shared modules are grouped into
+    /// cache-friendly chunks.
+    /// </summary>
+    public NetPack.Config.SplitChunksConfig? SplitChunks { get; set; }
+
     private readonly ModuleIdMap _moduleIds = moduleIds ?? new ModuleIdMap();
 
     private readonly object _usageLock = new();

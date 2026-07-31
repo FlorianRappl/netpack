@@ -59,6 +59,9 @@ public sealed record BundleOptions
     /// <summary>Maximum size in bytes for assets inlined as data URIs
     /// (<c>--inline-limit</c>). 0 (default) disables inlining.</summary>
     public int InlineLimit { get; init; }
+
+    /// <summary>Split-chunks configuration for custom chunk grouping strategies.</summary>
+    public Config.SplitChunksConfig? SplitChunks { get; init; }
 }
 
 /// <summary>The result of a bundle: emitted-file metadata plus each file's bytes.</summary>
@@ -88,7 +91,8 @@ public static class Bundler
     private static Task<Traverse> BuildGraph(string entryPath, BundleOptions options) => Traverse.From(
         entryPath, options.Externals, options.Shared, platform: options.Platform,
         defines: options.Define, aliases: options.Alias, loaders: options.Loader,
-        conditions: options.Conditions, externalPackages: options.ExternalPackages);
+        conditions: options.Conditions, externalPackages: options.ExternalPackages,
+        splitChunks: options.SplitChunks);
 
     /// <summary>Bundles the project and returns every emitted file in memory.</summary>
     public static async Task<BundleResult> BundleAsync(string entryPath, BundleOptions? options = null)

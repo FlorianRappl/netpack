@@ -48,6 +48,9 @@ public sealed class OutputNode
 
     [JsonPropertyName("entryPoint")]
     public string? EntryPoint { get; set; }
+
+    [JsonPropertyName("flags")]
+    public string? Flags { get; set; }
     
     [JsonPropertyName("inputs")]
     public Dictionary<string, InputDefinition>? Inputs { get; set; }

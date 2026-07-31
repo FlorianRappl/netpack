@@ -55,7 +55,7 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
 
     public static Task<Traverse> From(string path) => From(path, [], []);
 
-    public static async Task<Traverse> From(string path, IEnumerable<string> externals, IEnumerable<string> shared, ModuleIdMap? moduleIds = null, bool devServer = false, Platform platform = Platform.Web, IReadOnlyDictionary<string, string>? defines = null, IReadOnlyDictionary<string, string>? aliases = null, IReadOnlyDictionary<string, string>? loaders = null, IEnumerable<string>? conditions = null, bool externalPackages = false, string? mode = null, IReadOnlyDictionary<string, string>? envVars = null, DirectoryListingCache? directoryFiles = null, BuildCache? buildCache = null, CodegenCache? codegenCache = null, RenderCache? renderCache = null, PassContext? passContext = null, BuildSnapshot? snapshot = null)
+    public static async Task<Traverse> From(string path, IEnumerable<string> externals, IEnumerable<string> shared, ModuleIdMap? moduleIds = null, bool devServer = false, Platform platform = Platform.Web, IReadOnlyDictionary<string, string>? defines = null, IReadOnlyDictionary<string, string>? aliases = null, IReadOnlyDictionary<string, string>? loaders = null, IEnumerable<string>? conditions = null, bool externalPackages = false, string? mode = null, IReadOnlyDictionary<string, string>? envVars = null, DirectoryListingCache? directoryFiles = null, BuildCache? buildCache = null, CodegenCache? codegenCache = null, RenderCache? renderCache = null, PassContext? passContext = null, BuildSnapshot? snapshot = null, NetPack.Config.SplitChunksConfig? splitChunks = null)
     {
         var root = Path.GetDirectoryName(path)!;
         var packageRoot = FindRoot(root);
@@ -65,6 +65,7 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
         traverse.Context.RenderCache = renderCache;
         traverse.Context.PassContext = passContext;
         traverse.Context.Snapshot = snapshot;
+        traverse.Context.SplitChunks = splitChunks;
         traverse.Context.Platform = PlatformTargets.For(platform);
         traverse.Context.Defines = BuildDefines(defines, devServer, mode);
         traverse.Context.EnvVars = envVars ?? new Dictionary<string, string>();
@@ -232,8 +233,8 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
         }
 
         var bundles = _context.Bundles;
-        var connected = new Connected((i, nodes) => $"common.{i:0000}{nodes.First().Type}");
-        var graphs = connected.Apply(bundles.Keys);
+        var strategy = ChunkStrategyFactory.Create(_context.SplitChunks);
+        var graphs = strategy.GroupChunks(bundles.Keys, _context);
 
         foreach (var graph in graphs)
         {

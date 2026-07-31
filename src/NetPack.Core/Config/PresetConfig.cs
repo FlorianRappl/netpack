@@ -54,6 +54,8 @@ public class BasePresetConfig
     [JsonPropertyName("banner")] public string? Banner { get; set; }
 
     [JsonPropertyName("port")] public int? Port { get; set; }
+
+    [JsonPropertyName("splitChunks")] public SplitChunksConfig? SplitChunks { get; set; }
 }
 
 /// <summary>
@@ -114,6 +116,8 @@ public sealed class ResolvedPresets
     PropertyNameCaseInsensitive = true)]
 [JsonSerializable(typeof(PresetConfig))]
 [JsonSerializable(typeof(BasePresetConfig))]
+[JsonSerializable(typeof(SplitChunksConfig))]
+[JsonSerializable(typeof(CacheGroupConfig))]
 internal partial class ConfigSourceGenerationContext : JsonSerializerContext
 {
 }
