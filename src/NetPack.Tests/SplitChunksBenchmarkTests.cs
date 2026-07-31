@@ -23,7 +23,7 @@ public class SplitChunksBenchmarkTests
         _output = output;
     }
 
-    [Fact]
+    [Fact(Skip = "CI: requires data/projects/large — run locally")]
     public async Task Large_project_bundles_with_split_chunks_and_produces_valid_output()
     {
         var projectDir = Path.GetFullPath(Path.Combine(
