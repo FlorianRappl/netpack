@@ -111,9 +111,10 @@ CLI. See [.NET libraries](./dotnet-libraries.md).
 
 ## splitChunks
 
-By default netpack automatically extracts modules shared across multiple entry
-points into separate chunks. You can tune this behavior with `splitChunks`, which
-accepts a configuration object following the well-known `cacheGroups` pattern:
+netpack already chooses sensible chunk boundaries by default — shared modules
+are automatically extracted into separate chunks without any configuration. The
+`splitChunks` option is an **expert setting** for when you need precise control
+over chunk grouping (custom vendor bundles, size thresholds, priority rules).
 
 ```jsonc
 // netpack.json
