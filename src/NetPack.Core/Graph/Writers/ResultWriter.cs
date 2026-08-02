@@ -21,16 +21,56 @@ abstract class ResultWriter(BundlerContext context)
     {
         Started?.Invoke(this, EventArgs.Empty);
 
+        var hooks = _context.Hooks;
+
         if (options.IsOptimizing)
         {
+            await Fire(hooks?.Compilation.Optimize, options);
+            await Fire(hooks?.Compilation.OptimizeDependencies, options);
+
             // Whole-program tree-shaking: prune dead code and unreferenced,
             // side-effect-free modules before anything is rendered.
             TreeShakePass.Run(_context);
+
+            await Fire(hooks?.Compilation.AfterOptimizeDependencies, options);
+            await Fire(hooks?.Compilation.OptimizeModules, options);
+            await Fire(hooks?.Compilation.AfterOptimizeModules, options);
+            await Fire(hooks?.Compilation.OptimizeChunks, options);
+            await Fire(hooks?.Compilation.AfterOptimizeChunks, options);
+            await Fire(hooks?.Compilation.OptimizeTree, options);
+            await Fire(hooks?.Compilation.OptimizeChunkModules, options);
         }
+
+        await Fire(hooks?.Compilation.ModuleIds, options);
+        await Fire(hooks?.Compilation.ChunkIds, options);
+        await Fire(hooks?.Compilation.Seal, options);
+        await Fire(hooks?.Compilation.ContentHash, options);
 
         await AssignHashedNames(options);
 
         _context.PassContext?.Store(IncrementalPass.ChunksHashes, "completed", true);
+
+        await Fire(hooks?.Compilation.AfterCodeGeneration, options);
+
+        // A shouldEmit hook may veto writing entirely (return { emit: false }).
+        if (hooks is not null && hooks.Compiler.ShouldEmit.Count > 0)
+        {
+            var vetoed = await hooks.Compiler.ShouldEmit.CallAsync(new CompilationContext
+            {
+                BundlerContext = _context,
+                OutputOptions = options,
+                IsDevelopment = options.IsReloading,
+            });
+
+            if (vetoed)
+            {
+                await Fire(hooks.Compiler.Done, options);
+                Finished?.Invoke(this, EventArgs.Empty);
+                return [];
+            }
+        }
+
+        await Fire(hooks?.Compiler.Emit, options);
 
         var emitted = new ConcurrentBag<EmittedFile>();
 
@@ -80,22 +120,49 @@ abstract class ResultWriter(BundlerContext context)
 
         _context.PassContext?.Store(IncrementalPass.ChunkAsset, "completed", emitted.Count);
 
-        await RunAfterBundlingHooks(emitted, options);
+        await RunAssetHooks(emitted, options);
+
+        await Fire(hooks?.Compilation.AfterSeal, options);
+        await Fire(hooks?.Compiler.AfterCompile, options);
+        await Fire(hooks?.Compiler.Done, options);
 
         Finished?.Invoke(this, EventArgs.Empty);
         return emitted.OrderBy(f => f.Name, StringComparer.Ordinal).ToArray();
     }
 
+    /// <summary>Fires a compilation/compiler hook (a no-op when null or untapped),
+    /// building the context lazily so an untapped hook costs nothing.</summary>
+    private Task Fire(SeriesHook<CompilationContext>? hook, OutputOptions options)
+        => hook is null || hook.Count == 0
+            ? Task.CompletedTask
+            : hook.CallAsync(new CompilationContext
+            {
+                BundlerContext = _context,
+                OutputOptions = options,
+                IsDevelopment = options.IsReloading,
+            });
+
     /// <summary>
-    /// Runs the preset <c>afterBundling</c> hooks (mapped to
-    /// <see cref="CompilerHooks.AfterEmit"/>). The just-emitted files are handed to
-    /// the taps as a mutable name→bytes map; any entry a hook rewrites (or adds) is
-    /// written back. Skipped entirely when no such tap is registered, so a
-    /// hook-less build is unaffected.
+    /// Runs the asset-stage hooks (<c>additionalAssets</c>, <c>processAssets</c>,
+    /// <c>afterProcessAssets</c>, and <c>afterEmit</c> / the <c>afterBundling</c>
+    /// alias). The emitted files are handed to the taps as a mutable name→bytes map
+    /// via the context <c>State</c>; any entry a hook rewrites (or adds) is written
+    /// back. Skipped entirely when none of these hooks is tapped, so a hook-less
+    /// build is unaffected.
     /// </summary>
-    private async Task RunAfterBundlingHooks(ConcurrentBag<EmittedFile> emitted, OutputOptions options)
+    private async Task RunAssetHooks(ConcurrentBag<EmittedFile> emitted, OutputOptions options)
     {
-        if (_context.Hooks is not { } hooks || hooks.Compiler.AfterEmit.Count == 0)
+        if (_context.Hooks is not { } hooks)
+        {
+            return;
+        }
+
+        var tapped = hooks.Compilation.AdditionalAssets.Count
+            + hooks.Compilation.ProcessAssets.Count
+            + hooks.Compilation.AfterProcessAssets.Count
+            + hooks.Compiler.AfterEmit.Count;
+
+        if (tapped == 0)
         {
             return;
         }
@@ -121,6 +188,10 @@ abstract class ResultWriter(BundlerContext context)
         };
         context.State[PresetHooks.AssetsStateKey] = assets;
 
+        // Ordered: additions, processing, post-processing, then the emit transform.
+        await hooks.Compilation.AdditionalAssets.CallAsync(context);
+        await hooks.Compilation.ProcessAssets.CallAsync(context);
+        await hooks.Compilation.AfterProcessAssets.CallAsync(context);
         await hooks.Compiler.AfterEmit.CallAsync(context);
 
         foreach (var (name, bytes) in assets)

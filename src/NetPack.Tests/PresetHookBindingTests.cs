@@ -87,6 +87,34 @@ public class PresetHookBindingTests
     }
 
     [Fact]
+    public void Known_hook_names_bind_to_their_containers()
+    {
+        var hooks = new BuildHooks();
+        var runner = new FakeRunner();
+
+        PresetHooks.Bind(hooks, new Dictionary<string, IReadOnlyList<string>>
+        {
+            ["make"] = new[] { "/m.js" },
+            ["buildModule"] = new[] { "/b.js" },
+            ["optimizeModules"] = new[] { "/o.js" },
+            ["processAssets"] = new[] { "/p.js" },
+            ["contentHash"] = new[] { "/h.js" },
+            ["done"] = new[] { "/d.js" },
+            ["shouldEmit"] = new[] { "/s.js" },
+            ["afterBundling"] = new[] { "/a.js" }, // alias → afterEmit
+        }, runner, "/root");
+
+        Assert.Equal(1, hooks.Compiler.Make.Count);
+        Assert.Equal(1, hooks.Compilation.BuildModule.Count);
+        Assert.Equal(1, hooks.Compilation.OptimizeModules.Count);
+        Assert.Equal(1, hooks.Compilation.ProcessAssets.Count);
+        Assert.Equal(1, hooks.Compilation.ContentHash.Count);
+        Assert.Equal(1, hooks.Compiler.Done.Count);
+        Assert.Equal(1, hooks.Compiler.ShouldEmit.Count);
+        Assert.Equal(1, hooks.Compiler.AfterEmit.Count);
+    }
+
+    [Fact]
     public void Unknown_hook_names_are_ignored()
     {
         var hooks = new BuildHooks();

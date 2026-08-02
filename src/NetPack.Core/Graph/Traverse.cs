@@ -165,14 +165,15 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
 
     private async Task Run(params IEnumerable<string> entryPoints)
     {
-        // Preset "beforeCompilation" hooks fire before any module is processed.
-        if (_context.Hooks is { } hooks && hooks.Compiler.BeforeCompile.Count > 0)
-        {
-            await hooks.Compiler.BeforeCompile.CallAsync(new NetPack.Plugins.CompilerContext
-            {
-                IsDevelopment = _devServer,
-            });
-        }
+        // Compiler + compilation lifecycle hooks fire before any module is built.
+        FireSync(_context.Hooks?.Compiler.Initialize);
+        await FireAsync(_context.Hooks?.Compiler.BeforeRun);
+        await FireAsync(_devServer ? _context.Hooks?.Compiler.WatchRun : _context.Hooks?.Compiler.Run);
+        await FireAsync(_context.Hooks?.Compiler.BeforeCompile);
+        FireSync(_context.Hooks?.Compiler.Compile);
+        FireSync(_context.Hooks?.Compiler.ThisCompilation);
+        await FireAsync(_context.Hooks?.Compiler.Compilation);
+        await FireAsync(_context.Hooks?.Compiler.Make);
 
         var pc = _context.PassContext;
         if (pc is not null)
@@ -220,8 +221,50 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
             pc.Store(IncrementalPass.BuildModuleGraph, "completed", _context.Modules.Count);
         }
 
+        await FireAsync(_context.Hooks?.Compiler.FinishMake);
+        await FireAsync(_context.Hooks?.Compilation.FinishModules);
+
         Finish();
     }
+
+    // -- hook firing helpers -----------------------------------------------
+
+    private NetPack.Plugins.CompilerContext CompilerHookContext() => new() { IsDevelopment = _devServer };
+
+    private NetPack.Plugins.CompilationContext CompilationHookContext()
+        => new() { BundlerContext = _context, IsDevelopment = _devServer };
+
+    private Task FireAsync(NetPack.Plugins.SeriesHook<NetPack.Plugins.CompilerContext>? hook)
+        => hook is null || hook.Count == 0 ? Task.CompletedTask : hook.CallAsync(CompilerHookContext());
+
+    private Task FireAsync(NetPack.Plugins.SeriesHook<NetPack.Plugins.CompilationContext>? hook)
+        => hook is null || hook.Count == 0 ? Task.CompletedTask : hook.CallAsync(CompilationHookContext());
+
+    private void FireSync(NetPack.Plugins.SyncHook<NetPack.Plugins.CompilerContext>? hook)
+    {
+        if (hook is not null && hook.Count > 0)
+        {
+            hook.Call(CompilerHookContext());
+        }
+    }
+
+    private void FireSync(NetPack.Plugins.SyncHook<NetPack.Plugins.CompilationContext>? hook)
+    {
+        if (hook is not null && hook.Count > 0)
+        {
+            hook.Call(CompilationHookContext());
+        }
+    }
+
+    private Task FireModuleAsync(NetPack.Plugins.SeriesHook<NetPack.Plugins.ModuleBuildContext>? hook, Node module)
+        => hook is null || hook.Count == 0
+            ? Task.CompletedTask
+            : hook.CallAsync(new NetPack.Plugins.ModuleBuildContext
+            {
+                BundlerContext = _context,
+                Module = module,
+                IsDevelopment = _devServer,
+            });
 
     /// <summary>
     /// Enables React Fast Refresh when the project has <c>react-refresh</c>
@@ -1334,6 +1377,34 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
 
     private async Task ProcessJavaScript(Node current, byte[] bytes, Bundle bundle)
     {
+        await FireModuleAsync(_context.Hooks?.Compilation.BuildModule, current);
+
+        try
+        {
+            await ProcessJavaScriptCore(current, bytes, bundle);
+            await FireModuleAsync(_context.Hooks?.Compilation.SucceedModule, current);
+        }
+        catch (Exception error)
+        {
+            var hook = _context.Hooks?.Compilation.FailedModule;
+
+            if (hook is { Count: > 0 })
+            {
+                await hook.CallAsync(new NetPack.Plugins.ModuleBuildContext
+                {
+                    BundlerContext = _context,
+                    Module = current,
+                    IsDevelopment = _devServer,
+                    Error = error,
+                });
+            }
+
+            throw;
+        }
+    }
+
+    private async Task ProcessJavaScriptCore(Node current, byte[] bytes, Bundle bundle)
+    {
         using var stream = new MemoryStream(bytes);
         using var reader = new StreamReader(stream);
         var content = await reader.ReadToEndAsync();
@@ -1383,6 +1454,9 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
                 cachedFragment = await ParseJsModuleFromAst(bundle, current, cachedAst);
                 var options = ParserOptions.ForFile(current.FileName);
                 ApplyJsxFactory(current, content, options.TypeScript, cachedFragment);
+
+                // Reused unchanged from the previous build (watch/incremental).
+                await FireModuleAsync(_context.Hooks?.Compilation.StillValidModule, current);
             }
         }
 

@@ -100,19 +100,34 @@ design:
 
 ### Lifecycle points
 
-Two hook names are recognized today; others are ignored with a warning:
+A hook module default-exports (or `module.exports`) an async function. It receives
+`{ hook, root, dev }` — plus `module` for the per-module hooks, and `files` for the
+asset hooks — and may return a value the bundler applies. Unknown hook names are
+ignored with a warning.
 
-| Hook | When it runs | Receives | Can return |
-|---|---|---|---|
-| `beforeCompilation` | before any module is processed | `{ hook, root, dev }` | — (side effects) |
-| `afterBundling` | after the bundles are emitted | `{ hook, root, dev, files: [{ name, text }] }` | `{ files: [{ name, text }] }` |
+Every point in netpack's build maps to a hook name, mirroring the
+webpack/rspack lifecycle:
 
-A hook module default-exports (or `module.exports`) an async function that
-receives the payload above. For `afterBundling`, text outputs (`.js`, `.css`,
-`.html`, `.json`, `.map`, …) are passed as `text` and binary assets by `name`
-only; return a `files` array to **replace** any asset's contents (or add a new
-one) — this is your post-transformation slot. Return nothing to leave the output
-untouched.
+| Phase | Hooks (in order) |
+|---|---|
+| Compiler start | `initialize`, `beforeRun`, `run` / `watchRun`, `beforeCompile` (alias `beforeCompilation`), `compile`, `thisCompilation`, `compilation`, `make` |
+| Per module | `buildModule`, `stillValidModule`, `succeedModule`, `failedModule` |
+| After the graph | `finishMake`, `finishModules` |
+| Optimize (optimized builds) | `optimize`, `optimizeDependencies`, `afterOptimizeDependencies`, `optimizeModules`, `afterOptimizeModules`, `optimizeChunks`, `afterOptimizeChunks`, `optimizeTree`, `optimizeChunkModules` |
+| Ids & seal | `moduleIds`, `chunkIds`, `seal`, `contentHash`, `afterCodeGeneration` |
+| Emit | `shouldEmit`, `emit`, `additionalAssets`, `processAssets`, `afterProcessAssets`, `afterEmit` (alias `afterBundling`) |
+| Finish | `afterSeal`, `afterCompile`, `done` |
+
+Two kinds carry extra payload and can return a value:
+
+- **Asset hooks** (`additionalAssets`, `processAssets`, `afterProcessAssets`,
+  `afterEmit`/`afterBundling`) receive `files: [{ name, text }]` — text outputs
+  (`.js`, `.css`, `.html`, `.json`, `.map`, …) as `text`, binary assets by `name`
+  only. Return a `files` array to **replace** an asset's contents (or add a new
+  one). This is your post-transformation slot.
+- **`shouldEmit`** may return `{ emit: false }` to skip writing entirely.
+
+The per-module hooks additionally receive the module's path as `module`.
 
 ```js
 // transform.mjs — minify-ish: strip // line comments from every JS bundle

@@ -137,7 +137,14 @@ copy the shape):
 
 - User config is a JSONC **preset** (`netpack.json`, auto-discovered, and/or
   `--preset <ref>`). Presets carry CLI options plus `presets` (composition) and
-  `hooks` (JS modules, resolved but not yet invoked).
+  `hooks` (JS modules run over the Node bridge).
+- **Hooks** map to the `CompilerHooks`/`CompilationHooks` tap system
+  (`Plugins/`). `PresetHooks.Bind` registers a bridge-backed tap per resolved
+  module (`NodeHookRunner`); `Traverse` fires the compiler/compilation/module
+  lifecycle and `ResultWriter` fires the optimize/seal/emit/asset points. Every
+  call site gates on the hook's tap `Count`, so a hook-less build pays nothing.
+  Run-level hooks (`invalid`/`watchClose`/`shutdown`/`failed`) are bindable but
+  reserved (no session-level hosting yet).
 - `NetPack.Core/Config/` owns it: `PresetConfig` (nullable option DTO +
   JSONC-tolerant source-gen context) and `Presets.Resolve` (standalone
   module resolution, recursive load with dedup/cycle-safety, first-write-wins
