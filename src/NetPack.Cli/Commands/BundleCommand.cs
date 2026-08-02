@@ -227,7 +227,7 @@ public class BundleCommand : ICommand
             defines: defines, aliases: aliases, loaders: loaders,
             conditions: Conditions, externalPackages: externalPackages, directoryFiles: Watch ? _resolutionCache : null,
             buildCache: _buildCache, codegenCache: _codegenCache, renderCache: _renderCache, passContext: _passContext,
-            splitChunks: splitChunks);
+            splitChunks: splitChunks, hookModules: PresetArgs.Hooks);
         var result = new DiskResultWriter(graph.Context, outdir);
         var emitted = await result.WriteOut(options);
         watch.Stop();

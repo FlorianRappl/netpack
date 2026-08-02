@@ -76,6 +76,19 @@ const commands = {
     const res = await require(file).call(context);
     return typeof res === 'string' ? res : res.value;
   },
+  hook: async (modulePath, payload) => {
+    // A preset hook module: default-export (or module.exports) an async function
+    // that receives the invocation payload and may return a result the bundler
+    // applies (e.g. transformed asset contents). Resolution happened in .NET; we
+    // just import and call.
+    const imported = await import(pathToFileURL(modulePath).href);
+    const fn = imported && (imported.default || imported);
+    if (typeof fn !== 'function') {
+      throw new Error('hook module has no callable default export: ' + modulePath);
+    }
+    const result = await fn(JSON.parse(payload));
+    return result === undefined ? null : result;
+  },
 };
 
 rl.on('line', async (data) => {

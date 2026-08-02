@@ -18,6 +18,15 @@ sealed class DiskResultWriter(BundlerContext context, string target) : ResultWri
         return File.Create(fileName);
     }
 
+    protected override byte[]? ReadEmitted(string name)
+    {
+        var fileName = Path.Combine(_target, name);
+        return File.Exists(fileName) ? File.ReadAllBytes(fileName) : null;
+    }
+
+    protected override void WriteEmitted(string name, byte[] bytes)
+        => File.WriteAllBytes(Path.Combine(_target, name), bytes);
+
     /// <summary>True when <paramref name="fullPath"/> is a source file that took
     /// part in this build — used by watch mode to decide whether a filesystem
     /// change warrants a rebuild.</summary>

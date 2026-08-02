@@ -60,12 +60,14 @@ public class BasePresetConfig
 
 /// <summary>
 /// A netpack <b>preset</b>: a transportable JSON(C) bundle of CLI options, plus
-/// optional composition (<see cref="Presets"/>) and lifecycle <see cref="Hooks"/>.
+/// optional composition (<see cref="BasePresetConfig.Presets"/>) and lifecycle
+/// <see cref="BasePresetConfig.Hooks"/>.
 ///
 /// Every option field is <b>nullable</b> so "unset" is distinguishable from "set
 /// to its default" — presets resolve <i>first-write-wins</i> across the chain
 /// (see <see cref="NetPack.Config.Presets"/>). A preset is just convenience for
-/// the CLI flags, except <see cref="Hooks"/>, which are only expressible here.
+/// the CLI flags, except <see cref="BasePresetConfig.Hooks"/>, which are only
+/// expressible here.
 /// </summary>
 public sealed class PresetConfig : BasePresetConfig
 {

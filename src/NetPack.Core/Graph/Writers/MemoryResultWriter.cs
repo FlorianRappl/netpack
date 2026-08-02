@@ -39,4 +39,10 @@ sealed class MemoryResultWriter(BundlerContext context) : ResultWriter(context),
             _fs[name] = ms.ToArray();
         }
     }
+
+    protected override byte[]? ReadEmitted(string name)
+        => _fs.TryGetValue(name, out var bytes) ? bytes : null;
+
+    protected override void WriteEmitted(string name, byte[] bytes)
+        => _fs[name] = bytes;
 }

@@ -98,10 +98,33 @@ design:
   the Node bridge is engaged only for hooks that actually have modules registered.
   A build with no hooks is exactly as fast as one with no config at all.
 
-> Hook **resolution** is in place (references are resolved, ordered, and
-> deduplicated ahead of time); the specific lifecycle points and the module
-> calling convention are being finalized, so no hook is invoked yet. The
-> `hooks` object is already safe to author and share.
+### Lifecycle points
+
+Two hook names are recognized today; others are ignored with a warning:
+
+| Hook | When it runs | Receives | Can return |
+|---|---|---|---|
+| `beforeCompilation` | before any module is processed | `{ hook, root, dev }` | — (side effects) |
+| `afterBundling` | after the bundles are emitted | `{ hook, root, dev, files: [{ name, text }] }` | `{ files: [{ name, text }] }` |
+
+A hook module default-exports (or `module.exports`) an async function that
+receives the payload above. For `afterBundling`, text outputs (`.js`, `.css`,
+`.html`, `.json`, `.map`, …) are passed as `text` and binary assets by `name`
+only; return a `files` array to **replace** any asset's contents (or add a new
+one) — this is your post-transformation slot. Return nothing to leave the output
+untouched.
+
+```js
+// transform.mjs — minify-ish: strip // line comments from every JS bundle
+export default async ({ files }) => ({
+  files: files
+    .filter((f) => f.name.endsWith(".js"))
+    .map((f) => ({ name: f.name, text: f.text.replace(/^\s*\/\/.*$/gm, "") })),
+});
+```
+
+Modules run over the Node bridge, so `@babel/core`, `terser`, or any npm package
+they `import` must be installed in the project.
 
 ## .NET
 

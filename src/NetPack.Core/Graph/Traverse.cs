@@ -55,7 +55,7 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
 
     public static Task<Traverse> From(string path) => From(path, [], []);
 
-    public static async Task<Traverse> From(string path, IEnumerable<string> externals, IEnumerable<string> shared, ModuleIdMap? moduleIds = null, bool devServer = false, Platform platform = Platform.Web, IReadOnlyDictionary<string, string>? defines = null, IReadOnlyDictionary<string, string>? aliases = null, IReadOnlyDictionary<string, string>? loaders = null, IEnumerable<string>? conditions = null, bool externalPackages = false, string? mode = null, IReadOnlyDictionary<string, string>? envVars = null, DirectoryListingCache? directoryFiles = null, BuildCache? buildCache = null, CodegenCache? codegenCache = null, RenderCache? renderCache = null, PassContext? passContext = null, BuildSnapshot? snapshot = null, NetPack.Config.SplitChunksConfig? splitChunks = null)
+    public static async Task<Traverse> From(string path, IEnumerable<string> externals, IEnumerable<string> shared, ModuleIdMap? moduleIds = null, bool devServer = false, Platform platform = Platform.Web, IReadOnlyDictionary<string, string>? defines = null, IReadOnlyDictionary<string, string>? aliases = null, IReadOnlyDictionary<string, string>? loaders = null, IEnumerable<string>? conditions = null, bool externalPackages = false, string? mode = null, IReadOnlyDictionary<string, string>? envVars = null, DirectoryListingCache? directoryFiles = null, BuildCache? buildCache = null, CodegenCache? codegenCache = null, RenderCache? renderCache = null, PassContext? passContext = null, BuildSnapshot? snapshot = null, NetPack.Config.SplitChunksConfig? splitChunks = null, IReadOnlyDictionary<string, IReadOnlyList<string>>? hookModules = null)
     {
         var root = Path.GetDirectoryName(path)!;
         var packageRoot = FindRoot(root);
@@ -84,6 +84,17 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
         traverse.Context.UseSolid = await FindSolidRuntime(packageRoot);
         traverse.Context.Externals = [.. externals, .. shared];
         traverse.Context.Shared = [.. shared];
+
+        // Register preset hooks as taps on the build's hook containers, executed
+        // over this instance's Node bridge. Only when there are hooks — a hook-less
+        // build leaves Context.Hooks null and never touches the bridge for hooks.
+        if (hookModules is { Count: > 0 })
+        {
+            var buildHooks = new NetPack.Plugins.BuildHooks();
+            NetPack.Plugins.PresetHooks.Bind(buildHooks, hookModules, new NetPack.Plugins.NodeHookRunner(traverse._njs), traverse.Context.Root);
+            traverse.Context.Hooks = buildHooks;
+        }
+
         await traverse.Run([path, .. shared]);
         return traverse;
     }
@@ -154,6 +165,15 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
 
     private async Task Run(params IEnumerable<string> entryPoints)
     {
+        // Preset "beforeCompilation" hooks fire before any module is processed.
+        if (_context.Hooks is { } hooks && hooks.Compiler.BeforeCompile.Count > 0)
+        {
+            await hooks.Compiler.BeforeCompile.CallAsync(new NetPack.Plugins.CompilerContext
+            {
+                IsDevelopment = _devServer,
+            });
+        }
+
         var pc = _context.PassContext;
         if (pc is not null)
         {

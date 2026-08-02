@@ -82,7 +82,7 @@ public class ServeCommand : ICommand
         var aliases = BundleCommand.ParseKeyValues(Alias, "alias");
         var loaders = BundleCommand.ParseKeyValues(Loader, "loader");
         Console.WriteLine("[netpack] Starting build ...");
-        using var graph = await Traverse.From(file, Externals, Shared, _moduleIds, devServer: true, defines: defines, aliases: aliases, loaders: loaders, directoryFiles: _resolutionCache, buildCache: _buildCache, codegenCache: _codegenCache, renderCache: _renderCache, passContext: _passContext, splitChunks: BundleCommand.ParseSplitChunks(SplitChunksJson));
+        using var graph = await Traverse.From(file, Externals, Shared, _moduleIds, devServer: true, defines: defines, aliases: aliases, loaders: loaders, directoryFiles: _resolutionCache, buildCache: _buildCache, codegenCache: _codegenCache, renderCache: _renderCache, passContext: _passContext, splitChunks: BundleCommand.ParseSplitChunks(SplitChunksJson), hookModules: PresetArgs.Hooks);
         var compilation = new MemoryResultWriter(graph.Context);
         var options = new OutputOptions
         {

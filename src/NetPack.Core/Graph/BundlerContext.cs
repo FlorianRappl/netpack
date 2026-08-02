@@ -3,12 +3,20 @@ namespace NetPack.Graph;
 using System.Collections.Concurrent;
 using NetPack.Fragments;
 using NetPack.Graph.Bundles;
+using NetPack.Plugins;
 
 public sealed class BundlerContext(string root, FeatureFlags features, ModuleIdMap? moduleIds = null)
 {
     public string Root => root;
 
     public FeatureFlags Features => features;
+
+    /// <summary>
+    /// Build hooks registered for this build (from presets, and available to .NET
+    /// plugins). Null when the build has no hooks — call sites gate on this and on
+    /// each hook's tap count, so a hook-less build pays nothing.
+    /// </summary>
+    public BuildHooks? Hooks { get; set; }
 
     /// <summary>The target runtime, which decides the built-in modules that stay
     /// external and how dependency entry points are chosen. Defaults to the web.</summary>

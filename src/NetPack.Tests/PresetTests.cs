@@ -103,7 +103,7 @@ public class PresetTests
 
             Assert.Equal("d", resolved.Options.Banner);
             Assert.Equal(4, resolved.Sources.Count); // a, b, d, c — d only once
-            Assert.Single(resolved.Sources.Where(s => Path.GetFileName(s) == "d.json"));
+            Assert.Single(resolved.Sources, s => Path.GetFileName(s) == "d.json");
         }
         finally
         {

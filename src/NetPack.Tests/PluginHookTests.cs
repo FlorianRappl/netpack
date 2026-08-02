@@ -1,15 +1,20 @@
 namespace NetPack.Tests;
 
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using NetPack.Plugins;
 using Xunit;
 
 /// <summary>
-/// Tests for the plugin hook system.
+/// Tests for the hook system (the primitives and the compiler/compilation hook
+/// containers). There is no plugin driver — hooks are tapped directly.
 /// </summary>
 public class PluginHookTests
 {
+    // A compilation context whose payload the taps below never dereference.
+    private static CompilationContext Ctx() => new() { BundlerContext = null!, OutputOptions = null! };
+
     // -- Series Hook -------------------------------------------------------
 
     [Fact]
@@ -73,6 +78,21 @@ public class PluginHookTests
         Assert.Equal(0, result); // default(int)
     }
 
+    // -- Waterfall Hook ----------------------------------------------------
+
+    [Fact]
+    public async Task WaterfallHook_threads_data_through_taps()
+    {
+        var hook = new SeriesWaterfallHook<string>();
+
+        hook.Tap(new WaterfallTap(0, s => s + "-a"));
+        hook.Tap(new WaterfallTap(10, s => s + "-b"));
+
+        var result = await hook.CallAsync("x");
+
+        Assert.Equal("x-a-b", result);
+    }
+
     // -- Parallel Hook -----------------------------------------------------
 
     [Fact]
@@ -80,11 +100,10 @@ public class PluginHookTests
     {
         var hook = new ParallelHook<string>();
         var results = new List<string>();
-        var allDone = new TaskCompletionSource();
 
-        hook.Tap(new ConcurrentTap(0, "a", results, allDone));
-        hook.Tap(new ConcurrentTap(0, "b", results, allDone));
-        hook.Tap(new ConcurrentTap(0, "c", results, allDone));
+        hook.Tap(new ConcurrentTap(0, "a", results));
+        hook.Tap(new ConcurrentTap(0, "b", results));
+        hook.Tap(new ConcurrentTap(0, "c", results));
 
         await hook.CallAsync("ctx");
 
@@ -94,50 +113,50 @@ public class PluginHookTests
         Assert.Contains("c", results);
     }
 
-    // -- Plugin Registration -----------------------------------------------
+    // -- Sync Hook ---------------------------------------------------------
 
     [Fact]
-    public void PluginDriver_registers_plugins_and_calls_apply()
+    public void SyncHook_runs_taps_in_stage_order()
     {
-        var driver = new PluginDriver();
-        var plugin = new TestPlugin("test-plugin");
-
-        driver.Add(plugin);
-
-        Assert.Single(driver.Plugins);
-        Assert.Equal("test-plugin", driver.Plugins[0].Name);
-        Assert.True(plugin.Applied);
-    }
-
-    [Fact]
-    public void PluginDriver_can_register_multiple_plugins()
-    {
-        var driver = new PluginDriver();
-
-        driver.Add(new TestPlugin("p1"));
-        driver.Add(new TestPlugin("p2"));
-        driver.Add(new TestPlugin("p3"));
-
-        Assert.Equal(3, driver.Plugins.Count);
-    }
-
-    [Fact]
-    public async Task Plugin_taps_are_called_through_driver_hooks()
-    {
-        var driver = new PluginDriver();
+        var hook = new SyncHook<string>();
         var results = new List<string>();
 
-        driver.Add(new RecordingPlugin(results, 10, "first"));
-        driver.Add(new RecordingPlugin(results, 5, "second"));
+        hook.Tap(new SyncTapImpl(10, "b", results));
+        hook.Tap(new SyncTapImpl(5, "a", results));
 
-        await driver.CompilerHooks.Compilation.CallAsync(new CompilationContext
-        {
-            BundlerContext = null!,
-            OutputOptions = null!,
-        });
+        hook.Call("ctx");
 
-        // Second plugin has lower stage, should run first
-        Assert.Equal(["second", "first"], results);
+        Assert.Equal(["a", "b"], results);
+    }
+
+    // -- Hook containers ---------------------------------------------------
+
+    [Fact]
+    public async Task Compiler_hook_taps_run_in_stage_order()
+    {
+        var hooks = new CompilerHooks();
+        var results = new List<string>();
+
+        hooks.Compilation.Tap(new CtxTap(10, "first", results));
+        hooks.Compilation.Tap(new CtxTap(5, "second", results));
+
+        await hooks.Compilation.CallAsync(Ctx());
+
+        Assert.Equal(["second", "first"], results); // lower stage first
+    }
+
+    [Fact]
+    public async Task Process_assets_orders_by_stage_constants()
+    {
+        var hooks = new CompilationHooks();
+        var order = new List<string>();
+
+        hooks.ProcessAssets.Tap(new CtxTap(ProcessAssetsStage.Report, "report", order));
+        hooks.ProcessAssets.Tap(new CtxTap(ProcessAssetsStage.Additional, "additional", order));
+
+        await hooks.ProcessAssets.CallAsync(Ctx());
+
+        Assert.Equal(["additional", "report"], order);
     }
 
     // -- Test Helpers ------------------------------------------------------
@@ -146,12 +165,6 @@ public class PluginHookTests
     {
         public int Stage => stage;
         public Task RunAsync(string context) { results.Add(name); return Task.CompletedTask; }
-    }
-
-    private class CountTap(int stage, List<string> results) : IAsyncHookTap<string>
-    {
-        public int Stage => stage;
-        public Task RunAsync(string context) { results.Add("count"); return Task.CompletedTask; }
     }
 
     private class BailTap(int stage, string name, List<string> callOrder, bool returnsResult) : IAsyncBailHookTap<string, string>
@@ -170,7 +183,13 @@ public class PluginHookTests
         public Task<int> RunAsync(string context) => Task.FromResult(value ?? 0);
     }
 
-    private class ConcurrentTap(int stage, string name, List<string> results, TaskCompletionSource allDone) : IAsyncHookTap<string>
+    private class WaterfallTap(int stage, Func<string, string> transform) : IAsyncWaterfallHookTap<string>
+    {
+        public int Stage => stage;
+        public Task<string> RunAsync(string data) => Task.FromResult(transform(data));
+    }
+
+    private class ConcurrentTap(int stage, string name, List<string> results) : IAsyncHookTap<string>
     {
         public int Stage => stage;
         public async Task RunAsync(string context)
@@ -180,23 +199,13 @@ public class PluginHookTests
         }
     }
 
-    private class TestPlugin(string name) : IPlugin
+    private class SyncTapImpl(int stage, string name, List<string> results) : ISyncHookTap<string>
     {
-        public string Name => name;
-        public bool Applied { get; private set; }
-        public void Apply(IApplyContext context) { Applied = true; }
+        public int Stage => stage;
+        public void Run(string context) => results.Add(name);
     }
 
-    private class RecordingPlugin(List<string> results, int stage, string name) : IPlugin
-    {
-        public string Name => name;
-        public void Apply(IApplyContext context)
-        {
-            context.CompilerHooks.Compilation.Tap(new PluginTap(results, stage, name));
-        }
-    }
-
-    private class PluginTap(List<string> results, int stage, string name) : IAsyncHookTap<CompilationContext>
+    private class CtxTap(int stage, string name, List<string> results) : IAsyncHookTap<CompilationContext>
     {
         public int Stage => stage;
         public Task RunAsync(CompilationContext context) { results.Add(name); return Task.CompletedTask; }

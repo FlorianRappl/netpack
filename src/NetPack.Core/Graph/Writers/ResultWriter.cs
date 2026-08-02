@@ -1,7 +1,9 @@
 namespace NetPack.Graph.Writers;
 
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using NetPack.Graph.Bundles;
+using NetPack.Plugins;
 
 abstract class ResultWriter(BundlerContext context)
 {
@@ -78,8 +80,56 @@ abstract class ResultWriter(BundlerContext context)
 
         _context.PassContext?.Store(IncrementalPass.ChunkAsset, "completed", emitted.Count);
 
+        await RunAfterBundlingHooks(emitted, options);
+
         Finished?.Invoke(this, EventArgs.Empty);
         return emitted.OrderBy(f => f.Name, StringComparer.Ordinal).ToArray();
+    }
+
+    /// <summary>
+    /// Runs the preset <c>afterBundling</c> hooks (mapped to
+    /// <see cref="CompilerHooks.AfterEmit"/>). The just-emitted files are handed to
+    /// the taps as a mutable name→bytes map; any entry a hook rewrites (or adds) is
+    /// written back. Skipped entirely when no such tap is registered, so a
+    /// hook-less build is unaffected.
+    /// </summary>
+    private async Task RunAfterBundlingHooks(ConcurrentBag<EmittedFile> emitted, OutputOptions options)
+    {
+        if (_context.Hooks is not { } hooks || hooks.Compiler.AfterEmit.Count == 0)
+        {
+            return;
+        }
+
+        var assets = new Dictionary<string, byte[]>(StringComparer.Ordinal);
+
+        foreach (var file in emitted)
+        {
+            if (ReadEmitted(file.Name) is { } bytes)
+            {
+                assets[file.Name] = bytes;
+            }
+        }
+
+        // Snapshot the original references so we only persist what actually changed.
+        var original = new Dictionary<string, byte[]>(assets, StringComparer.Ordinal);
+
+        var context = new CompilationContext
+        {
+            BundlerContext = _context,
+            OutputOptions = options,
+            IsDevelopment = options.IsReloading,
+        };
+        context.State[PresetHooks.AssetsStateKey] = assets;
+
+        await hooks.Compiler.AfterEmit.CallAsync(context);
+
+        foreach (var (name, bytes) in assets)
+        {
+            if (!original.TryGetValue(name, out var previous) || !ReferenceEquals(previous, bytes))
+            {
+                WriteEmitted(name, bytes);
+            }
+        }
     }
 
     /// <summary>
@@ -131,4 +181,11 @@ abstract class ResultWriter(BundlerContext context)
     protected virtual void CloseWrite(string name, Stream stream)
     {
     }
+
+    /// <summary>Reads back a just-emitted file's bytes (for hook transforms), or
+    /// null if it isn't available.</summary>
+    protected abstract byte[]? ReadEmitted(string name);
+
+    /// <summary>Overwrites an emitted file with new bytes (after a hook transform).</summary>
+    protected abstract void WriteEmitted(string name, byte[] bytes);
 }

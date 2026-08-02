@@ -48,7 +48,7 @@ public class AnalyzeCommand : ICommand
             Banner = Banner,
             InlineLimit = InlineLimit,
         };
-        using var graph = await Traverse.From(file, Externals, Shared);
+        using var graph = await Traverse.From(file, Externals, Shared, hookModules: PresetArgs.Hooks);
         var compilation = new MemoryResultWriter(graph.Context);
         await compilation.WriteOut(options);
         var results = new Metadata(graph, compilation);
