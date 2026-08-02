@@ -18,7 +18,13 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
 {
     private readonly BundlerContext _context = new(root, features, moduleIds);
     private readonly BrowsingContext _browser = new(Configuration.Default.WithCss());
-    private readonly ConcurrentDictionary<string, Task<Node>> _reserved = [];
+    // Lazy<Task<Node>> — not Task<Node> — so the node is built exactly once per key.
+    // ConcurrentDictionary.GetOrAdd may run its value factory more than once under
+    // contention; wrapping in Lazy guarantees AddNewNodeToBundle (which has side
+    // effects: creating the node, bundle and fragment) runs a single time, so two
+    // importers of the same module always share one node (a precondition for
+    // shared-chunk detection).
+    private readonly ConcurrentDictionary<string, Lazy<Task<Node>>> _reserved = [];
     private readonly DirectoryListingCache? _directoryFiles = directoryFiles;
     private readonly BuildCache? _buildCache = buildCache;
     private readonly NodeJs _njs = new(root);
@@ -1740,12 +1746,13 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
 
         if (!_context.Modules.TryGetValue(key, out var node))
         {
-            if (_reserved.TryGetValue(key, out var task))
-            {
-                return await task;
-            }
-
-            node = await _reserved.GetOrAdd(key, (_) => AddNewNodeToBundle(bundle, fileName, variantWidth, variantHeight, variantFormat, inlineLimitOverride));
+            // GetOrAdd may build the Lazy wrapper more than once, but only one is
+            // stored and only its .Value ever runs — so AddNewNodeToBundle executes
+            // exactly once for this key, and every concurrent importer awaits the
+            // same task and receives the same node.
+            var reserved = _reserved.GetOrAdd(key, _ => new Lazy<Task<Node>>(
+                () => AddNewNodeToBundle(bundle, fileName, variantWidth, variantHeight, variantFormat, inlineLimitOverride)));
+            node = await reserved.Value;
             _reserved.TryRemove(key, out _);
         }
 

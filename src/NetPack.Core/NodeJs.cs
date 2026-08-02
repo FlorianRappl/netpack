@@ -113,6 +113,7 @@ rl.on('line', async (data) => {
     private readonly string _root;
     private readonly Channel<Func<StreamWriter, StreamReader, Task>> _channel;
     private readonly CancellationTokenSource _cts;
+    private int _started;
 
     public NodeJs(string root)
     {
@@ -120,8 +121,21 @@ rl.on('line', async (data) => {
         _cts = new();
         _channel = Channel.CreateUnbounded<Func<StreamWriter, StreamReader, Task>>();
 
-        // Start processing queued tasks
-        Task.Run(ProcessQueueAsync, _cts.Token);
+        // The Node process and its socket are started lazily on the first command
+        // (see EnsureStarted). Most builds — plain JS/TS/CSS/HTML — never invoke the
+        // bridge, so they must not pay for spawning Node or binding a port. This
+        // also avoids a stampede of concurrent processes/ports when many bundles
+        // run in parallel (e.g. a test suite).
+    }
+
+    /// <summary>Starts the queue processor (which spawns Node and opens the socket)
+    /// exactly once, on first use.</summary>
+    private void EnsureStarted()
+    {
+        if (Interlocked.Exchange(ref _started, 1) == 0)
+        {
+            Task.Run(ProcessQueueAsync, _cts.Token);
+        }
     }
 
     private Process Start(int port)
@@ -186,17 +200,20 @@ rl.on('line', async (data) => {
             }
         }
 
+        EnsureStarted();
         _channel.Writer.TryWrite(WorkItem);
         return tcs.Task;
     }
 
     private async Task ProcessQueueAsync()
     {
-        var port = 5000;
         var token = _cts.Token;
 	    var utf8 = new UTF8Encoding(false);
-	    var server = new TcpListener(IPAddress.Loopback, port);
+	    // Bind an OS-assigned ephemeral port so concurrent bridges never collide
+	    // (a fixed port made parallel builds race for the same socket).
+	    var server = new TcpListener(IPAddress.Loopback, 0);
         server.Start();
+        var port = ((IPEndPoint)server.LocalEndpoint).Port;
 
         var clientOpen = server.AcceptTcpClientAsync(token);
         var process = Start(port);
