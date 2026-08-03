@@ -10,6 +10,7 @@ using AngleSharp.Text;
 using NetPack.Fragments;
 using NetPack.Graph.Bundles;
 using NetPack.Graph.Visitors;
+using NetPack.Graph.Writers;
 using NetPack.Json;
 using NetPack.Syntax;
 using static NetPack.Helpers;
@@ -1971,6 +1972,98 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
         });
 
         return node;
+    }
+
+    /// <summary>
+    /// Builds a metafile JSON container (esbuild-compatible) from the graph context
+    /// and the list of emitted files. The manifest contains inputs (source modules
+    /// with their dependencies), outputs (bundles/assets with byte sizes), and
+    /// entry-point information for tooling and analysis.
+    /// </summary>
+    public static string BuildMetafile(BundlerContext context, IReadOnlyList<EmittedFile> emitted)
+    {
+        var root = Environment.CurrentDirectory;
+        var container = new MetadataContainer
+        {
+            Inputs = [],
+            Outputs = []
+        };
+
+        // Build inputs section: every JS module with its imports
+        foreach (var module in context.Modules.Values)
+        {
+            if (module.Type == ".js")
+            {
+                var path = Path.GetRelativePath(root, module.FileName);
+
+                if (context.JsFragments.TryGetValue(module, out var fragment))
+                {
+                    var imports = fragment.Replacements.Values.Select(m => new InputImportDefinition
+                    {
+                        Kind = "import-statement",
+                        Original = "",
+                        Path = Path.GetRelativePath(root, m.FileName),
+                    }).ToList();
+
+                    container.Inputs[path] = new InputNode
+                    {
+                        Format = "esm",
+                        Bytes = module.Bytes,
+                        Imports = imports,
+                    };
+                }
+            }
+        }
+
+        // Build outputs section: every bundle and asset
+        var fileSizes = emitted.ToDictionary(e => e.Name, e => e.Size);
+
+        foreach (var bundle in context.Bundles.Values)
+        {
+            var path = bundle.GetFileName();
+            fileSizes.TryGetValue(path, out var fileSize);
+
+            var items = bundle.Items.Where(m => m.Type == ".js").ToList();
+            var total = Math.Max(1, items.Sum(m => m.Bytes));
+
+            var inputs = new Dictionary<string, InputDefinition>();
+            foreach (var item in items)
+            {
+                inputs[Path.GetRelativePath(root, item.FileName)] = new InputDefinition
+                {
+                    BytesInOutput = (int)(fileSize * item.Bytes / total),
+                };
+            }
+
+            container.Outputs[path] = new OutputNode
+            {
+                Bytes = (int)fileSize,
+                Exports = [],
+                Imports = [],
+                Inputs = inputs,
+                EntryPoint = bundle.IsPrimary ? path : null,
+                Flags = bundle.IsPrimary ? "entry" : "shared",
+            };
+        }
+
+        // Add non-bundle assets (images, fonts, etc.)
+        foreach (var asset in context.Assets.Values)
+        {
+            var path = asset.GetFileName();
+            if (!fileSizes.TryGetValue(path, out var size)) continue;
+
+            container.Outputs[path] = new OutputNode
+            {
+                Bytes = (int)size,
+                Exports = [],
+                Imports = [],
+                Inputs = [],
+                EntryPoint = null,
+                Flags = null,
+            };
+        }
+
+        return System.Text.Json.JsonSerializer.Serialize(container, NetPack.Json.SourceGenerationContext.Default.MetadataContainer);
     }
 
     public void Dispose()

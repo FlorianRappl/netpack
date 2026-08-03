@@ -45,6 +45,7 @@ npx netpack bundle src/index.html
 | `--sourcemap` | off | Emit a `.js.map` next to each JS bundle. |
 | `--clean` | off | Delete `--outdir` before writing. |
 | `--banner <text>` | — | Text placed on top of the entry JS bundle, followed by a newline. Empty banners are discarded. See [Banner](./other-features.md#banner---banner). |
+| `--metafile <path>` | — | Write a build metafile JSON (esbuild-compatible manifest) to the given path. The manifest contains inputs, outputs, byte sizes, dependency edges, and entry-point information for tooling and analysis. |
 | `--external <name>` | — | Repeatable. Don't bundle this import; leave it as a real `import` for the browser/import map to resolve. |
 | `--shared <name>` | — | Repeatable. Like `--external`, but also builds the dependency as its own output chunk and wires it into an import map. See [Import maps & externals](./importmaps-and-externals.md). |
 

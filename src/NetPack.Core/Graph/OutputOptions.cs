@@ -72,4 +72,12 @@ public record OutputOptions
     /// images.
     /// </summary>
     public int InlineLimit { get; init; } = 0;
+
+    /// <summary>
+    /// When set, emits a build metafile JSON (esbuild-compatible) to the given
+    /// path after bundling. The manifest contains inputs, outputs, byte sizes,
+    /// dependency edges, and entry-point information for tooling and analysis.
+    /// Null (the default) means no metafile is produced.
+    /// </summary>
+    public string? MetafilePath { get; init; }
 }

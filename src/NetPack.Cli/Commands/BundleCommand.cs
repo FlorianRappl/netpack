@@ -87,6 +87,9 @@ public class BundleCommand : ICommand
     [Option("split-chunks", HelpText = "splitChunks configuration as JSON, e.g. --split-chunks '{\"cacheGroups\":{\"vendors\":{\"test\":\"**/node_modules/**\",\"name\":\"vendors\"}}}'.")]
     public string? SplitChunksJson { get; set; }
 
+    [Option("metafile", HelpText = "Write a build metafile JSON (esbuild-compatible manifest) to the given path.")]
+    public string? MetaFile { get; set; }
+
     private static bool ParsePackages(string packages) => packages.ToLowerInvariant() switch
     {
         "external" => true,
@@ -183,6 +186,7 @@ public class BundleCommand : ICommand
             Banner = Banner,
             EnableModulePreload = Preload,
             InlineLimit = InlineLimit,
+            MetafilePath = MetaFile,
         };
 
         var platform = ParsePlatform(Platform);
@@ -231,6 +235,16 @@ public class BundleCommand : ICommand
         var result = new DiskResultWriter(graph.Context, outdir);
         var emitted = await result.WriteOut(options);
         watch.Stop();
+
+        if (!string.IsNullOrEmpty(MetaFile))
+        {
+            var metaPath = Path.IsPathRooted(MetaFile)
+                ? MetaFile
+                : Path.Combine(Environment.CurrentDirectory, MetaFile);
+            var dir = Path.GetDirectoryName(metaPath);
+            if (dir is not null) Directory.CreateDirectory(dir);
+            await File.WriteAllTextAsync(metaPath, Traverse.BuildMetafile(graph.Context, emitted));
+        }
 
         PrintSummary(emitted, OutDir, watch.ElapsedMilliseconds, Minify, SourceMap);
         return result;
