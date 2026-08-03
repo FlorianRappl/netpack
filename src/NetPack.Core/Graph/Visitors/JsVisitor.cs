@@ -22,13 +22,21 @@ class JsVisitor(Bundle bundle, GraphNode current, Func<Bundle?, GraphNode, strin
     private readonly GraphNode _current = current;
     private readonly List<string> _exportNames = [];
     private readonly List<AstNode> _elements = [];
-    private readonly List<Task<GraphNode?>> _tasks = [];
+    private readonly List<(Bundle? Bundle, string Source, (int? Width, int? Height, string? Format) Variant)> _imports = [];
 
     public async Task<JsFragment> FindChildren(SourceFile ast)
     {
         Visit(ast);
-        var nodes = await Task.WhenAll(_tasks);
-        var replacements = GetReplacements(nodes, _elements);
+        // Process imports sequentially in declaration order so that post-order
+        // indices assigned during dependency resolution reflect the actual JS
+        // module evaluation order — this is the foundation for deterministic
+        // CSS ordering.
+        var nodes = new List<GraphNode?>(_imports.Count);
+        foreach (var (impBundle, source, variant) in _imports)
+        {
+            nodes.Add(await _report(impBundle, _current, source, variant));
+        }
+        var replacements = GetReplacements(nodes.ToArray(), _elements);
         return new JsFragment(_current, ast, replacements, [.. _exportNames]);
     }
 
@@ -59,7 +67,7 @@ class JsVisitor(Bundle bundle, GraphNode current, Func<Bundle?, GraphNode, strin
     protected override AstNode VisitExportAllDeclaration(ExportAllDeclaration node)
     {
         _elements.Add(node);
-        _tasks.Add(_report(_bundle, _current, node.Source.Value, default));
+        _imports.Add((_bundle, node.Source.Value, default));
         return base.VisitExportAllDeclaration(node);
     }
 
@@ -78,7 +86,7 @@ class JsVisitor(Bundle bundle, GraphNode current, Func<Bundle?, GraphNode, strin
         // `import img from './logo.png?width=200&height=100'` — parsed centrally
         // in Traverse.InnerProcess (which also strips it before resolving the
         // file), so nothing extra is passed here.
-        _tasks.Add(_report(_bundle, _current, node.Source.Value, default));
+        _imports.Add((_bundle, node.Source.Value, default));
         return base.VisitImportDeclaration(node);
     }
 
@@ -100,7 +108,7 @@ class JsVisitor(Bundle bundle, GraphNode current, Func<Bundle?, GraphNode, strin
         if (node.Source is not null)
         {
             _elements.Add(node);
-            _tasks.Add(_report(_bundle, _current, node.Source.Value, default));
+            _imports.Add((_bundle, node.Source.Value, default));
         }
 
         foreach (var specifier in node.Specifiers)
@@ -153,7 +161,7 @@ class JsVisitor(Bundle bundle, GraphNode current, Func<Bundle?, GraphNode, strin
         if (node.Source is StringLiteral str)
         {
             _elements.Add(node);
-            _tasks.Add(_report(null, _current, str.Value, default));
+            _imports.Add((null, str.Value, default));
         }
 
         return base.VisitImportExpression(node);
@@ -165,7 +173,7 @@ class JsVisitor(Bundle bundle, GraphNode current, Func<Bundle?, GraphNode, strin
             node.Arguments[0] is StringLiteral str && ident.Name == "require")
         {
             _elements.Add(node);
-            _tasks.Add(_report(_bundle, _current, str.Value, default));
+            _imports.Add((_bundle, str.Value, default));
         }
 
         return base.VisitCallExpression(node);

@@ -97,10 +97,12 @@ public sealed class HtmlBundle(BundlerContext context, Graph.Node root, BundleFl
                 WriteImportmap(importmap, content);
             }
 
-            // Add shared CSS chunks as <link> tags in the <head>
+            // Add shared CSS chunks as <link> tags in the <head>, ordered by the
+            // post-order index of their first importing JS module so that CSS
+            // cascade matches module evaluation order.
             var sharedCssBundles = _context.Bundles.Values
                 .Where(b => b is CssBundle && b.IsShared)
-                .OrderBy(b => b.Name)
+                .OrderBy(b => b.Root.PostOrderIndex)
                 .ToList();
 
             foreach (var cssBundle in sharedCssBundles)

@@ -29,6 +29,7 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
     private readonly BuildCache? _buildCache = buildCache;
     private readonly NodeJs _njs = new(root);
     private bool _devServer;
+    private int _nextPostOrderIndex;
 
     private async Task<string> TranspileSass(string content, string file)
     {
@@ -313,7 +314,10 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
                 bundles.TryAdd(graph.Key, bundle);
             }
 
-            bundle.Items = [.. graph.Value];
+            // Sort modules by post-order index so the bundle factory registry
+            // emits them in declaration / evaluation order, which is the
+            // foundation for deterministic CSS ordering.
+            bundle.Items = [.. graph.Value.OrderBy(n => n.PostOrderIndex)];
         }
 
         if (_context.PassContext is not null)
@@ -1286,6 +1290,10 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
             {
                 _context.CssImports.TryAdd(graphNode, bundle);
 
+                // Record the post-order index of the importing JS module so CSS
+                // files are ordered by their position in the evaluation chain.
+                _context.CssImporterOrder.TryAdd(graphNode, fragment.Root.PostOrderIndex);
+
                 // Track all bundles that import this CSS file for code splitting
                 _context.CssImportedByBundles.AddOrUpdate(
                     graphNode,
@@ -1318,7 +1326,12 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
     /// </summary>
     private async Task TransformCssModules(IDictionary<Node, string>? sharedCss = null)
     {
-        foreach (var (node, bundle) in _context.CssImports.ToArray())
+        // Process CSS modules in post-order so their virtual JS modules are
+        // registered in the same order as the JS modules that imported them.
+        var sortedCssImports = _context.CssImports.ToArray()
+            .OrderBy(kv => _context.CssImporterOrder.TryGetValue(kv.Key, out var order) ? order : 0);
+
+        foreach (var (node, bundle) in sortedCssImports)
         {
             // Skip shared CSS - it's already been created as a separate CSS bundle
             if (sharedCss is not null && sharedCss.ContainsKey(node))
@@ -1777,6 +1790,7 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
             else
             {
                 await ProcessAsset(node, bytes);
+                node.PostOrderIndex = Interlocked.Increment(ref _nextPostOrderIndex) - 1;
                 return node;
             }
         }
@@ -1786,6 +1800,7 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
         if (node.Extension == ".vue")
         {
             await ProcessVue(node, bytes, bundle);
+            node.PostOrderIndex = Interlocked.Increment(ref _nextPostOrderIndex) - 1;
             return node;
         }
 
@@ -1793,6 +1808,7 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
         if (node.Extension == ".astro")
         {
             await ProcessAstro(node, bytes, bundle);
+            node.PostOrderIndex = Interlocked.Increment(ref _nextPostOrderIndex) - 1;
             return node;
         }
 
@@ -1800,6 +1816,7 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
         if (node.Extension == ".svelte")
         {
             await ProcessSvelte(node, bytes, bundle);
+            node.PostOrderIndex = Interlocked.Increment(ref _nextPostOrderIndex) - 1;
             return node;
         }
 
@@ -1809,6 +1826,7 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
         if (loader is not null)
         {
             await ProcessWithLoader(loader, node, bytes, bundle);
+            node.PostOrderIndex = Interlocked.Increment(ref _nextPostOrderIndex) - 1;
             return node;
         }
 
@@ -1822,6 +1840,7 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
             _ => ProcessAsset(node, bytes),
         });
 
+        node.PostOrderIndex = Interlocked.Increment(ref _nextPostOrderIndex) - 1;
         return node;
     }
 

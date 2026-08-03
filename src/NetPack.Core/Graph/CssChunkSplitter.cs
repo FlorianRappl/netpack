@@ -17,15 +17,19 @@ public class CssChunkSplitter
 
     /// <summary>
     /// Computes shared CSS files that are imported by multiple entry bundles.
-    /// Returns a mapping of CSS nodes to the shared chunk names.
+    /// Returns a mapping of CSS nodes to the shared chunk names, sorted by the
+    /// post-order index of their first importing JS module so that shared chunks
+    /// retain deterministic ordering across builds.
     /// </summary>
     public IDictionary<Node, string> ComputeSharedCss()
     {
         var sharedCss = new Dictionary<Node, string>();
 
-        // Find CSS files imported by multiple bundles
+        // Find CSS files imported by multiple bundles, ordered by the post-order
+        // index of their first importer for deterministic output.
         var chunkIndex = 1;
-        foreach (var (cssNode, bundles) in _context.CssImportedByBundles)
+        foreach (var (cssNode, bundles) in _context.CssImportedByBundles
+                     .OrderBy(kv => _context.CssImporterOrder.TryGetValue(kv.Key, out var order) ? order : 0))
         {
             if (bundles.Count > 1)
             {

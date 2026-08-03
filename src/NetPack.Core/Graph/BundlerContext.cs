@@ -165,6 +165,14 @@ public sealed class BundlerContext(string root, FeatureFlags features, ModuleIdM
     public ConcurrentDictionary<Node, HashSet<Bundle>> CssImportedByBundles = [];
 
     /// <summary>
+    /// Maps a CSS node to the post-order index of the JS module that first
+    /// imported it. Used for deterministic CSS ordering: CSS files are sorted
+    /// by their importer's position in the JS evaluation order so that the
+    /// cascade matches runtime execution.
+    /// </summary>
+    public ConcurrentDictionary<Node, int> CssImporterOrder = [];
+
+    /// <summary>
     /// The printed (pre-mangle) source of each module's factory, keyed by module
     /// id. Populated during a reloading build so the dev server can diff modules
     /// between compiles and push hot updates. Fresh per compile.

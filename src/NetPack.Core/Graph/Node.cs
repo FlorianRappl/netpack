@@ -63,4 +63,12 @@ public class Node(string fileName, int bytes, int? variantWidth = null, int? var
     /// Content hash of this module's source (after define/env substitution).
     /// </summary>
     public string? ContentHash { get; set; }
+
+    /// <summary>
+    /// Post-order index assigned during graph traversal. Higher values mean
+    /// the module was processed later in the DFS. CSS modules use this to
+    /// determine their output order relative to their importing JS modules.
+    /// Null until assigned by <see cref="Traverse"/>.
+    /// </summary>
+    public int PostOrderIndex { get; set; } = -1;
 }
