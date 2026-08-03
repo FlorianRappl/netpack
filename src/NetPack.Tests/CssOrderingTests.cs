@@ -321,4 +321,144 @@ public class CssOrderingTests
             Directory.Delete(dir, recursive: true);
         }
     }
+
+    // -- Test 9: Conflict detection across multiple entries ------------------
+
+    [Fact]
+    public async Task Detects_ordering_conflict_when_css_order_differs_across_entries()
+    {
+        // app1.js imports shared.css then a.css
+        // app2.js imports a.css then shared.css
+        // a.css and shared.css are both imported by both entries but in
+        // opposite orders — a conflict should be detected.
+        var dir = Path.Combine(Path.GetTempPath(), "netpack-cssord-" + Path.GetRandomFileName());
+        Directory.CreateDirectory(dir);
+
+        try
+        {
+            await File.WriteAllTextAsync(Path.Combine(dir, "package.json"), "{}");
+            await File.WriteAllTextAsync(Path.Combine(dir, "shared.css"), ".shared { margin: 0; }");
+            await File.WriteAllTextAsync(Path.Combine(dir, "a.css"), ".a { color: green; }");
+            await File.WriteAllTextAsync(Path.Combine(dir, "app1.js"),
+                "import './shared.css';\nimport './a.css';\nexport const x = 1;");
+            await File.WriteAllTextAsync(Path.Combine(dir, "app2.js"),
+                "import './a.css';\nimport './shared.css';\nexport const y = 2;");
+            await File.WriteAllTextAsync(Path.Combine(dir, "index.html"),
+                "<!doctype html><html><head>" +
+                "<script type=\"module\" src=\"./app1.js\"></script>" +
+                "<script type=\"module\" src=\"./app2.js\"></script>" +
+                "</head><body></body></html>");
+
+            using var sw = new StringWriter();
+            var originalError = Console.Error;
+            Console.SetError(sw);
+
+            try
+            {
+                using var graph = await Traverse.From(Path.Combine(dir, "index.html"));
+            }
+            finally
+            {
+                Console.SetError(originalError);
+            }
+
+            var stderr = sw.ToString();
+            Assert.Contains("Conflicting CSS order", stderr, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    // -- Test 10: No false positives when order is consistent ---------------
+
+    [Fact]
+    public async Task No_warning_when_css_order_is_consistent_across_entries()
+    {
+        // Both entries import shared.css first then their own CSS — no conflict.
+        var dir = Path.Combine(Path.GetTempPath(), "netpack-cssord-" + Path.GetRandomFileName());
+        Directory.CreateDirectory(dir);
+
+        try
+        {
+            await File.WriteAllTextAsync(Path.Combine(dir, "package.json"), "{}");
+            await File.WriteAllTextAsync(Path.Combine(dir, "shared.css"), ".shared { margin: 0; }");
+            await File.WriteAllTextAsync(Path.Combine(dir, "a.css"), ".a { color: green; }");
+            await File.WriteAllTextAsync(Path.Combine(dir, "b.css"), ".b { color: blue; }");
+            await File.WriteAllTextAsync(Path.Combine(dir, "app1.js"),
+                "import './shared.css';\nimport './a.css';\nexport const a = 1;");
+            await File.WriteAllTextAsync(Path.Combine(dir, "app2.js"),
+                "import './shared.css';\nimport './b.css';\nexport const b = 2;");
+            await File.WriteAllTextAsync(Path.Combine(dir, "index.html"),
+                "<!doctype html><html><head>" +
+                "<script type=\"module\" src=\"./app1.js\"></script>" +
+                "<script type=\"module\" src=\"./app2.js\"></script>" +
+                "</head><body></body></html>");
+
+            using var sw = new StringWriter();
+            var originalError = Console.Error;
+            Console.SetError(sw);
+
+            try
+            {
+                using var graph = await Traverse.From(Path.Combine(dir, "index.html"));
+            }
+            finally
+            {
+                Console.SetError(originalError);
+            }
+
+            var stderr = sw.ToString();
+            Assert.DoesNotContain("Conflicting CSS order", stderr, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    // -- Test 11: Debug output produces the ordered CSS list ----------------
+
+    [Fact]
+    public async Task Debug_output_lists_css_files_in_evaluation_order()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "netpack-cssord-" + Path.GetRandomFileName());
+        Directory.CreateDirectory(dir);
+
+        try
+        {
+            await File.WriteAllTextAsync(Path.Combine(dir, "package.json"), "{}");
+            await File.WriteAllTextAsync(Path.Combine(dir, "a.js"),
+                "import './first.css';\nimport './second.css';\nexport const x = 1;");
+            await File.WriteAllTextAsync(Path.Combine(dir, "first.css"), ".first { color: red; }");
+            await File.WriteAllTextAsync(Path.Combine(dir, "second.css"), ".second { color: blue; }");
+
+            using var graph = await Traverse.From(Path.Combine(dir, "a.js"));
+
+            using var sw = new StringWriter();
+            var originalError = Console.Error;
+            Console.SetError(sw);
+
+            try
+            {
+                Traverse.DebugCssOrder(graph.Context);
+            }
+            finally
+            {
+                Console.SetError(originalError);
+            }
+
+            var stderr = sw.ToString();
+            var firstIdx = stderr.IndexOf("first.css", StringComparison.Ordinal);
+            var secondIdx = stderr.IndexOf("second.css", StringComparison.Ordinal);
+            Assert.True(firstIdx >= 0, "Debug output should list first.css");
+            Assert.True(secondIdx >= 0, "Debug output should list second.css");
+            Assert.True(firstIdx < secondIdx, "first.css should appear before second.css in debug output");
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
 }

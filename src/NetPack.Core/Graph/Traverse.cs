@@ -216,6 +216,9 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
         var sharedCss = cssSplitter.ComputeSharedCss();
         cssSplitter.CreateSharedCssBundles(sharedCss);
 
+        // Detect ordering conflicts among shared CSS modules
+        DetectCssOrderConflicts();
+
         await TransformCssModules(sharedCss);
 
         if (_devServer && primaryEntry is not null)
@@ -1290,9 +1293,19 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
             {
                 _context.CssImports.TryAdd(graphNode, bundle);
 
-                // Record the post-order index of the importing JS module so CSS
-                // files are ordered by their position in the evaluation chain.
-                _context.CssImporterOrder.TryAdd(graphNode, fragment.Root.PostOrderIndex);
+                // Record the post-order index of the CSS module so CSS files
+                // are ordered by their position in the evaluation chain.
+                _context.CssImporterOrder.TryAdd(graphNode, graphNode.PostOrderIndex);
+
+                // Record per-bundle CSS import order for conflict detection
+                _context.CssPerBundleOrder.AddOrUpdate(
+                    bundle,
+                    _ => new List<Node> { graphNode },
+                    (_, list) =>
+                    {
+                        lock (list) { list.Add(graphNode); }
+                        return list;
+                    });
 
                 // Track all bundles that import this CSS file for code splitting
                 _context.CssImportedByBundles.AddOrUpdate(
@@ -1350,6 +1363,41 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
             var source = CssModules.GenerateModule(css, map);
             var fragment = await ParseJsModule(bundle, node, source);
             _context.JsFragments.TryAdd(node, fragment);
+        }
+    }
+
+    /// <summary>
+    /// Detects ordering conflicts among CSS modules shared across multiple
+    /// chunk groups and emits a warning for each unresolved pair.
+    /// </summary>
+    private void DetectCssOrderConflicts()
+    {
+        var conflicts = CssOrdering.DetectConflicts(_context);
+
+        foreach (var conflict in conflicts)
+        {
+            var nameA = Path.GetFileName(conflict.ModuleA.FileName);
+            var nameB = Path.GetFileName(conflict.ModuleB.FileName);
+
+            Console.Error.WriteLine(
+                "[netpack] warning: Conflicting CSS order between {0} and {1}. " +
+                "These modules appear in different orders across chunk groups and the " +
+                "output cascade may differ from source order.",
+                nameA, nameB);
+        }
+    }
+
+    /// <summary>
+    /// Writes the computed CSS module order to stderr for diagnostic purposes.
+    /// Activated when <c>NETPACK_DEBUG_CSS_ORDER=1</c>.
+    /// </summary>
+    public static void DebugCssOrder(BundlerContext context)
+    {
+        var ordered = CssOrdering.GetOrderedCssFiles(context);
+        Console.Error.WriteLine("[netpack] CSS module order (by JS evaluation):");
+        for (var i = 0; i < ordered.Count; i++)
+        {
+            Console.Error.WriteLine("  {0}: {1}", i + 1, ordered[i]);
         }
     }
 
