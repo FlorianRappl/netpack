@@ -359,20 +359,53 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
         }
     }
 
-    private void WalkPostOrder(Node node, HashSet<Node> seen)
+    /// <summary>
+    /// Iterative post-order DFS using a manual stack. Walks Children in sorted
+    /// order for deterministic indices without risking stack overflow on deep
+    /// import chains or cyclic graphs.
+    /// </summary>
+    private void WalkPostOrder(Node root, HashSet<Node> seen)
     {
-        if (!seen.Add(node)) return;
+        if (!seen.Add(root)) return;
 
-        // Sort children by file name for deterministic traversal order,
-        // independent of parallel import resolution timing. Combined with
-        // CssPerBundleOrder (which tracks exact declaration order), this
-        // gives stable bundle factory ordering across builds.
-        foreach (var child in node.Children.OrderBy(n => n.FileName, StringComparer.Ordinal))
+        // Stack entries: (node, enumerator over children, state)
+        // state 0 = first visit (need to push children), 1 = children done
+        var stack = new Stack<(Node Node, IEnumerator<Node> Enumerator, int State)>();
+        stack.Push((root, root.Children.OrderBy(n => n.FileName, StringComparer.Ordinal).GetEnumerator(), 0));
+
+        while (stack.Count > 0)
         {
-            WalkPostOrder(child, seen);
-        }
+            var (node, enumerator, state) = stack.Peek();
 
-        node.PostOrderIndex = _nextPostOrderIndex++;
+            if (state == 0)
+            {
+                // First visit: descend into next unseen child
+                while (enumerator.MoveNext())
+                {
+                    var child = enumerator.Current;
+                    if (seen.Add(child))
+                    {
+                        var childEnumerator = child.Children
+                            .OrderBy(n => n.FileName, StringComparer.Ordinal)
+                            .GetEnumerator();
+                        stack.Push((child, childEnumerator, 0));
+                        goto next;
+                    }
+                }
+
+                // All children processed, mark for post-order assignment
+                stack.Pop();
+                stack.Push((node, enumerator, 1));
+            }
+            else
+            {
+                // Post-order: all children are done
+                node.PostOrderIndex = _nextPostOrderIndex++;
+                stack.Pop();
+            }
+
+            next:;
+        }
     }
 
     private Bundle CreateBundle(Node root, BundleFlags flags)
