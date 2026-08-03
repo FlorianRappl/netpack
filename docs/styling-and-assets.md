@@ -4,14 +4,73 @@ Everything below works with zero configuration — netpack detects what a
 file needs from its extension (and, for CSS preprocessing, from what's
 installed) rather than requiring a config file.
 
-## CSS
+## CSS Ordering
 
-Importing a `.css` file — from JS/TS or with a `<link>` in HTML — bundles it
-into a CSS output file and, for a JS/TS import, injects the styles at
-runtime via a small generated module.
+CSS files imported from JavaScript are emitted in the order their importing
+modules appear in the dependency graph — the cascade consistently matches
+runtime execution across builds.
+
+### How it works
+
+During graph traversal each module receives a **post-order index** after its
+children resolve, and imports are processed **sequentially** in declaration
+order (not in parallel) so indices reflect source position exactly. When a
+JS module imports multiple CSS files the CSS nodes inherit the relative
+order of their importers through these indices.
+
+This means:
 
 ```js
-import './app.css';
+import './b.css';   // b.css appears first in output
+import './c.css';   // c.css appears second
+```
+
+The bundle factory registry is sorted by post-order index so the runtime
+injects styles in the same order the JS evaluated them, preserving the
+intended cascade.
+
+### Shared CSS chunks
+
+When the same CSS file is imported by multiple entry bundles it is extracted
+into a shared chunk (`common.NNNNN.css`). The order of shared chunks in
+the HTML `<link>` tags follows the post-order of the first importing bundle,
+producing a stable cross-entry cascade.
+
+### CSS Modules
+
+CSS module imports follow the same ordering as regular CSS imports —
+the class-name maps are exported and injected in evaluation order.
+
+### Conflict detection
+
+A CSS file that appears before another in one entry but after it in another
+creates an **ordering conflict** — the two modules have different relative
+positions across chunk groups and the cascade cannot satisfy both at once.
+
+netpack detects these conflicts during the build and warns on stderr:
+
+```
+[netpack] warning: Conflicting CSS order between shared.css and a.css.
+These modules appear in different orders across chunk groups and the
+output cascade may differ from source order.
+```
+
+No warning means the computed ordering is consistent across all entries.
+
+### Debug output
+
+Set `NETPACK_DEBUG_CSS_ORDER=1` to list every CSS file in computed
+evaluation order:
+
+```sh
+NETPACK_DEBUG_CSS_ORDER=1 npx netpack bundle src/index.html
+```
+
+```
+[netpack] CSS module order (by JS evaluation):
+  1: shared.css
+  2: a.css
+  3: b.css
 ```
 
 ## CSS Modules
