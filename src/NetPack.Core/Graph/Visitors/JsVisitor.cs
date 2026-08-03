@@ -8,6 +8,13 @@ using GraphNode = NetPack.Graph.Node;
 using AstNode = NetPack.Syntax.Ast.Node;
 using static NetPack.Helpers;
 
+/// <summary>
+/// Walks a parsed module to discover its dependencies (static imports,
+/// re-exports, dynamic <c>import()</c> and CommonJS <c>require()</c>) and to
+/// collect the module's export names. Dead branches guarded by constant string
+/// comparisons (e.g. <c>process.env.NODE_ENV</c> after substitution) are not
+/// traversed, so their dependencies are not pulled into the graph.
+/// </summary>
 class JsVisitor(Bundle bundle, GraphNode current, Func<Bundle?, GraphNode, string, (int? Width, int? Height, string? Format), Task<GraphNode?>> report) : AstRewriter
 {
     private readonly Func<Bundle?, GraphNode, string, (int? Width, int? Height, string? Format), Task<GraphNode?>> _report = report;
@@ -58,12 +65,19 @@ class JsVisitor(Bundle bundle, GraphNode current, Func<Bundle?, GraphNode, strin
 
     protected override AstNode VisitImportDeclaration(ImportDeclaration node)
     {
+        // `import type ...` has no runtime module to load — it is erased at print
+        // time, so it must not be resolved or bundled (mirrors the Astro/Vue SFC
+        // handling of type-only imports).
         if (node.TypeOnly)
         {
             return base.VisitImportDeclaration(node);
         }
 
         _elements.Add(node);
+        // A bare import can request an image variant via a query string, e.g.
+        // `import img from './logo.png?width=200&height=100'` — parsed centrally
+        // in Traverse.InnerProcess (which also strips it before resolving the
+        // file), so nothing extra is passed here.
         _tasks.Add(_report(_bundle, _current, node.Source.Value, default));
         return base.VisitImportDeclaration(node);
     }
@@ -76,6 +90,8 @@ class JsVisitor(Bundle bundle, GraphNode current, Func<Bundle?, GraphNode, strin
 
     protected override AstNode VisitExportNamedDeclaration(ExportNamedDeclaration node)
     {
+        // `export type { ... }` (optionally `from '...'`) is type-only — no runtime
+        // re-export, no module to resolve.
         if (node.TypeOnly)
         {
             return base.VisitExportNamedDeclaration(node);
