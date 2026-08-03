@@ -215,4 +215,64 @@ public class MetafileTests
             Directory.Delete(dir, recursive: true);
         }
     }
+
+    // -- Test 7: Dependency edges include original import specifiers ----------
+
+    [Fact]
+    public async Task Input_imports_include_original_specifier()
+    {
+        var container = await BuildAndGetMetafile(
+            ("index.html", "<!doctype html><html><head><script type=\"module\" src=\"./app.js\"></script></head><body></body></html>"),
+            ("app.js", "import { helper } from './helper.js';\nexport const x = helper();"),
+            ("helper.js", "export function helper() { return 1; }"));
+
+        var appInput = container.Inputs!.First(i => i.Key.EndsWith("app.js"));
+
+        // Should have at least one import with the correct specifier
+        Assert.Contains(appInput.Value.Imports!, i => i.Original == "./helper.js");
+        Assert.Equal("import-statement", appInput.Value.Imports![0].Kind);
+    }
+
+    // -- Test 8: CSS imported from JS appears in metafile --------------------
+
+    [Fact]
+    public async Task Css_imported_from_js_appears_in_metafile()
+    {
+        var container = await BuildAndGetMetafile(
+            ("index.html", "<!doctype html><html><head><script type=\"module\" src=\"./app.js\"></script></head><body></body></html>"),
+            ("app.js", "import './style.css';\nexport const x = 1;"),
+            ("style.css", ".x { color: red; }"));
+
+        // The app.js input should reference style.css as a dependency
+        var appInput = container.Inputs!.First(i => i.Key.EndsWith("app.js"));
+        Assert.Contains(appInput.Value.Imports!, i => i.Original == "./style.css");
+    }
+
+    // -- Test 9: Non-entry output has null entryPoint ------------------------
+
+    [Fact]
+    public async Task Non_entry_output_has_null_entry_point()
+    {
+        var container = await BuildAndGetMetafile(
+            ("index.html",
+                "<!doctype html><html><head>" +
+                "<script type=\"module\" src=\"./app1.js\"></script>" +
+                "<script type=\"module\" src=\"./app2.js\"></script>" +
+                "</head><body></body></html>"),
+            ("shared.js", "export const common = 1;"),
+            ("app1.js", "import { common } from './shared.js';\nexport const a = common;"),
+            ("app2.js", "import { common } from './shared.js';\nexport const b = common;"));
+
+        // The shared chunk should have flags=shared and entryPoint=null
+        var sharedOutputs = container.Outputs!
+            .Where(o => o.Value.Flags == "shared")
+            .ToList();
+
+        Assert.NotEmpty(sharedOutputs);
+        foreach (var (_, output) in sharedOutputs)
+        {
+            Assert.Null(output.EntryPoint);
+            Assert.Equal("shared", output.Flags);
+        }
+    }
 }

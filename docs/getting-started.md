@@ -161,7 +161,7 @@ npx netpack bundle app.js --metafile meta.json
     "app.js": {
       "bytes": 34,
       "format": "esm",
-      "imports": [{ "path": "helper.js", "kind": "import-statement", "original": "" }]
+      "imports": [{ "path": "helper.js", "kind": "import-statement", "original": "./helper.js" }]
     },
     "helper.js": {
       "bytes": 38,

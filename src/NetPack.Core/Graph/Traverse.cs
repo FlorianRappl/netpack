@@ -1977,8 +1977,8 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
     /// <summary>
     /// Builds a metafile JSON container (esbuild-compatible) from the graph context
     /// and the list of emitted files. The manifest contains inputs (source modules
-    /// with their dependencies), outputs (bundles/assets with byte sizes), and
-    /// entry-point information for tooling and analysis.
+    /// with their dependencies), outputs (bundles/assets with byte sizes, entry-point
+    /// flags, and cross-bundle references), and per-chunk and per-asset metadata.
     /// </summary>
     public static string BuildMetafile(BundlerContext context, IReadOnlyList<EmittedFile> emitted)
     {
@@ -1989,6 +1989,13 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
             Outputs = []
         };
 
+        // Build a map from node to output file name for cross-references
+        var nodeToOutput = new Dictionary<Node, string>();
+        foreach (var bundle in context.Bundles.Values)
+        {
+            nodeToOutput[bundle.Root] = bundle.GetFileName();
+        }
+
         // Build inputs section: every JS module with its imports
         foreach (var module in context.Modules.Values)
         {
@@ -1998,12 +2005,28 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
 
                 if (context.JsFragments.TryGetValue(module, out var fragment))
                 {
-                    var imports = fragment.Replacements.Values.Select(m => new InputImportDefinition
+                    var imports = new List<InputImportDefinition>();
+                    foreach (var (astNode, resolvedNode) in fragment.Replacements)
                     {
-                        Kind = "import-statement",
-                        Original = "",
-                        Path = Path.GetRelativePath(root, m.FileName),
-                    }).ToList();
+                        var original = astNode switch
+                        {
+                            Syntax.Ast.ImportDeclaration import => import.Source.Value,
+                            Syntax.Ast.ImportExpression dyn => (dyn.Source as Syntax.Ast.StringLiteral)?.Value ?? "",
+                            Syntax.Ast.CallExpression call =>
+                                call.Arguments.Count > 0 && call.Arguments[0] is Syntax.Ast.StringLiteral str
+                                    ? str.Value : "",
+                            Syntax.Ast.ExportNamedDeclaration exp => exp.Source?.Value ?? "",
+                            Syntax.Ast.ExportAllDeclaration expAll => expAll.Source.Value,
+                            _ => "",
+                        };
+
+                        imports.Add(new InputImportDefinition
+                        {
+                            Kind = "import-statement",
+                            Original = original,
+                            Path = Path.GetRelativePath(root, resolvedNode.FileName),
+                        });
+                    }
 
                     container.Inputs[path] = new InputNode
                     {
@@ -2035,11 +2058,28 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
                 };
             }
 
+            // Collect cross-bundle references (JS→CSS, shared deps)
+            var imports = new List<OutputImportDefinition>();
+            foreach (var item in bundle.Items)
+            {
+                foreach (var child in item.Children)
+                {
+                    if (child.Type == ".css" && nodeToOutput.TryGetValue(child, out var cssOutput))
+                    {
+                        imports.Add(new OutputImportDefinition
+                        {
+                            Kind = "import-statement",
+                            Path = cssOutput,
+                        });
+                    }
+                }
+            }
+
             container.Outputs[path] = new OutputNode
             {
                 Bytes = (int)fileSize,
                 Exports = [],
-                Imports = [],
+                Imports = imports,
                 Inputs = inputs,
                 EntryPoint = bundle.IsPrimary ? path : null,
                 Flags = bundle.IsPrimary ? "entry" : "shared",
