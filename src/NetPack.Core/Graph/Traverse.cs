@@ -29,6 +29,7 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
     private readonly BuildCache? _buildCache = buildCache;
     private readonly NodeJs _njs = new(root);
     private bool _devServer;
+    private int _nextPostOrderIndex;
 
     private async Task<string> TranspileSass(string content, string file)
     {
@@ -215,6 +216,9 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
         var sharedCss = cssSplitter.ComputeSharedCss();
         cssSplitter.CreateSharedCssBundles(sharedCss);
 
+        // Detect ordering conflicts among shared CSS modules
+        DetectCssOrderConflicts();
+
         await TransformCssModules(sharedCss);
 
         if (_devServer && primaryEntry is not null)
@@ -301,6 +305,12 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
             pc.Store(IncrementalPass.FinishModules, "started", true);
         }
 
+        // Assign deterministic post-order indices by running a DFS that follows
+        // Children in sorted order. This runs after the full graph is built,
+        // so it is independent of the non-deterministic resolution order during
+        // parallel import processing.
+        AssignPostOrderIndices();
+
         var bundles = _context.Bundles;
         var strategy = ChunkStrategyFactory.Create(_context.SplitChunks);
         var graphs = strategy.GroupChunks(bundles.Keys, _context);
@@ -313,13 +323,88 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
                 bundles.TryAdd(graph.Key, bundle);
             }
 
-            bundle.Items = [.. graph.Value];
+            // Sort modules by post-order index so the bundle factory registry
+            // emits them in declaration / evaluation order, which is the
+            // foundation for deterministic CSS ordering.
+            bundle.Items = [.. graph.Value.OrderBy(n => n.PostOrderIndex)];
         }
 
         if (_context.PassContext is not null)
         {
             _context.PassContext.Store(IncrementalPass.FinishModules, "completed", _context.Bundles.Count);
             _context.PassContext.Store(IncrementalPass.BuildChunkGraph, "completed", _context.Bundles.Count);
+        }
+    }
+
+    /// <summary>
+    /// Assigns deterministic post-order indices to all modules by walking the
+    /// graph from each entry point in source order. Children are sorted by the
+    /// declared import position within their parent's AST body (recorded during
+    /// parsing), ensuring CSS files that appear earlier in import lists get
+    /// lower post-order indices.
+    /// </summary>
+    private void AssignPostOrderIndices()
+    {
+        _nextPostOrderIndex = 0;
+        var seen = new HashSet<Node>();
+
+        foreach (var bundle in _context.Bundles.Values.Where(b => b.IsPrimary))
+        {
+            WalkPostOrder(bundle.Root, seen);
+        }
+
+        foreach (var bundle in _context.Bundles.Values)
+        {
+            WalkPostOrder(bundle.Root, seen);
+        }
+    }
+
+    /// <summary>
+    /// Iterative post-order DFS using a manual stack. Walks Children in sorted
+    /// order for deterministic indices without risking stack overflow on deep
+    /// import chains or cyclic graphs.
+    /// </summary>
+    private void WalkPostOrder(Node root, HashSet<Node> seen)
+    {
+        if (!seen.Add(root)) return;
+
+        // Stack entries: (node, enumerator over children, state)
+        // state 0 = first visit (need to push children), 1 = children done
+        var stack = new Stack<(Node Node, IEnumerator<Node> Enumerator, int State)>();
+        stack.Push((root, root.Children.OrderBy(n => n.FileName, StringComparer.Ordinal).GetEnumerator(), 0));
+
+        while (stack.Count > 0)
+        {
+            var (node, enumerator, state) = stack.Peek();
+
+            if (state == 0)
+            {
+                // First visit: descend into next unseen child
+                while (enumerator.MoveNext())
+                {
+                    var child = enumerator.Current;
+                    if (seen.Add(child))
+                    {
+                        var childEnumerator = child.Children
+                            .OrderBy(n => n.FileName, StringComparer.Ordinal)
+                            .GetEnumerator();
+                        stack.Push((child, childEnumerator, 0));
+                        goto next;
+                    }
+                }
+
+                // All children processed, mark for post-order assignment
+                stack.Pop();
+                stack.Push((node, enumerator, 1));
+            }
+            else
+            {
+                // Post-order: all children are done
+                node.PostOrderIndex = _nextPostOrderIndex++;
+                stack.Pop();
+            }
+
+            next:;
         }
     }
 
@@ -1277,14 +1362,37 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
     /// Records CSS files this module imports so they can later be turned into
     /// virtual JS modules. An import that carries named/default bindings marks the
     /// CSS file as a CSS module (class names are hashed).
+    ///
+    /// CSS files are tracked in source-declaration order (matching the JS module's
+    /// AST body) rather than resolution-completion order, so the per-bundle CSS
+    /// lists reflect the actual evaluation sequence.
     /// </summary>
     private void RegisterCssImports(Bundle bundle, JsFragment fragment)
     {
-        foreach (var (astNode, graphNode) in fragment.Replacements)
+        // Walk the AST body in source order to find import declarations,
+        // then look up each one in the replacements map to get its resolved node.
+        // This preserves declaration order regardless of which dependency resolved first.
+        foreach (var stmt in fragment.Ast.Body)
         {
-            if (astNode is Syntax.Ast.ImportDeclaration import && graphNode.Type == ".css")
+            if (stmt is Syntax.Ast.ImportDeclaration import
+                && fragment.Replacements.TryGetValue(import, out var graphNode)
+                && graphNode.Type == ".css")
             {
                 _context.CssImports.TryAdd(graphNode, bundle);
+
+                // Record the post-order index of the CSS module so CSS files
+                // are ordered by their position in the evaluation chain.
+                _context.CssImporterOrder.TryAdd(graphNode, graphNode.PostOrderIndex);
+
+                // Record per-bundle CSS import order for conflict detection
+                _context.CssPerBundleOrder.AddOrUpdate(
+                    bundle,
+                    _ => new List<Node> { graphNode },
+                    (_, list) =>
+                    {
+                        lock (list) { list.Add(graphNode); }
+                        return list;
+                    });
 
                 // Track all bundles that import this CSS file for code splitting
                 _context.CssImportedByBundles.AddOrUpdate(
@@ -1318,7 +1426,12 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
     /// </summary>
     private async Task TransformCssModules(IDictionary<Node, string>? sharedCss = null)
     {
-        foreach (var (node, bundle) in _context.CssImports.ToArray())
+        // Process CSS modules in post-order so their virtual JS modules are
+        // registered in the same order as the JS modules that imported them.
+        var sortedCssImports = _context.CssImports.ToArray()
+            .OrderBy(kv => _context.CssImporterOrder.TryGetValue(kv.Key, out var order) ? order : 0);
+
+        foreach (var (node, bundle) in sortedCssImports)
         {
             // Skip shared CSS - it's already been created as a separate CSS bundle
             if (sharedCss is not null && sharedCss.ContainsKey(node))
@@ -1337,6 +1450,41 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
             var source = CssModules.GenerateModule(css, map);
             var fragment = await ParseJsModule(bundle, node, source);
             _context.JsFragments.TryAdd(node, fragment);
+        }
+    }
+
+    /// <summary>
+    /// Detects ordering conflicts among CSS modules shared across multiple
+    /// chunk groups and emits a warning for each unresolved pair.
+    /// </summary>
+    private void DetectCssOrderConflicts()
+    {
+        var conflicts = CssOrdering.DetectConflicts(_context);
+
+        foreach (var conflict in conflicts)
+        {
+            var nameA = Path.GetFileName(conflict.ModuleA.FileName);
+            var nameB = Path.GetFileName(conflict.ModuleB.FileName);
+
+            Console.Error.WriteLine(
+                "[netpack] warning: Conflicting CSS order between {0} and {1}. " +
+                "These modules appear in different orders across chunk groups and the " +
+                "output cascade may differ from source order.",
+                nameA, nameB);
+        }
+    }
+
+    /// <summary>
+    /// Writes the computed CSS module order to stderr for diagnostic purposes.
+    /// Activated when <c>NETPACK_DEBUG_CSS_ORDER=1</c>.
+    /// </summary>
+    public static void DebugCssOrder(BundlerContext context)
+    {
+        var ordered = CssOrdering.GetOrderedCssFiles(context);
+        Console.Error.WriteLine("[netpack] CSS module order (by JS evaluation):");
+        for (var i = 0; i < ordered.Count; i++)
+        {
+            Console.Error.WriteLine("  {0}: {1}", i + 1, ordered[i]);
         }
     }
 

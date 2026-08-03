@@ -1,9 +1,9 @@
-const __m = { 1: (module, exports, require) => {
-  const { a: a } = require(0);
-  exports.default = a;
-}, 0: (module, exports, require) => {
+const __m = { 0: (module, exports, require) => {
   const a = 1;
   exports.a = a;
+}, 1: (module, exports, require) => {
+  const { a: a } = require(0);
+  exports.default = a;
 } };
 var __c = {};
 function __r(id) {
