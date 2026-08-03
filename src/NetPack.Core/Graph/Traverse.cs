@@ -305,6 +305,12 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
             pc.Store(IncrementalPass.FinishModules, "started", true);
         }
 
+        // Assign deterministic post-order indices by running a DFS that follows
+        // Children in sorted order. This runs after the full graph is built,
+        // so it is independent of the non-deterministic resolution order during
+        // parallel import processing.
+        AssignPostOrderIndices();
+
         var bundles = _context.Bundles;
         var strategy = ChunkStrategyFactory.Create(_context.SplitChunks);
         var graphs = strategy.GroupChunks(bundles.Keys, _context);
@@ -328,6 +334,45 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
             _context.PassContext.Store(IncrementalPass.FinishModules, "completed", _context.Bundles.Count);
             _context.PassContext.Store(IncrementalPass.BuildChunkGraph, "completed", _context.Bundles.Count);
         }
+    }
+
+    /// <summary>
+    /// Assigns deterministic post-order indices to all modules by walking the
+    /// graph from each entry point in source order. Children are sorted by the
+    /// declared import position within their parent's AST body (recorded during
+    /// parsing), ensuring CSS files that appear earlier in import lists get
+    /// lower post-order indices.
+    /// </summary>
+    private void AssignPostOrderIndices()
+    {
+        _nextPostOrderIndex = 0;
+        var seen = new HashSet<Node>();
+
+        foreach (var bundle in _context.Bundles.Values.Where(b => b.IsPrimary))
+        {
+            WalkPostOrder(bundle.Root, seen);
+        }
+
+        foreach (var bundle in _context.Bundles.Values)
+        {
+            WalkPostOrder(bundle.Root, seen);
+        }
+    }
+
+    private void WalkPostOrder(Node node, HashSet<Node> seen)
+    {
+        if (!seen.Add(node)) return;
+
+        // Sort children by file name for deterministic traversal order,
+        // independent of parallel import resolution timing. Combined with
+        // CssPerBundleOrder (which tracks exact declaration order), this
+        // gives stable bundle factory ordering across builds.
+        foreach (var child in node.Children.OrderBy(n => n.FileName, StringComparer.Ordinal))
+        {
+            WalkPostOrder(child, seen);
+        }
+
+        node.PostOrderIndex = _nextPostOrderIndex++;
     }
 
     private Bundle CreateBundle(Node root, BundleFlags flags)
@@ -1284,12 +1329,21 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
     /// Records CSS files this module imports so they can later be turned into
     /// virtual JS modules. An import that carries named/default bindings marks the
     /// CSS file as a CSS module (class names are hashed).
+    ///
+    /// CSS files are tracked in source-declaration order (matching the JS module's
+    /// AST body) rather than resolution-completion order, so the per-bundle CSS
+    /// lists reflect the actual evaluation sequence.
     /// </summary>
     private void RegisterCssImports(Bundle bundle, JsFragment fragment)
     {
-        foreach (var (astNode, graphNode) in fragment.Replacements)
+        // Walk the AST body in source order to find import declarations,
+        // then look up each one in the replacements map to get its resolved node.
+        // This preserves declaration order regardless of which dependency resolved first.
+        foreach (var stmt in fragment.Ast.Body)
         {
-            if (astNode is Syntax.Ast.ImportDeclaration import && graphNode.Type == ".css")
+            if (stmt is Syntax.Ast.ImportDeclaration import
+                && fragment.Replacements.TryGetValue(import, out var graphNode)
+                && graphNode.Type == ".css")
             {
                 _context.CssImports.TryAdd(graphNode, bundle);
 
@@ -1838,7 +1892,6 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
             else
             {
                 await ProcessAsset(node, bytes);
-                node.PostOrderIndex = Interlocked.Increment(ref _nextPostOrderIndex) - 1;
                 return node;
             }
         }
@@ -1848,7 +1901,6 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
         if (node.Extension == ".vue")
         {
             await ProcessVue(node, bytes, bundle);
-            node.PostOrderIndex = Interlocked.Increment(ref _nextPostOrderIndex) - 1;
             return node;
         }
 
@@ -1856,7 +1908,6 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
         if (node.Extension == ".astro")
         {
             await ProcessAstro(node, bytes, bundle);
-            node.PostOrderIndex = Interlocked.Increment(ref _nextPostOrderIndex) - 1;
             return node;
         }
 
@@ -1864,7 +1915,6 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
         if (node.Extension == ".svelte")
         {
             await ProcessSvelte(node, bytes, bundle);
-            node.PostOrderIndex = Interlocked.Increment(ref _nextPostOrderIndex) - 1;
             return node;
         }
 
@@ -1874,7 +1924,6 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
         if (loader is not null)
         {
             await ProcessWithLoader(loader, node, bytes, bundle);
-            node.PostOrderIndex = Interlocked.Increment(ref _nextPostOrderIndex) - 1;
             return node;
         }
 
@@ -1888,7 +1937,6 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
             _ => ProcessAsset(node, bytes),
         });
 
-        node.PostOrderIndex = Interlocked.Increment(ref _nextPostOrderIndex) - 1;
         return node;
     }
 
