@@ -8,11 +8,13 @@ Usage docs for netpack, in addition to the feature overview in the
 - **[Getting started](./getting-started.md)** — install, entry points, and
   the `bundle` / `serve` / `analyze` commands.
 - **[Configuration & presets](./configuration.md)** — shareable JSONC config
-  files, composing presets (`extends`-style), option precedence, and hooks.
+  files, composing presets (`extends`-style), and option precedence.
+- **[Hooks](./hooks.md)** — preset-registered JavaScript modules that tap the
+  build lifecycle (post-transformation, asset rewriting, and more).
 - **[Programmatic use](./programmatic-api.md)** — drive the bundler from a
   Node.js program with the typed `netpack` object (and low-level `run`).
 
-## Use cases
+## Frameworks
 
 - **[React & JSX](./react-and-jsx.md)** — the default `React.createElement`
   factory, retargeting it project-wide or per file, and React Fast Refresh
@@ -29,6 +31,9 @@ Usage docs for netpack, in addition to the feature overview in the
 - **[Svelte components](./svelte.md)** — `.svelte` compilation via the Svelte
   compiler over the Node bridge (requires `svelte` installed), with runtime
   style injection.
+
+## Use cases
+
 - **[Module Federation](./module-federation.md)** — exposing and consuming
   federated modules via a `federation.json` entry point.
 - **[Native Federation](./native-federation.md)** — the same `federation.json`
@@ -42,17 +47,17 @@ Usage docs for netpack, in addition to the feature overview in the
 
 ## Advanced
 
+- **[Platforms](./platforms.md)** — targeting web, Node or Deno with
+  `--platform`: which modules stay external as runtime built-ins and how entry
+  points are chosen.
+- **[Output formats](./output-formats.md)** — emitting ESM (default),
+  CommonJS, UMD or SystemJS with `--format`, their trade-offs, and why ESM is
+  the best choice.
 - **[Import maps & externals](./importmaps-and-externals.md)** — leaving a
   dependency out of the bundle with `--external`, or having netpack build
   and wire it up itself with `--shared`.
 - **[Build-time code generation](./codegen.md)** — `.codegen` files: the
   loader context, async support, and the current watch-mode limitations.
-- **[Output formats](./output-formats.md)** — emitting ESM (default),
-  CommonJS, UMD or SystemJS with `--format`, their trade-offs, and why ESM is
-  the best choice.
-- **[Platforms](./platforms.md)** — targeting web, Node or Deno with
-  `--platform`: which modules stay external as runtime built-ins and how entry
-  points are chosen.
 - **[Other features](./other-features.md)** — tree shaking, source maps,
   minification, and the bundle analyzer.
 

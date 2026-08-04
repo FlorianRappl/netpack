@@ -26,15 +26,15 @@ export const INDEX_ID = 'README';
 const NAV_GROUPS: { label: string; ids: string[] }[] = [
   {
     label: 'General',
-    ids: ['getting-started', 'configuration', 'programmatic-api'],
+    ids: ['getting-started', 'configuration', 'hooks', 'programmatic-api'],
+  },
+  {
+    label: 'Frameworks',
+    ids: ['react-and-jsx', 'solid', 'vue', 'astro', 'svelte'],
   },
   {
     label: 'Use cases',
     ids: [
-      'react-and-jsx',
-      'solid',
-      'vue',
-      'astro',
       'module-federation',
       'native-federation',
       'styling-and-assets',
@@ -43,7 +43,13 @@ const NAV_GROUPS: { label: string; ids: string[] }[] = [
   },
   {
     label: 'Advanced',
-    ids: ['importmaps-and-externals', 'codegen', 'other-features'],
+    ids: [
+      'platforms',
+      'output-formats',
+      'importmaps-and-externals',
+      'codegen',
+      'other-features',
+    ],
   },
   {
     label: '.NET',
