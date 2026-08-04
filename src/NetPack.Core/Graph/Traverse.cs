@@ -29,6 +29,7 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
     private readonly BuildCache? _buildCache = buildCache;
     private readonly NodeJs _njs = new(root);
     private bool _devServer;
+    private bool _quiet;
     private int _nextPostOrderIndex;
 
     private async Task<string> TranspileSass(string content, string file)
@@ -62,12 +63,12 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
 
     public static Task<Traverse> From(string path) => From(path, [], []);
 
-    public static async Task<Traverse> From(string path, IEnumerable<string> externals, IEnumerable<string> shared, ModuleIdMap? moduleIds = null, bool devServer = false, Platform platform = Platform.Web, IReadOnlyDictionary<string, string>? defines = null, IReadOnlyDictionary<string, string>? aliases = null, IReadOnlyDictionary<string, string>? loaders = null, IEnumerable<string>? conditions = null, bool externalPackages = false, string? mode = null, IReadOnlyDictionary<string, string>? envVars = null, DirectoryListingCache? directoryFiles = null, BuildCache? buildCache = null, CodegenCache? codegenCache = null, RenderCache? renderCache = null, PassContext? passContext = null, BuildSnapshot? snapshot = null, NetPack.Config.SplitChunksConfig? splitChunks = null, IReadOnlyDictionary<string, IReadOnlyList<string>>? hookModules = null)
+    public static async Task<Traverse> From(string path, IEnumerable<string> externals, IEnumerable<string> shared, ModuleIdMap? moduleIds = null, bool devServer = false, Platform platform = Platform.Web, IReadOnlyDictionary<string, string>? defines = null, IReadOnlyDictionary<string, string>? aliases = null, IReadOnlyDictionary<string, string>? loaders = null, IEnumerable<string>? conditions = null, bool externalPackages = false, string? mode = null, IReadOnlyDictionary<string, string>? envVars = null, DirectoryListingCache? directoryFiles = null, BuildCache? buildCache = null, CodegenCache? codegenCache = null, RenderCache? renderCache = null, PassContext? passContext = null, BuildSnapshot? snapshot = null, NetPack.Config.SplitChunksConfig? splitChunks = null, IReadOnlyDictionary<string, IReadOnlyList<string>>? hookModules = null, bool quiet = false)
     {
         var root = Path.GetDirectoryName(path)!;
         var packageRoot = FindRoot(root);
         var features = await FindFeatures(packageRoot);
-        var traverse = new Traverse(packageRoot ?? root, features, moduleIds, directoryFiles, buildCache) { _devServer = devServer };
+        var traverse = new Traverse(packageRoot ?? root, features, moduleIds, directoryFiles, buildCache) { _devServer = devServer, _quiet = quiet };
         traverse.Context.CodegenCache = codegenCache;
         traverse.Context.RenderCache = renderCache;
         traverse.Context.PassContext = passContext;
@@ -905,7 +906,11 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
                 return AddExternalReference(parent, builtin);
             }
 
-            Console.Error.WriteLine("[netpack] error: failed to process '{0}': {1}", parent.FileName, err.Message);
+            if (!_quiet)
+            {
+                Console.Error.WriteLine("[netpack] error: failed to process '{0}': {1}", parent.FileName, err.Message);
+            }
+
             return null;
         }
     }

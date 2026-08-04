@@ -9,6 +9,7 @@ class FileWatcher<T> : IDisposable
     private CancellationTokenSource? _debounceCts;
     private Task _rebuild = Task.CompletedTask;
     private bool _pending;
+    private volatile bool _disposed;
     private TaskCompletionSource _tcs = new();
     private T _result;
 
@@ -50,6 +51,13 @@ class FileWatcher<T> : IDisposable
 
             lock (_lock)
             {
+                // Once disposed, ignore late FileSystemWatcher events so no rebuild
+                // runs against files a caller may be tearing down.
+                if (_disposed)
+                {
+                    return;
+                }
+
                 // Cancel any pending debounce timer — we just received a newer change.
                 _debounceCts?.Cancel();
 
@@ -67,7 +75,7 @@ class FileWatcher<T> : IDisposable
 
                 _rebuild = Task.Delay(_debounceMs, token).ContinueWith(_ =>
                 {
-                    if (token.IsCancellationRequested) return Task.CompletedTask;
+                    if (token.IsCancellationRequested || _disposed) return Task.CompletedTask;
                     return DoRebuild(trigger);
                 }, token).Unwrap();
             }
@@ -100,11 +108,12 @@ class FileWatcher<T> : IDisposable
             Console.Error.WriteLine($"[netpack] Rebuild failed: {ex.Message}");
         }
 
-        // If more changes arrived during the rebuild, start another.
+        // If more changes arrived during the rebuild, start another — unless we're
+        // shutting down.
         bool restart;
         lock (_lock)
         {
-            restart = _pending;
+            restart = _pending && !_disposed;
             _pending = false;
         }
 
@@ -117,8 +126,33 @@ class FileWatcher<T> : IDisposable
 
     public void Dispose()
     {
+        Task inFlight;
+
+        lock (_lock)
+        {
+            _disposed = true;
+            _debounceCts?.Cancel();
+            inFlight = _rebuild;
+        }
+
+        // Stop new filesystem events first, then wait for any in-flight (or
+        // just-elapsed) rebuild to finish, so nothing runs a build after Dispose
+        // returns — e.g. against files the caller is about to delete.
         _watcher.Dispose();
-        _debounceCts?.Cancel();
-        _debounceCts?.Dispose();
+
+        try
+        {
+            inFlight.Wait(TimeSpan.FromSeconds(5));
+        }
+        catch
+        {
+            // A rebuild that faulted (or was cancelled) is fine — we only need it
+            // to have stopped running.
+        }
+
+        lock (_lock)
+        {
+            _debounceCts?.Dispose();
+        }
     }
 }
