@@ -120,6 +120,31 @@ chunks are left untouched. An empty banner (the default) emits nothing. Source
 maps stay accurate: mappings are shifted to account for the added lines. Both
 `bundle` and `serve` accept the flag.
 
+## Licenses (`--licenses`)
+
+By default netpack collects the **legal comments** in your dependencies — the
+`/*! … */`, `//! …`, `@license`, `@preserve` and `@copyright` blocks bundlers are
+expected to preserve — and keeps the relevant ones in each bundle's head (after
+any `--banner`). `--licenses` picks how that's handled:
+
+| Value | Behaviour |
+| --- | --- |
+| `preamble` (default) | Keep each module's legal comments at the top of the bundle it lands in, after the banner. |
+| `skip` | Don't collect or emit any licenses. |
+| `json` | Write a `licenses.json` manifest (package name, version, license id, license text) to the output directory. |
+| `spdx` | Write a `licenses.spdx` manifest in the SPDX tag-value format. |
+
+```sh
+npx netpack bundle src/index.html --licenses spdx
+```
+
+The `json`/`spdx` manifests list one entry per resolved dependency (deduplicated by
+name+version). If a file with that name already exists in the output (for example
+one copied from `public/`), a short suffix is added — `licenses-1a2b3c.json` — so
+nothing is clobbered. The declared license comes from each package's
+`package.json` `license` field; the license text, when present, from its `LICENSE`
+file.
+
 ## Exports conditions (`--conditions`)
 
 Adds custom [`exports`](./platforms.md#entry-point-selection) conditions on top

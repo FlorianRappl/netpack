@@ -63,8 +63,9 @@ reference **cycles are safe** — an already-seen preset is skipped.
 The keys mirror the CLI flags (camelCase where the flag is hyphenated):
 `outdir`, `minify`, `sourcemap`, `clean`, `external`, `shared`, `format`,
 `platform`, `define`, `alias`, `loader`, `entryNames`, `publicPath`,
-`conditions`, `packages`, `banner`, and `port`. `external`/`shared`/`conditions`
-are arrays; `define`/`alias`/`loader` are objects. See
+`conditions`, `packages`, `banner`, `licenses`, and `port`.
+`external`/`shared`/`conditions` are arrays; `define`/`alias`/`loader` are objects.
+See
 [Getting started](./getting-started.md) and [Other features](./other-features.md)
 for what each does.
 

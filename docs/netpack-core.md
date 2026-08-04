@@ -69,6 +69,7 @@ optional, so `new BundleOptions()` is a valid production-ESM build.
 | `EntryNames` | `[name]` | naming template, e.g. `[name]-[hash]` for cache-busting |
 | `PublicPath` | `""` | base URL/path prepended to emitted-file references |
 | `Banner` | `""` | text placed on top of each entry JS bundle, followed by a newline |
+| `Licenses` | `Preamble` | third-party license handling: `Preamble`, `Skip`, `Json`, `Spdx` |
 | `Externals` | empty | import specifiers to keep external |
 | `Shared` | empty | dependencies emitted as shared bundles + import-map entries |
 | `Define` | — | compile-time constant substitutions |

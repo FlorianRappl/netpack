@@ -35,6 +35,10 @@ public sealed record BundleOptions
     /// (<c>--banner</c>). Empty by default; shared split chunks do not receive it.</summary>
     public string Banner { get; init; } = "";
 
+    /// <summary>How third-party licenses are handled (<c>--licenses</c>). Defaults
+    /// to <see cref="LicenseMode.Preamble"/>.</summary>
+    public LicenseMode Licenses { get; init; } = LicenseMode.Preamble;
+
     /// <summary>Import specifiers to keep external (not bundled).</summary>
     public IEnumerable<string> Externals { get; init; } = [];
 
@@ -85,6 +89,7 @@ public static class Bundler
         EntryNames = options.EntryNames,
         PublicPath = options.PublicPath,
         Banner = options.Banner,
+        Licenses = options.Licenses,
         InlineLimit = options.InlineLimit,
     };
 

@@ -1,5 +1,24 @@
 namespace NetPack.Graph;
 
+/// <summary>How third-party license/legal comments are collected and emitted.</summary>
+public enum LicenseMode
+{
+    /// <summary>Collect legal comments and place the relevant ones in each bundle's
+    /// head, after any banner (default).</summary>
+    Preamble,
+
+    /// <summary>Do not collect or emit licenses.</summary>
+    Skip,
+
+    /// <summary>Collect package licenses into a <c>licenses.json</c> in the output
+    /// directory (suffixed if a file of that name already exists).</summary>
+    Json,
+
+    /// <summary>Collect package licenses into a <c>licenses.spdx</c> (SPDX
+    /// tag-value document) in the output directory.</summary>
+    Spdx,
+}
+
 /// <summary>The JavaScript module format ("envelope") a JS bundle is emitted in.</summary>
 public enum ModuleFormat
 {
@@ -72,4 +91,13 @@ public record OutputOptions
     /// images.
     /// </summary>
     public int InlineLimit { get; init; } = 0;
+
+    /// <summary>
+    /// How third-party license/legal comments are handled (the <c>--licenses</c>
+    /// option). <see cref="LicenseMode.Preamble"/> (default) preserves legal
+    /// comments in each bundle's head; <see cref="LicenseMode.Json"/> /
+    /// <see cref="LicenseMode.Spdx"/> emit a license manifest file instead;
+    /// <see cref="LicenseMode.Skip"/> disables collection.
+    /// </summary>
+    public LicenseMode Licenses { get; init; } = LicenseMode.Preamble;
 }

@@ -35,6 +35,9 @@ public class AnalyzeCommand : ICommand
     [Option("banner", Default = "", HelpText = "Text placed on top of the entry JS bundle, followed by a newline, e.g. --banner \"// (c) 2026 Acme\". Empty by default.")]
     public string Banner { get; set; } = "";
 
+    [Option("licenses", Default = "preamble", HelpText = "Third-party license handling: preamble (default), skip, json, or spdx.")]
+    public string Licenses { get; set; } = "preamble";
+
     [Option("inline-limit", Default = 0, HelpText = "Maximum size in bytes to inline assets as data URIs instead of emitting files (0 = disabled).")]
     public int InlineLimit { get; set; } = 0;
 
@@ -46,6 +49,7 @@ public class AnalyzeCommand : ICommand
             IsOptimizing = true,
             IsReloading = false,
             Banner = Banner,
+            Licenses = BundleCommand.ParseLicenses(Licenses),
             InlineLimit = InlineLimit,
         };
         using var graph = await Traverse.From(file, Externals, Shared, hookModules: PresetArgs.Hooks);

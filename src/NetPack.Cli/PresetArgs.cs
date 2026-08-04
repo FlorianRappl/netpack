@@ -29,15 +29,15 @@ static class PresetArgs
         {
             "outdir", "minify", "sourcemap", "clean", "external", "shared", "format",
             "platform", "define", "alias", "loader", "entry-names", "public-path",
-            "conditions", "packages", "banner", "split-chunks",
+            "conditions", "packages", "banner", "licenses", "split-chunks",
         },
         ["serve"] = new(StringComparer.Ordinal)
         {
-            "minify", "external", "shared", "define", "alias", "loader", "banner", "port",
+            "minify", "external", "shared", "define", "alias", "loader", "banner", "licenses", "port",
         },
         ["analyze"] = new(StringComparer.Ordinal)
         {
-            "external", "shared", "banner", "port",
+            "external", "shared", "banner", "licenses", "port",
         },
     };
 
@@ -254,6 +254,7 @@ static class PresetArgs
         if (o.PublicPath is not null) yield return ("public-path", ["--public-path", o.PublicPath]);
         if (o.Packages is not null) yield return ("packages", ["--packages", o.Packages]);
         if (o.Banner is not null) yield return ("banner", ["--banner", o.Banner]);
+        if (o.Licenses is not null) yield return ("licenses", ["--licenses", o.Licenses]);
         if (o.Port is not null) yield return ("port", ["--port", o.Port.Value.ToString(CultureInfo.InvariantCulture)]);
         if (o.SplitChunks is not null) yield return ("split-chunks", ["--split-chunks", System.Text.Json.JsonSerializer.Serialize(o.SplitChunks, SplitChunksSourceGenerationContext.Default.SplitChunksConfig)]);
 

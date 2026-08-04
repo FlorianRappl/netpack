@@ -53,6 +53,8 @@ public class BasePresetConfig
 
     [JsonPropertyName("banner")] public string? Banner { get; set; }
 
+    [JsonPropertyName("licenses")] public string? Licenses { get; set; }
+
     [JsonPropertyName("port")] public int? Port { get; set; }
 
     [JsonPropertyName("splitChunks")] public SplitChunksConfig? SplitChunks { get; set; }

@@ -122,12 +122,40 @@ abstract class ResultWriter(BundlerContext context)
 
         await RunAssetHooks(emitted, options);
 
+        WriteLicenseManifest(emitted, options);
+
         await Fire(hooks?.Compilation.AfterSeal, options);
         await Fire(hooks?.Compiler.AfterCompile, options);
         await Fire(hooks?.Compiler.Done, options);
 
         Finished?.Invoke(this, EventArgs.Empty);
         return emitted.OrderBy(f => f.Name, StringComparer.Ordinal).ToArray();
+    }
+
+    /// <summary>
+    /// Writes the license manifest (<c>licenses.json</c> / <c>licenses.spdx</c>)
+    /// for the <see cref="LicenseMode.Json"/> / <see cref="LicenseMode.Spdx"/>
+    /// modes. If a file of that name already exists (e.g. copied from <c>public/</c>)
+    /// a short suffix is added so nothing is clobbered.
+    /// </summary>
+    private void WriteLicenseManifest(ConcurrentBag<EmittedFile> emitted, OutputOptions options)
+    {
+        if (options.Licenses is not (LicenseMode.Json or LicenseMode.Spdx))
+        {
+            return;
+        }
+
+        var extension = options.Licenses == LicenseMode.Spdx ? ".spdx" : ".json";
+        var name = $"licenses{extension}";
+
+        if (emitted.Any(f => string.Equals(f.Name, name, StringComparison.Ordinal)) || ReadEmitted(name) is not null)
+        {
+            name = $"licenses-{Guid.NewGuid().ToString("N")[..6]}{extension}";
+        }
+
+        var bytes = System.Text.Encoding.UTF8.GetBytes(LicenseCollector.Render(options.Licenses, _context));
+        WriteEmitted(name, bytes);
+        emitted.Add(new EmittedFile(name, bytes.Length, Modules: 0, IsBundle: false));
     }
 
     /// <summary>Fires a compilation/compiler hook (a no-op when null or untapped),
