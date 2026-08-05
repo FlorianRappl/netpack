@@ -108,3 +108,95 @@ For an HTML entry point, netpack writes:
 
 `bundle` prints a summary table of every emitted file, its size, and (for
 JS/CSS bundles) how many modules went into it.
+
+## Metafile JSON
+
+Use `analyze --outfile <path>` to emit a machine-readable build manifest (esbuild
+format) in JSON. The metafile is useful for CI tooling, post-processing
+scripts, and visualizers.
+
+```sh
+npx netpack analyze src/index.html --outfile meta.json
+```
+
+### Schema
+
+The metafile has two top-level keys: `inputs` and `outputs`.
+
+#### Inputs
+
+Each key is a source file path (relative to the project root), mapping to:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `bytes` | int | Size of the raw source file in bytes |
+| `format` | string | Module format (`"esm"`) |
+| `imports` | array | Dependency edges — each with `path` (resolved file), `kind` (`"import-statement"`, `"require-call"`, `"dynamic-import"`), and `original` (the specifier as written) |
+
+#### Outputs
+
+Each key is an emitted output file name, mapping to:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `bytes` | int | Size of the emitted file in bytes |
+| `entryPoint` | string? | The output file name when this is the entry bundle, `null` for shared chunks and assets |
+| `flags` | string? | `"entry"` for entry bundles, `"shared"` for split/shared chunks, `null` for assets |
+| `inputs` | object | Source files bundled into this output. Each key is a relative path mapping to `{ "bytesInOutput": int }` |
+| `exports` | array | Exported names from this output (each with `path` and `kind`) |
+| `imports` | array | Bundles this output imports (each with `path` and `kind`) |
+
+### Example
+
+For a project with `app.js` importing `helper.js`:
+
+```sh
+npx netpack analyze app.js --outfile meta.json
+```
+
+```json
+{
+  "inputs": {
+    "app.js": {
+      "bytes": 34,
+      "format": "esm",
+      "imports": [{ "path": "helper.js", "kind": "import-statement", "original": "./helper.js" }]
+    },
+    "helper.js": {
+      "bytes": 38,
+      "format": "esm",
+      "imports": []
+    }
+  },
+  "outputs": {
+    "app.js": {
+      "bytes": 412,
+      "entryPoint": "app.js",
+      "flags": "entry",
+      "inputs": {
+        "app.js": { "bytesInOutput": 184 },
+        "helper.js": { "bytesInOutput": 228 }
+      },
+      "exports": [],
+      "imports": []
+    }
+  }
+}
+```
+
+Shared CSS chunks appear as non-entry outputs:
+
+```json
+{
+  "outputs": {
+    "common.0001.css": {
+      "bytes": 42,
+      "entryPoint": null,
+      "flags": "shared",
+      "inputs": { "shared.css": { "bytesInOutput": 42 } },
+      "exports": [],
+      "imports": []
+    }
+  }
+}
+```
