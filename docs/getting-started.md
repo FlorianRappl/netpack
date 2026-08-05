@@ -45,7 +45,6 @@ npx netpack bundle src/index.html
 | `--sourcemap` | off | Emit a `.js.map` next to each JS bundle. |
 | `--clean` | off | Delete `--outdir` before writing. |
 | `--banner <text>` | — | Text placed on top of the entry JS bundle, followed by a newline. Empty banners are discarded. See [Banner](./other-features.md#banner---banner). |
-| `--metafile <path>` | — | Write a build metafile JSON (esbuild-compatible manifest) to the given path. The manifest contains inputs, outputs, byte sizes, dependency edges, and entry-point information for tooling and analysis. |
 | `--external <name>` | — | Repeatable. Don't bundle this import; leave it as a real `import` for the browser/import map to resolve. |
 | `--shared <name>` | — | Repeatable. Like `--external`, but also builds the dependency as its own output chunk and wires it into an import map. See [Import maps & externals](./importmaps-and-externals.md). |
 
@@ -112,12 +111,12 @@ JS/CSS bundles) how many modules went into it.
 
 ## Metafile JSON
 
-Pass `--metafile <path>` to emit a machine-readable build manifest (esbuild
+Use `analyze --outfile <path>` to emit a machine-readable build manifest (esbuild
 format) in JSON. The metafile is useful for CI tooling, post-processing
 scripts, and visualizers.
 
 ```sh
-npx netpack bundle src/index.html --metafile meta.json
+npx netpack analyze src/index.html --outfile meta.json
 ```
 
 ### Schema
@@ -152,7 +151,7 @@ Each key is an emitted output file name, mapping to:
 For a project with `app.js` importing `helper.js`:
 
 ```sh
-npx netpack bundle app.js --metafile meta.json
+npx netpack analyze app.js --outfile meta.json
 ```
 
 ```json
