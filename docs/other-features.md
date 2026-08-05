@@ -129,8 +129,8 @@ any `--banner`). `--licenses` picks how that's handled:
 
 | Value | Behaviour |
 | --- | --- |
-| `preamble` (default) | Keep each module's legal comments at the top of the bundle it lands in, after the banner. |
-| `skip` | Don't collect or emit any licenses. |
+| `skip` (default) | Don't collect or emit any licenses. |
+| `preamble` | Keep each module's legal comments at the top of the bundle it lands in, after the banner. |
 | `json` | Write a `licenses.json` manifest (package name, version, license id, license text) to the output directory. |
 | `spdx` | Write a `licenses.spdx` manifest in the SPDX tag-value format. |
 

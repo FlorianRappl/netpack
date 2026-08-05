@@ -63,8 +63,8 @@ public class BundleCommand : ICommand
     [Option("banner", Default = "", HelpText = "Text placed on top of the entry JS bundle, followed by a newline, e.g. --banner \"// (c) 2026 Acme\". Empty by default.")]
     public string Banner { get; set; } = "";
 
-    [Option("licenses", Default = "preamble", HelpText = "Third-party license handling: preamble (default; keep legal comments in each bundle head), skip, json (write licenses.json), or spdx (write licenses.spdx).")]
-    public string Licenses { get; set; } = "preamble";
+    [Option("licenses", Default = "skip", HelpText = "Third-party license handling: skip (default), preamble (keep legal comments in each bundle head), json (write licenses.json), or spdx (write licenses.spdx).")]
+    public string Licenses { get; set; } = "skip";
 
     [Option("conditions", HelpText = "Extra package.json 'exports' conditions to honour, on top of the platform defaults (e.g. --conditions development).")]
     public IEnumerable<string> Conditions { get; set; } = [];
@@ -120,11 +120,11 @@ public class BundleCommand : ICommand
 
     internal static LicenseMode ParseLicenses(string value) => value.ToLowerInvariant() switch
     {
-        "preamble" or "" => LicenseMode.Preamble,
-        "skip" or "none" => LicenseMode.Skip,
+        "skip" or "none" or "" => LicenseMode.Skip,
+        "preamble" => LicenseMode.Preamble,
         "json" => LicenseMode.Json,
         "spdx" => LicenseMode.Spdx,
-        _ => throw new InvalidOperationException($"Unknown --licenses '{value}'. Available: preamble, skip, json, spdx."),
+        _ => throw new InvalidOperationException($"Unknown --licenses '{value}'. Available: skip, preamble, json, spdx."),
     };
 
     private static ModuleFormat ParseFormat(string format) => format.ToLowerInvariant() switch

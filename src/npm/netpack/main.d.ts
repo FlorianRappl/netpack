@@ -15,7 +15,7 @@ export function run(command: string, args: Record<string, string | boolean>): Ch
 export type ModuleFormat = "esm" | "cjs" | "umd" | "systemjs";
 export type Platform = "web" | "node" | "deno";
 export type PackagesMode = "bundle" | "external";
-export type LicenseMode = "preamble" | "skip" | "json" | "spdx";
+export type LicenseMode = "skip" | "preamble" | "json" | "spdx";
 
 export interface CommonOptions {
   /**
@@ -55,7 +55,7 @@ export interface BundleOptions extends CommonOptions {
   publicPath?: string;
   /** Text placed on top of the entry JS bundle, followed by a newline. */
   banner?: string;
-  /** Third-party license handling (default "preamble"). */
+  /** Third-party license handling (default "skip"). */
   licenses?: LicenseMode;
   /** Extra package.json `exports` conditions. */
   conditions?: string[];

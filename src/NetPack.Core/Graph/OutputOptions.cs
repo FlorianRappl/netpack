@@ -94,12 +94,12 @@ public record OutputOptions
 
     /// <summary>
     /// How third-party license/legal comments are handled (the <c>--licenses</c>
-    /// option). <see cref="LicenseMode.Preamble"/> (default) preserves legal
-    /// comments in each bundle's head; <see cref="LicenseMode.Json"/> /
-    /// <see cref="LicenseMode.Spdx"/> emit a license manifest file instead;
-    /// <see cref="LicenseMode.Skip"/> disables collection.
+    /// option). <see cref="LicenseMode.Skip"/> (default) skips legal
+    /// comments in each bundle's head; <see cref="LicenseMode.Preamble"/> /
+    /// <see cref="LicenseMode.Json"/> / <see cref="LicenseMode.Spdx"/> emit a
+    /// license manifest file instead.
     /// </summary>
-    public LicenseMode Licenses { get; init; } = LicenseMode.Preamble;
+    public LicenseMode Licenses { get; init; } = LicenseMode.Skip;
 
     /// <summary>
     /// When set, emits a build metafile JSON (esbuild-compatible) to the given

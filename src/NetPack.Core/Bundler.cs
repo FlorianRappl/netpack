@@ -36,8 +36,8 @@ public sealed record BundleOptions
     public string Banner { get; init; } = "";
 
     /// <summary>How third-party licenses are handled (<c>--licenses</c>). Defaults
-    /// to <see cref="LicenseMode.Preamble"/>.</summary>
-    public LicenseMode Licenses { get; init; } = LicenseMode.Preamble;
+    /// to <see cref="LicenseMode.Skip"/>.</summary>
+    public LicenseMode Licenses { get; init; } = LicenseMode.Skip;
 
     /// <summary>Import specifiers to keep external (not bundled).</summary>
     public IEnumerable<string> Externals { get; init; } = [];
