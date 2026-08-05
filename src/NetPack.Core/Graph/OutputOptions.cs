@@ -101,6 +101,7 @@ public record OutputOptions
     /// </summary>
     public LicenseMode Licenses { get; init; } = LicenseMode.Preamble;
 
+    /// <summary>
     /// When set, emits a build metafile JSON (esbuild-compatible) to the given
     /// path after bundling. The manifest contains inputs, outputs, byte sizes,
     /// dependency edges, and entry-point information for tooling and analysis.
