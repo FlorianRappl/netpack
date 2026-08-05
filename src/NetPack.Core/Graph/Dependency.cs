@@ -14,6 +14,42 @@ public sealed class Dependency(string location, JsonElement meta, bool useBrowse
 
     public string Version => meta.GetProperty("version").GetString()!;
 
+    /// <summary>The declared license as an SPDX id, from the package.json
+    /// <c>license</c> field (string or <c>{ "type": … }</c>) or the legacy
+    /// <c>licenses</c> array. Null when not declared.</summary>
+    public string? License
+    {
+        get
+        {
+            if (meta.TryGetProperty("license", out var license))
+            {
+                if (license.ValueKind == JsonValueKind.String)
+                {
+                    return license.GetString();
+                }
+
+                if (license.ValueKind == JsonValueKind.Object &&
+                    license.TryGetProperty("type", out var type) && type.ValueKind == JsonValueKind.String)
+                {
+                    return type.GetString();
+                }
+            }
+
+            if (meta.TryGetProperty("licenses", out var licenses) && licenses.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var entry in licenses.EnumerateArray())
+                {
+                    if (entry.TryGetProperty("type", out var type) && type.ValueKind == JsonValueKind.String)
+                    {
+                        return type.GetString();
+                    }
+                }
+            }
+
+            return null;
+        }
+    }
+
     public string Entry => CombinePath(Path.GetDirectoryName(location)!, GetEntry(meta, useBrowserField));
 
     /// <summary>

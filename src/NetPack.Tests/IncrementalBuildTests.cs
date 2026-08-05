@@ -1859,10 +1859,12 @@ public class IncrementalBuildTests
 
             var opts = new NetPack.Graph.OutputOptions { IsOptimizing = false, IsReloading = false };
 
+            // 'fs' is unresolvable on the web platform by design — build quietly so
+            // the expected resolution error doesn't pollute the test output.
             string webOutput;
             using (var graph = await NetPack.Graph.Traverse.From(
                        System.IO.Path.Combine(dir, "entry.js"),
-                       [], [], platform: NetPack.Graph.Platform.Web))
+                       [], [], platform: NetPack.Graph.Platform.Web, quiet: true))
             {
                 webOutput = graph.Context.Bundles.Values
                     .OfType<NetPack.Graph.Bundles.JsBundle>().First(b => b.IsPrimary)

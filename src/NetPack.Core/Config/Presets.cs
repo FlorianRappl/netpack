@@ -103,6 +103,7 @@ public static class Presets
             result.Conditions ??= c.Conditions;
             result.Packages ??= c.Packages;
             result.Banner ??= c.Banner;
+            result.Licenses ??= c.Licenses;
             result.Port ??= c.Port;
             result.SplitChunks ??= c.SplitChunks;
 
@@ -149,6 +150,7 @@ public static class Presets
             Conditions = overrides.Conditions ?? base_.Conditions,
             Packages = overrides.Packages ?? base_.Packages,
             Banner = overrides.Banner ?? base_.Banner,
+            Licenses = overrides.Licenses ?? base_.Licenses,
             Port = overrides.Port ?? base_.Port,
             SplitChunks = overrides.SplitChunks ?? base_.SplitChunks,
         };

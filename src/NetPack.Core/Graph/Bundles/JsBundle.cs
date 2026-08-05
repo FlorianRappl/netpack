@@ -82,13 +82,13 @@ public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags
 
         if (!options.WithSourceMaps)
         {
-            code = ApplyBanner(JsPrinter.Print(ast, printerOptions), options.Banner);
+            code = ApplyPreamble(JsPrinter.Print(ast, printerOptions), options);
         }
         else
         {
             var mapFile = $"{GetFileName()}.map";
             var builder = new SourceMapBuilder(GetFileName(), _context.Root);
-            var printed = ApplyBanner(JsPrinter.Print(ast, printerOptions, builder), options.Banner, builder);
+            var printed = ApplyPreamble(JsPrinter.Print(ast, printerOptions, builder), options, builder);
             SourceMap = Encoding.UTF8.GetBytes(builder.ToJson());
             code = $"{printed}\n//# sourceMappingURL={mapFile}\n";
         }
@@ -116,24 +116,40 @@ public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags
     }
 
     /// <summary>
-    /// Prepends the <c>--banner</c> text (plus a newline) to an entry bundle's
-    /// output. Every entry JS bundle receives it; shared split chunks do not, and
-    /// an empty banner is discarded. When a source map is being built, its
-    /// mappings are shifted down by the number of lines the banner adds so
-    /// positions stay accurate.
+    /// Prepends this bundle's head: the <c>--banner</c> text (entry bundles only —
+    /// shared split chunks are skipped) followed by any collected legal comments
+    /// (<see cref="LicenseMode.Preamble"/>). When a source map is being built, its
+    /// mappings are shifted down by the number of lines the head adds so positions
+    /// stay accurate.
     /// </summary>
-    private string ApplyBanner(string code, string banner, SourceMapBuilder? builder = null)
+    private string ApplyPreamble(string code, OutputOptions options, SourceMapBuilder? builder = null)
     {
-        if (string.IsNullOrEmpty(banner) || IsShared)
+        var head = new StringBuilder();
+
+        if (!IsShared && !string.IsNullOrEmpty(options.Banner))
+        {
+            head.Append(options.Banner).Append('\n');
+        }
+
+        if (options.Licenses == LicenseMode.Preamble)
+        {
+            foreach (var comment in CollectLegalComments())
+            {
+                head.Append(comment).Append('\n');
+            }
+        }
+
+        if (head.Length == 0)
         {
             return code;
         }
 
+        var headText = head.ToString();
+
         if (builder is not null)
         {
-            // The banner adds its own newlines plus the one we append after it.
-            var lines = 1;
-            foreach (var c in banner)
+            var lines = 0;
+            foreach (var c in headText)
             {
                 if (c == '\n')
                 {
@@ -144,7 +160,29 @@ public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags
             builder.PrependGeneratedLines(lines);
         }
 
-        return $"{banner}\n{code}";
+        return headText + code;
+    }
+
+    /// <summary>Collects the deduplicated legal comments from this bundle's own
+    /// modules (their pre-transform source), preserving their order of appearance.</summary>
+    private IEnumerable<string> CollectLegalComments()
+    {
+        var seen = new HashSet<string>(System.StringComparer.Ordinal);
+
+        foreach (var node in Items)
+        {
+            if (_context.JsFragments.TryGetValue(node, out var fragment)
+                && fragment.Ast.Source is { Length: > 0 } source)
+            {
+                foreach (var comment in LicenseCollector.ExtractLegalComments(source))
+                {
+                    if (seen.Add(comment))
+                    {
+                        yield return comment;
+                    }
+                }
+            }
+        }
     }
 
     /// <summary>

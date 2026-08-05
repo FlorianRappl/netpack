@@ -63,83 +63,28 @@ reference **cycles are safe** — an already-seen preset is skipped.
 The keys mirror the CLI flags (camelCase where the flag is hyphenated):
 `outdir`, `minify`, `sourcemap`, `clean`, `external`, `shared`, `format`,
 `platform`, `define`, `alias`, `loader`, `entryNames`, `publicPath`,
-`conditions`, `packages`, `banner`, and `port`. `external`/`shared`/`conditions`
-are arrays; `define`/`alias`/`loader` are objects. See
+`conditions`, `packages`, `banner`, `licenses`, and `port`.
+`external`/`shared`/`conditions` are arrays; `define`/`alias`/`loader` are objects.
+See
 [Getting started](./getting-started.md) and [Other features](./other-features.md)
 for what each does.
 
 ## Hooks
 
-Presets are the *only* place you can register **hooks** — extension points that
-run a JavaScript module through netpack's Node bridge. Each hook name maps to an
-array of module references, so several callbacks can attach, and the arrays merge
-across the whole preset chain.
+Presets are also the only place to register **hooks** — extension points that run
+a JavaScript module at a specific point in the build (post-transformation, asset
+rewriting, and more):
 
 ```jsonc
 {
-  "presets": ["@myorg/base"],
   "hooks": {
-    "afterBundling": ["./transform.mjs", "@myorg/tools/stamp.js"]
+    "afterBundling": ["./transform.mjs"]
   }
 }
 ```
 
-Hook modules are resolved with the same mechanism as presets. A few properties by
-design:
-
-- **Merged, not overridden.** Every preset's hooks contribute; nothing shadows
-  anything.
-- **Base-first order.** Hooks run in the reverse of option precedence — the
-  deepest referenced (base) presets execute first, the entry preset last — so a
-  base can set things up before a more specific preset finishes.
-- **Deduplicated.** The same module reached through two presets runs once, at its
-  earliest position.
-- **You only pay when you use them.** Resolution happens up front in native code;
-  the Node bridge is engaged only for hooks that actually have modules registered.
-  A build with no hooks is exactly as fast as one with no config at all.
-
-### Lifecycle points
-
-A hook module default-exports (or `module.exports`) an async function. It receives
-`{ hook, root, dev }` — plus `module` for the per-module hooks, and `files` for the
-asset hooks — and may return a value the bundler applies. Unknown hook names are
-ignored with a warning.
-
-Every point in netpack's build maps to a hook name, mirroring the
-webpack/rspack lifecycle:
-
-| Phase | Hooks (in order) |
-|---|---|
-| Compiler start | `initialize`, `beforeRun`, `run` / `watchRun`, `beforeCompile` (alias `beforeCompilation`), `compile`, `thisCompilation`, `compilation`, `make` |
-| Per module | `buildModule`, `stillValidModule`, `succeedModule`, `failedModule` |
-| After the graph | `finishMake`, `finishModules` |
-| Optimize (optimized builds) | `optimize`, `optimizeDependencies`, `afterOptimizeDependencies`, `optimizeModules`, `afterOptimizeModules`, `optimizeChunks`, `afterOptimizeChunks`, `optimizeTree`, `optimizeChunkModules` |
-| Ids & seal | `moduleIds`, `chunkIds`, `seal`, `contentHash`, `afterCodeGeneration` |
-| Emit | `shouldEmit`, `emit`, `additionalAssets`, `processAssets`, `afterProcessAssets`, `afterEmit` (alias `afterBundling`) |
-| Finish | `afterSeal`, `afterCompile`, `done` |
-
-Two kinds carry extra payload and can return a value:
-
-- **Asset hooks** (`additionalAssets`, `processAssets`, `afterProcessAssets`,
-  `afterEmit`/`afterBundling`) receive `files: [{ name, text }]` — text outputs
-  (`.js`, `.css`, `.html`, `.json`, `.map`, …) as `text`, binary assets by `name`
-  only. Return a `files` array to **replace** an asset's contents (or add a new
-  one). This is your post-transformation slot.
-- **`shouldEmit`** may return `{ emit: false }` to skip writing entirely.
-
-The per-module hooks additionally receive the module's path as `module`.
-
-```js
-// transform.mjs — minify-ish: strip // line comments from every JS bundle
-export default async ({ files }) => ({
-  files: files
-    .filter((f) => f.name.endsWith(".js"))
-    .map((f) => ({ name: f.name, text: f.text.replace(/^\s*\/\/.*$/gm, "") })),
-});
-```
-
-Modules run over the Node bridge, so `@babel/core`, `terser`, or any npm package
-they `import` must be installed in the project.
+See [Hooks](./hooks.md) for the full lifecycle, the module contract, and how
+hooks merge across a preset chain.
 
 ## .NET
 
