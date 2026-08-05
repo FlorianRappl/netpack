@@ -17,6 +17,8 @@ sealed class MemoryResultWriter(BundlerContext context) : ResultWriter(context),
         return null;
     }
 
+    public IEnumerable<string> GetFileNames() => _fs.Keys;
+
     bool IFileLocator.HasFile(string fullPath)
     {
         return _watchIndex.ContainsFile(fullPath);

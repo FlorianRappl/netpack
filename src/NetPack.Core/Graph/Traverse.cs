@@ -10,6 +10,7 @@ using AngleSharp.Text;
 using NetPack.Fragments;
 using NetPack.Graph.Bundles;
 using NetPack.Graph.Visitors;
+using NetPack.Graph.Writers;
 using NetPack.Json;
 using NetPack.Syntax;
 using static NetPack.Helpers;
@@ -1976,6 +1977,138 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
         });
 
         return node;
+    }
+
+    /// <summary>
+    /// Builds a metafile JSON container (esbuild-compatible) from the graph context
+    /// and the list of emitted files. The manifest contains inputs (source modules
+    /// with their dependencies), outputs (bundles/assets with byte sizes, entry-point
+    /// flags, and cross-bundle references), and per-chunk and per-asset metadata.
+    /// </summary>
+    public static string BuildMetafile(BundlerContext context, IReadOnlyList<EmittedFile> emitted)
+    {
+        var root = Environment.CurrentDirectory;
+        var container = new MetadataContainer
+        {
+            Inputs = [],
+            Outputs = []
+        };
+
+        // Build a map from node to output file name for cross-references
+        var nodeToOutput = new Dictionary<Node, string>();
+        foreach (var bundle in context.Bundles.Values)
+        {
+            nodeToOutput[bundle.Root] = bundle.GetFileName();
+        }
+
+        // Build inputs section: every JS module with its imports
+        foreach (var module in context.Modules.Values)
+        {
+            if (module.Type == ".js")
+            {
+                var path = Path.GetRelativePath(root, module.FileName);
+
+                if (context.JsFragments.TryGetValue(module, out var fragment))
+                {
+                    var imports = new List<InputImportDefinition>();
+                    foreach (var (astNode, resolvedNode) in fragment.Replacements)
+                    {
+                        var original = astNode switch
+                        {
+                            Syntax.Ast.ImportDeclaration import => import.Source.Value,
+                            Syntax.Ast.ImportExpression dyn => (dyn.Source as Syntax.Ast.StringLiteral)?.Value ?? "",
+                            Syntax.Ast.CallExpression call =>
+                                call.Arguments.Count > 0 && call.Arguments[0] is Syntax.Ast.StringLiteral str
+                                    ? str.Value : "",
+                            Syntax.Ast.ExportNamedDeclaration exp => exp.Source?.Value ?? "",
+                            Syntax.Ast.ExportAllDeclaration expAll => expAll.Source.Value,
+                            _ => "",
+                        };
+
+                        imports.Add(new InputImportDefinition
+                        {
+                            Kind = "import-statement",
+                            Original = original,
+                            Path = Path.GetRelativePath(root, resolvedNode.FileName),
+                        });
+                    }
+
+                    container.Inputs[path] = new InputNode
+                    {
+                        Format = "esm",
+                        Bytes = module.Bytes,
+                        Imports = imports,
+                    };
+                }
+            }
+        }
+
+        // Build outputs section: every bundle and asset
+        var fileSizes = emitted.ToDictionary(e => e.Name, e => e.Size);
+
+        foreach (var bundle in context.Bundles.Values)
+        {
+            var path = bundle.GetFileName();
+            fileSizes.TryGetValue(path, out var fileSize);
+
+            var items = bundle.Items.Where(m => m.Type == ".js").ToList();
+            var total = Math.Max(1, items.Sum(m => m.Bytes));
+
+            var inputs = new Dictionary<string, InputDefinition>();
+            foreach (var item in items)
+            {
+                inputs[Path.GetRelativePath(root, item.FileName)] = new InputDefinition
+                {
+                    BytesInOutput = (int)(fileSize * item.Bytes / total),
+                };
+            }
+
+            // Collect cross-bundle references (JS→CSS, shared deps)
+            var imports = new List<OutputImportDefinition>();
+            foreach (var item in bundle.Items)
+            {
+                foreach (var child in item.Children)
+                {
+                    if (child.Type == ".css" && nodeToOutput.TryGetValue(child, out var cssOutput))
+                    {
+                        imports.Add(new OutputImportDefinition
+                        {
+                            Kind = "import-statement",
+                            Path = cssOutput,
+                        });
+                    }
+                }
+            }
+
+            container.Outputs[path] = new OutputNode
+            {
+                Bytes = (int)fileSize,
+                Exports = [],
+                Imports = imports,
+                Inputs = inputs,
+                EntryPoint = bundle.IsPrimary ? path : null,
+                Flags = bundle.IsPrimary ? "entry" : "shared",
+            };
+        }
+
+        // Add non-bundle assets (images, fonts, etc.)
+        foreach (var asset in context.Assets.Values)
+        {
+            var path = asset.GetFileName();
+            if (!fileSizes.TryGetValue(path, out var size)) continue;
+
+            container.Outputs[path] = new OutputNode
+            {
+                Bytes = (int)size,
+                Exports = [],
+                Imports = [],
+                Inputs = [],
+                EntryPoint = null,
+                Flags = null,
+            };
+        }
+
+        return System.Text.Json.JsonSerializer.Serialize(container, NetPack.Json.SourceGenerationContext.Default.MetadataContainer);
     }
 
     public void Dispose()

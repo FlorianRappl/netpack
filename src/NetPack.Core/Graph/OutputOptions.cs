@@ -100,4 +100,11 @@ public record OutputOptions
     /// <see cref="LicenseMode.Skip"/> disables collection.
     /// </summary>
     public LicenseMode Licenses { get; init; } = LicenseMode.Preamble;
+
+    /// When set, emits a build metafile JSON (esbuild-compatible) to the given
+    /// path after bundling. The manifest contains inputs, outputs, byte sizes,
+    /// dependency edges, and entry-point information for tooling and analysis.
+    /// Null (the default) means no metafile is produced.
+    /// </summary>
+    public string? MetafilePath { get; init; }
 }

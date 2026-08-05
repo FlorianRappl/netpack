@@ -66,6 +66,14 @@ public sealed record BundleOptions
 
     /// <summary>Split-chunks configuration for custom chunk grouping strategies.</summary>
     public Config.SplitChunksConfig? SplitChunks { get; init; }
+
+    /// <summary>
+    /// When set, emits a build metafile JSON (esbuild-compatible) to the given
+    /// path after bundling. The manifest contains inputs, outputs, byte sizes,
+    /// dependency edges, and entry-point information for tooling and analysis.
+    /// Null (the default) means no metafile is produced.
+    /// </summary>
+    public string? MetafilePath { get; init; }
 }
 
 /// <summary>The result of a bundle: emitted-file metadata plus each file's bytes.</summary>
@@ -91,6 +99,7 @@ public static class Bundler
         Banner = options.Banner,
         Licenses = options.Licenses,
         InlineLimit = options.InlineLimit,
+        MetafilePath = options.MetafilePath,
     };
 
     private static Task<Traverse> BuildGraph(string entryPath, BundleOptions options) => Traverse.From(
@@ -119,7 +128,21 @@ public static class Bundler
         options ??= new BundleOptions();
         using var graph = await BuildGraph(entryPath, options);
         Directory.CreateDirectory(outputDirectory);
+        var outputOpts = ToOutputOptions(options);
         var writer = new DiskResultWriter(graph.Context, outputDirectory);
-        return await writer.WriteOut(ToOutputOptions(options));
+        var emitted = await writer.WriteOut(outputOpts);
+
+        if (!string.IsNullOrEmpty(outputOpts.MetafilePath))
+        {
+            var metafilePath = Path.IsPathRooted(outputOpts.MetafilePath)
+                ? outputOpts.MetafilePath
+                : Path.Combine(Environment.CurrentDirectory, outputOpts.MetafilePath);
+            var json = Traverse.BuildMetafile(graph.Context, emitted);
+            var dir = Path.GetDirectoryName(metafilePath);
+            if (dir is not null) Directory.CreateDirectory(dir);
+            await File.WriteAllTextAsync(metafilePath, json);
+        }
+
+        return emitted;
     }
 }
