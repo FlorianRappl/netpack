@@ -62,8 +62,8 @@ public class AnalyzeCommand : ICommand
         await compilation.WriteOut(options);
 
         var audit = Audit ? await RunAudit(graph.Context) : null;
-        ReportSavings(graph.Context);
-        var results = new Metadata(graph, compilation, audit);
+        ReportSavings(graph.Context, InlineLimit);
+        var results = new Metadata(graph, compilation, audit, InlineLimit);
 
         if (!string.IsNullOrEmpty(OutFile))
         {
@@ -100,9 +100,9 @@ public class AnalyzeCommand : ICommand
         return report;
     }
 
-    private static void ReportSavings(BundlerContext context)
+    private static void ReportSavings(BundlerContext context, int inlineLimit)
     {
-        var report = NetPack.Graph.Savings.SavingsAnalyzer.Analyze(context);
+        var report = NetPack.Graph.Savings.SavingsAnalyzer.Analyze(context, inlineLimit);
         var recommendations = report.Recommendations;
 
         if (recommendations is not { Count: > 0 })

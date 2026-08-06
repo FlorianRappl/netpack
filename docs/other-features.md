@@ -229,6 +229,24 @@ telling you what to do. Three situations are flagged:
   its single consumer.
 - **Over-split chunk** — a small chunk shared by only a couple of entries.
   Inlining it into each trades a little duplicated code for one fewer request.
+- **Duplicate package versions** — the same npm package resolved at more than one
+  version, so a full copy of the library ships per version. Aligning them on a
+  single version (dedupe / lockfile update) is usually the biggest single win.
+- **Oversized bundle** — an output above the recommended ~244 KB budget. Rather
+  than a generic "split it", netpack points at the best lazy-load target: the
+  top-level import whose dependency subtree is only reachable through it, so
+  turning that import into a dynamic `import()` actually shrinks the entry. If no
+  import detaches a large subtree (the modules are entangled), it says so — an
+  oversized bundle can be the honest shape, and forcing a split wouldn't help.
+- **Dominant module** — a single module that makes up most of a bundle. Loading
+  it lazily (or swapping a heavy dependency for a lighter one) keeps it off the
+  critical path.
+- **Inline this asset** — a small asset emitted as its own file but used in only
+  one place: inlining it (raise `--inline-limit`, or add `?inline`) saves an
+  immediate request for a few added bytes.
+- **Stop inlining asset** — an asset baked into the bundle as a data URI that is
+  either large or duplicated across several bundles: emitting it as a file removes
+  the bytes (and duplication) and lets the browser cache it on its own.
 
 For example, rather than shipping two small entries plus one large shared chunk
 (three requests), the analyzer will suggest folding the shared code back in so the

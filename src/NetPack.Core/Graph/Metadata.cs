@@ -5,11 +5,12 @@ using NetPack.Graph.Writers;
 using NetPack.Json;
 using NetPack.Server;
 
-class Metadata(Traverse graph, MemoryResultWriter compilation, AuditReport? audit = null) : IFileLocator
+class Metadata(Traverse graph, MemoryResultWriter compilation, AuditReport? audit = null, int inlineLimit = 0) : IFileLocator
 {
     private readonly Traverse _graph = graph;
     private readonly MemoryResultWriter _compilation = compilation;
     private readonly AuditReport? _audit = audit;
+    private readonly int _inlineLimit = inlineLimit;
 
     bool IFileLocator.HasFile(string fullPath)
     {
@@ -27,6 +28,6 @@ class Metadata(Traverse graph, MemoryResultWriter compilation, AuditReport? audi
         var emitted = _compilation.GetFileNames().Select(name =>
             new EmittedFile(name, _compilation.GetFile(name)?.Length ?? 0, Modules: 0, IsBundle: false)).ToList();
 
-        return Traverse.BuildMetafile(context, emitted, _audit);
+        return Traverse.BuildMetafile(context, emitted, _audit, _inlineLimit);
     }
 }

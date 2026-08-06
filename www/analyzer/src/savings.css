@@ -32,11 +32,89 @@
 .medium { background: #f9a825; color: #222; }
 .low { background: #1976d2; }
 
+.summary {
+  margin: 20px 0 26px;
+  padding: 16px 18px;
+  border: 1px solid rgba(127, 127, 127, 0.25);
+  border-radius: 10px;
+  background: rgba(127, 127, 127, 0.05);
+}
+
+.total {
+  margin-bottom: 12px;
+  font-size: 0.95em;
+}
+
+.total strong {
+  font-size: 1.15em;
+}
+
+.stack {
+  display: flex;
+  height: 14px;
+  border-radius: 7px;
+  overflow: hidden;
+  background: rgba(127, 127, 127, 0.15);
+}
+
+.seg {
+  height: 100%;
+  min-width: 3px;
+  transition: opacity 0.15s;
+}
+
+.seg:hover {
+  opacity: 0.75;
+}
+
+.legend {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 0.82em;
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  opacity: 0.85;
+}
+
+.legendItem i {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  display: inline-block;
+}
+
 .rec {
   margin: 14px auto;
   padding: 12px 16px;
   border: 1px solid rgba(127, 127, 127, 0.3);
   border-radius: 8px;
+}
+
+.marker {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.bar {
+  margin: 8px 0 2px;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(127, 127, 127, 0.15);
+  overflow: hidden;
+}
+
+.fill {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
 }
 
 .head {

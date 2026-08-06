@@ -137,7 +137,7 @@ public static class Bundler
             var metafilePath = Path.IsPathRooted(outputOpts.MetafilePath)
                 ? outputOpts.MetafilePath
                 : Path.Combine(Environment.CurrentDirectory, outputOpts.MetafilePath);
-            var json = Traverse.BuildMetafile(graph.Context, emitted);
+            var json = Traverse.BuildMetafile(graph.Context, emitted, inlineLimit: outputOpts.InlineLimit);
             var dir = Path.GetDirectoryName(metafilePath);
             if (dir is not null) Directory.CreateDirectory(dir);
             await File.WriteAllTextAsync(metafilePath, json);

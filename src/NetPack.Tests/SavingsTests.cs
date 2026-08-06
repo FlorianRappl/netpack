@@ -51,7 +51,7 @@ public class SavingsTests
 
             Assert.NotNull(report.Recommendations);
             var rec = Assert.Single(
-                report.Recommendations!.Where(r => r.Kind == "inline-small-chunk"));
+                report.Recommendations!, r => r.Kind == "inline-small-chunk");
 
             // A small shared chunk pulled in by exactly two entries: inlining it
             // removes one request in exchange for a little duplicated code.
@@ -83,6 +83,92 @@ public class SavingsTests
 
             Assert.Equal(0, report.PotentialBytes);
             Assert.Null(report.Recommendations);
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Oversized_bundle_and_dominant_module_are_flagged()
+    {
+        // A single module larger than the 244 KB budget: it makes the whole
+        // bundle oversized and dominates it.
+        var big = "export default \"" + new string('x', 300 * 1024) + "\";";
+
+        var dir = await SetupProject(
+            ("index.js", "import big from './big.js'; export default big;"),
+            ("big.js", big));
+
+        try
+        {
+            using var graph = await Traverse.From(Path.Combine(dir, "index.js"));
+
+            var report = SavingsAnalyzer.Analyze(graph.Context);
+
+            Assert.NotNull(report.Recommendations);
+            var oversized = Assert.Single(report.Recommendations!, r => r.Kind == "oversized-bundle");
+            // The advice should name a concrete lazy-load candidate, not just "split it".
+            Assert.NotNull(oversized.Modules);
+            Assert.Contains(oversized.Modules!, m => m.EndsWith("big.js"));
+            Assert.Contains(report.Recommendations!, r => r.Kind == "heavy-module");
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Small_single_use_asset_is_flagged_for_inlining()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "netpack-savings-" + Path.GetRandomFileName());
+        Directory.CreateDirectory(dir);
+        await File.WriteAllTextAsync(Path.Combine(dir, "package.json"), "{}");
+        await File.WriteAllTextAsync(Path.Combine(dir, "main.js"),
+            "import logo from './logo.png'; export default logo;");
+        await File.WriteAllBytesAsync(Path.Combine(dir, "logo.png"), new byte[64]);
+
+        try
+        {
+            using var graph = await Traverse.From(Path.Combine(dir, "main.js"));
+
+            // Default inline limit (0): the asset ships as a separate file.
+            var report = SavingsAnalyzer.Analyze(graph.Context);
+
+            Assert.NotNull(report.Recommendations);
+            var rec = Assert.Single(report.Recommendations!, r => r.Kind == "inline-asset");
+            Assert.Equal(1, rec.Requests);
+            Assert.True(rec.Bytes < 0, "inlining adds bytes to the bundle");
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Large_inlined_asset_is_flagged_to_stop_inlining()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "netpack-savings-" + Path.GetRandomFileName());
+        Directory.CreateDirectory(dir);
+        await File.WriteAllTextAsync(Path.Combine(dir, "package.json"), "{}");
+        await File.WriteAllTextAsync(Path.Combine(dir, "main.js"),
+            "import hero from './hero.png'; export default hero;");
+        await File.WriteAllBytesAsync(Path.Combine(dir, "hero.png"), new byte[10 * 1024]);
+
+        try
+        {
+            using var graph = await Traverse.From(Path.Combine(dir, "main.js"));
+
+            // With a generous inline limit the 10 KB asset is inlined — and, being
+            // large and single-use, it is better off as a cacheable file.
+            var report = SavingsAnalyzer.Analyze(graph.Context, inlineLimit: 32 * 1024);
+
+            Assert.NotNull(report.Recommendations);
+            var rec = Assert.Single(report.Recommendations!, r => r.Kind == "stop-inlining-asset");
+            Assert.True(rec.Bytes > 0, "emitting a file removes bytes from the bundle");
         }
         finally
         {
