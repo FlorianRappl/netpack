@@ -1993,6 +1993,7 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
             Inputs = [],
             Outputs = [],
             Audit = audit,
+            Savings = NetPack.Graph.Savings.SavingsAnalyzer.Analyze(context),
         };
 
         // Build a map from node to output file name for cross-references

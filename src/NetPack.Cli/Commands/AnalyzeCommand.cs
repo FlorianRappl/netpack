@@ -62,6 +62,7 @@ public class AnalyzeCommand : ICommand
         await compilation.WriteOut(options);
 
         var audit = Audit ? await RunAudit(graph.Context) : null;
+        ReportSavings(graph.Context);
         var results = new Metadata(graph, compilation, audit);
 
         if (!string.IsNullOrEmpty(OutFile))
@@ -97,6 +98,33 @@ public class AnalyzeCommand : ICommand
         }
 
         return report;
+    }
+
+    private static void ReportSavings(BundlerContext context)
+    {
+        var report = NetPack.Graph.Savings.SavingsAnalyzer.Analyze(context);
+        var recommendations = report.Recommendations;
+
+        if (recommendations is not { Count: > 0 })
+        {
+            Console.WriteLine("[netpack] Bundle shape: no optimization opportunities found.");
+            return;
+        }
+
+        Console.WriteLine("[netpack] Bundle shape: {0} recommendation(s){1}:",
+            recommendations.Count,
+            report.PotentialBytes > 0 ? $", ~{report.PotentialBytes} B of duplication" : "");
+
+        foreach (var recommendation in recommendations.Take(5))
+        {
+            Console.WriteLine("  - [{0}] {1}", recommendation.Severity, recommendation.Message);
+        }
+
+        if (recommendations.Count > 5)
+        {
+            Console.WriteLine("  … and {0} more (see the analyzer's Savings tab or the metafile).",
+                recommendations.Count - 5);
+        }
     }
 
     public async Task Run()

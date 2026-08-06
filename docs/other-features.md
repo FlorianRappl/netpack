@@ -209,6 +209,31 @@ the graph are checked against known vulnerabilities (npm advisories / CVEs), and
 each advisory (with severity, CVSS score, CWE and URL) is listed alongside a
 per-severity summary. Disable it with `--audit false`.
 
+### Optimization recommendations
+
+Alongside the raw graph, `analyze` inspects the *shape* of your chunks and points
+out where they could be split more efficiently — the goal being fewer requests
+and more predictable load order, not just smaller totals. The findings live in a
+`savings` section of the metadata and are surfaced as an interactive **Savings**
+tab in the analyzer, with a short summary printed to the console. Each
+recommendation carries a machine-readable `kind`, a `severity`, the affected
+modules and bundles, its byte and request impact, and a plain-language `message`
+telling you what to do. Three situations are flagged:
+
+- **Duplicated module** — a source module whose code physically lands in more
+  than one output bundle. Moving it into a shared dependency (or importing it from
+  a single module) removes the duplicated bytes outright. `potentialBytes` sums up
+  this provably-wasted code across the whole graph.
+- **Orphan shared chunk** — a `common.*` chunk that only one entry ever loads. It
+  de-duplicates nothing and merely costs a request, so it should be merged into
+  its single consumer.
+- **Over-split chunk** — a small chunk shared by only a couple of entries.
+  Inlining it into each trades a little duplicated code for one fewer request.
+
+For example, rather than shipping two small entries plus one large shared chunk
+(three requests), the analyzer will suggest folding the shared code back in so the
+browser fetches two balanced bundles instead.
+
 ## Build-time code generation
 
 Covered in full in [Build-time code generation](./codegen.md) — a `.codegen`

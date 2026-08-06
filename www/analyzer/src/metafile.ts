@@ -2,6 +2,22 @@ export interface Metafile {
   inputs: Record<string, InputFile>
   outputs: Record<string, OutputFile>
   audit?: AuditReport
+  savings?: SavingsReport
+}
+
+export interface SavingsReport {
+  potentialBytes: number
+  recommendations?: SavingsRecommendation[]
+}
+
+export interface SavingsRecommendation {
+  kind: string
+  severity: string
+  message: string
+  modules?: string[]
+  bundles?: string[]
+  bytes: number
+  requests: number
 }
 
 export interface AuditReport {

@@ -5,6 +5,7 @@ import { createTreemap } from "./treemap";
 import { createSunburst } from "./sunburst";
 import { createFlame } from "./flame";
 import { createAudits } from "./audits";
+import { createSavings } from "./savings";
 import { hideWhyFile } from "./whyfile";
 import { showWarningsPanel } from "./warnings";
 import { COLOR, updateColorMapping } from "./color";
@@ -20,6 +21,7 @@ enum CHART {
   SUNBURST,
   FLAME,
   AUDITS,
+  SAVINGS,
 }
 
 let startPanel = document.getElementById("startPanel") as HTMLDivElement;
@@ -29,6 +31,7 @@ let useTreemap = document.getElementById("useTreemap") as HTMLAnchorElement;
 let useSunburst = document.getElementById("useSunburst") as HTMLAnchorElement;
 let useFlame = document.getElementById("useFlame") as HTMLAnchorElement;
 let useAudits = document.getElementById("useAudits") as HTMLAnchorElement;
+let useSavings = document.getElementById("useSavings") as HTMLAnchorElement;
 let chartMode = CHART.NONE;
 export let colorMode = COLOR.NONE;
 
@@ -51,6 +54,8 @@ export let finishLoading = (json: string): void => {
         useFlame.classList.remove(styles.active);
       else if (chartMode === CHART.AUDITS)
         useAudits.classList.remove(styles.active);
+      else if (chartMode === CHART.SAVINGS)
+        useSavings.classList.remove(styles.active);
 
       chartMode = use;
       chartPanel.innerHTML = "";
@@ -71,6 +76,10 @@ export let finishLoading = (json: string): void => {
         chartPanel.append(createAudits(metafile));
         useAudits.classList.add(styles.active);
         localStorageSetItem("chart", "audits");
+      } else if (chartMode === CHART.SAVINGS) {
+        chartPanel.append(createSavings(metafile));
+        useSavings.classList.add(styles.active);
+        localStorageSetItem("chart", "savings");
       }
     }
   };
@@ -96,6 +105,7 @@ export let finishLoading = (json: string): void => {
   useSunburst.onclick = () => useChart(CHART.SUNBURST);
   useFlame.onclick = () => useChart(CHART.FLAME);
   useAudits.onclick = () => useChart(CHART.AUDITS);
+  useSavings.onclick = () => useChart(CHART.SAVINGS);
 
   chartMode = CHART.NONE;
   colorMode = COLOR.NONE;
@@ -111,7 +121,9 @@ export let finishLoading = (json: string): void => {
         ? CHART.SUNBURST
         : localStorageGetItem("chart") === "audits"
           ? CHART.AUDITS
-          : CHART.TREEMAP,
+          : localStorageGetItem("chart") === "savings"
+            ? CHART.SAVINGS
+            : CHART.TREEMAP,
   );
   useColor(COLOR.DIRECTORY);
 };

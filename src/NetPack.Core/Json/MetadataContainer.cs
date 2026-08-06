@@ -14,6 +14,62 @@ public sealed class MetadataContainer
     /// (populated by the <c>analyze</c> command). Null when not run.</summary>
     [JsonPropertyName("audit")]
     public AuditReport? Audit { get; set; }
+
+    /// <summary>Bundle-shape optimization opportunities — modules duplicated
+    /// across outputs, shared chunks with poor fan-out, etc. — with actionable
+    /// recommendations. Always computed (it is cheap and graph-only).</summary>
+    [JsonPropertyName("savings")]
+    public SavingsReport? Savings { get; set; }
+}
+
+/// <summary>Potential bundle savings and the recommendations that would realize
+/// them, derived purely from the chunk graph.</summary>
+public sealed class SavingsReport
+{
+    /// <summary>Total bytes that are provably wasted today (duplicated module
+    /// code across outputs). Recommendations whose net effect adds bytes in
+    /// exchange for fewer requests are excluded from this figure.</summary>
+    [JsonPropertyName("potentialBytes")]
+    public int PotentialBytes { get; set; }
+
+    /// <summary>The recommendations, most impactful first. Null when the bundle
+    /// graph is already well shaped.</summary>
+    [JsonPropertyName("recommendations")]
+    public List<SavingsRecommendation>? Recommendations { get; set; }
+}
+
+/// <summary>A single, actionable bundle-optimization recommendation.</summary>
+public sealed class SavingsRecommendation
+{
+    /// <summary>Machine-readable category: <c>duplicate-module</c>,
+    /// <c>merge-orphan-chunk</c>, or <c>inline-small-chunk</c>.</summary>
+    [JsonPropertyName("kind")]
+    public string Kind { get; set; } = "";
+
+    /// <summary>Advisory weight: <c>high</c>, <c>medium</c>, or <c>low</c>.</summary>
+    [JsonPropertyName("severity")]
+    public string Severity { get; set; } = "low";
+
+    /// <summary>A human-readable statement of the problem and the concrete fix.</summary>
+    [JsonPropertyName("message")]
+    public string Message { get; set; } = "";
+
+    /// <summary>The source modules the recommendation concerns (relative paths).</summary>
+    [JsonPropertyName("modules")]
+    public List<string>? Modules { get; set; }
+
+    /// <summary>The output bundles the recommendation concerns (file names).</summary>
+    [JsonPropertyName("bundles")]
+    public List<string>? Bundles { get; set; }
+
+    /// <summary>Byte impact. Positive = bytes saved; negative = bytes added
+    /// (traded for fewer requests).</summary>
+    [JsonPropertyName("bytes")]
+    public int Bytes { get; set; }
+
+    /// <summary>How many HTTP requests applying the recommendation removes.</summary>
+    [JsonPropertyName("requests")]
+    public int Requests { get; set; }
 }
 
 /// <summary>The result of auditing the graph's dependencies against known
