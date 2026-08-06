@@ -204,6 +204,11 @@ one is — and keeps recompiling as you edit. Drop `--interactive` and add
 neither to just print it to the console. See
 [Getting started](./getting-started.md#analyze--inspect-the-bundle-graph).
 
+The metadata also carries an `audit` section: the dependencies that made it into
+the graph are checked against known vulnerabilities (npm advisories / CVEs), and
+each advisory (with severity, CVSS score, CWE and URL) is listed alongside a
+per-severity summary. Disable it with `--audit false`.
+
 ## Build-time code generation
 
 Covered in full in [Build-time code generation](./codegen.md) — a `.codegen`

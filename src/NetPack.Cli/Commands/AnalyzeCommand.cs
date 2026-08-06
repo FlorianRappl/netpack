@@ -1,5 +1,6 @@
 namespace NetPack.Commands;
 
+using System.Linq;
 using System.Reflection;
 using CommandLine;
 using Microsoft.AspNetCore.Builder;
@@ -7,6 +8,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.StaticFiles;
 using NetPack.Graph;
 using NetPack.Graph.Writers;
+using NetPack.Json;
 using NetPack.Server;
 
 [Verb("analyze", HelpText = "Analyzes the generated bundles.")]
@@ -41,6 +43,9 @@ public class AnalyzeCommand : ICommand
     [Option("inline-limit", Default = 0, HelpText = "Maximum size in bytes to inline assets as data URIs instead of emitting files (0 = disabled).")]
     public int InlineLimit { get; set; } = 0;
 
+    [Option("audit", Default = true, HelpText = "Audit graph dependencies against known vulnerabilities (npm advisories) and include the findings in the output. Use --audit false to disable.")]
+    public bool Audit { get; set; } = true;
+
     private async Task<Metadata> Compile()
     {
         var file = Path.Combine(Environment.CurrentDirectory, FilePath!);
@@ -55,7 +60,9 @@ public class AnalyzeCommand : ICommand
         using var graph = await Traverse.From(file, Externals, Shared, hookModules: PresetArgs.Hooks);
         var compilation = new MemoryResultWriter(graph.Context);
         await compilation.WriteOut(options);
-        var results = new Metadata(graph, compilation);
+
+        var audit = Audit ? await RunAudit(graph.Context) : null;
+        var results = new Metadata(graph, compilation, audit);
 
         if (!string.IsNullOrEmpty(OutFile))
         {
@@ -65,6 +72,31 @@ public class AnalyzeCommand : ICommand
         }
 
         return results;
+    }
+
+    private static async Task<AuditReport> RunAudit(BundlerContext context)
+    {
+        Console.WriteLine("[netpack] Auditing dependencies ...");
+        var report = await DependencyAudit.RunAsync(context);
+
+        if (report.Error is { Length: > 0 } error)
+        {
+            Console.WriteLine("[netpack] Audit could not complete: {0}", error);
+        }
+        else if (report.Vulnerabilities is { Count: > 0 } vulnerabilities)
+        {
+            var bySeverity = report.Summary is { Count: > 0 }
+                ? string.Join(", ", report.Summary.OrderBy(kv => kv.Key).Select(kv => $"{kv.Value} {kv.Key}"))
+                : vulnerabilities.Count.ToString();
+            Console.WriteLine("[netpack] Audit: {0} advisory(ies) across {1} package(s) — {2}.",
+                vulnerabilities.Count, report.Checked, bySeverity);
+        }
+        else
+        {
+            Console.WriteLine("[netpack] Audit: no known vulnerabilities in {0} package(s).", report.Checked);
+        }
+
+        return report;
     }
 
     public async Task Run()

@@ -79,10 +79,19 @@ npx netpack analyze src/index.html
 Compiles (optimized) and reports on the resulting bundles: what's in them,
 how big they are, how many modules each one pulls in.
 
+It also **audits the dependencies** that made it into the graph against known
+vulnerabilities (npm advisories / CVEs) and includes the findings under an
+`audit` key in the metadata JSON — one entry per raised advisory (package,
+version, severity, CVSS score, CWE, advisory URL) plus a per-severity summary.
+Only the packages actually present in the graph are checked (tree-shaken ones are
+not), and a failed audit (offline, timeout) is recorded on the report rather than
+failing the run.
+
 | Option | Meaning |
 | --- | --- |
 | `--outfile <file>` | Write the metadata as JSON instead of printing it. |
 | `--interactive` | Start a small local server (default port `8080`) with a visual explorer of the bundle graph, and keep recompiling on change. |
+| `--audit` | Audit dependencies for known vulnerabilities (default on; `--audit false` to disable). |
 | `--external`, `--shared` | Same meaning as in `bundle`. |
 
 ### `graph` / `inspect`

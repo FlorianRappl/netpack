@@ -1985,13 +1985,14 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
     /// with their dependencies), outputs (bundles/assets with byte sizes, entry-point
     /// flags, and cross-bundle references), and per-chunk and per-asset metadata.
     /// </summary>
-    public static string BuildMetafile(BundlerContext context, IReadOnlyList<EmittedFile> emitted)
+    public static string BuildMetafile(BundlerContext context, IReadOnlyList<EmittedFile> emitted, NetPack.Json.AuditReport? audit = null)
     {
         var root = Environment.CurrentDirectory;
         var container = new MetadataContainer
         {
             Inputs = [],
-            Outputs = []
+            Outputs = [],
+            Audit = audit,
         };
 
         // Build a map from node to output file name for cross-references
