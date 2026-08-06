@@ -46,7 +46,7 @@
          bundler (and the Vue/Astro SFC compilers) are built on. Native image
          processing (SkiaSharp) is NOT referenced here — it is provided by a
          consumer through the public IAssetProcessor interface. -->
-    <PackageReference Include="AngleSharp" Version="1.6.0" />
+    <PackageReference Include="AngleSharp" Version="1.7.1" />
     <PackageReference Include="AngleSharp.Css" Version="1.0.0" />
   </ItemGroup>
 
