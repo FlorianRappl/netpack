@@ -2,6 +2,7 @@ namespace NetPack.Graph.Savings;
 
 using NetPack.Graph.Bundles;
 using NetPack.Json;
+using NetPack.Syntax.Optimizer;
 
 /// <summary>
 /// Inspects the finished chunk graph for bundle-shape inefficiencies and turns
@@ -60,6 +61,21 @@ internal static class SavingsAnalyzer
     /// <summary>An inlined asset larger than this bloats the bundle and can't be
     /// cached on its own — usually better emitted as a file.</summary>
     private const int LargeInlinedAssetBytes = 8 * 1024;
+
+    /// <summary>A module must be at least this big, and only partially used, to be
+    /// worth flagging as a side-effect DCE trap.</summary>
+    private const int SideEffectTrapBytes = 8 * 1024;
+
+    /// <summary>Modules imported by at least this many files are "hubs".</summary>
+    private const int WidelyImportedCount = 8;
+
+    /// <summary>A hub at or above this size is also a shared-chunk boundary.</summary>
+    private const int WidelyImportedHeavyBytes = 16 * 1024;
+
+    /// <summary>Size thresholds behind the HIGH / MEDIUM / LOW severity of the
+    /// size-driven recommendations.</summary>
+    private const int HighBytes = 100 * 1024;
+    private const int MediumBytes = 30 * 1024;
 
     /// <param name="context">The finished build graph to inspect.</param>
     /// <param name="inlineLimit">The active <c>--inline-limit</c> (bytes; 0 = off),
@@ -425,6 +441,11 @@ internal static class SavingsAnalyzer
             }
         }
 
+        // 6) Dead-code / structural insight from the module graph: side-effect
+        //    DCE traps (whole modules dragged in by a partial import), packages
+        //    that aren't tree-shaken, and widely-imported hub modules.
+        recommendations.AddRange(AnalyzeDeadCodeAndHubs(context));
+
         // Most impactful first: high before medium/low, then by bytes saved.
         recommendations.Sort((a, b) =>
         {
@@ -438,6 +459,259 @@ internal static class SavingsAnalyzer
             Recommendations = recommendations.Count > 0 ? recommendations : null,
         };
     }
+
+    /// <summary>
+    /// Dead-code and structural insight drawn from the module import graph, split
+    /// deliberately by ownership: the user's own modules are analysed one by one
+    /// (each has an actionable fix), while third-party packages are treated as a
+    /// single unit (you can swap a dependency, but not edit one file inside it).
+    /// Produces three kinds of finding:
+    /// <list type="bullet">
+    ///   <item><b>side-effect-trap</b> — a first-party module with top-level side
+    ///   effects that is only partially used: because it isn't side-effect-free,
+    ///   the unused exports can't be shaken and the whole file is bundled.</item>
+    ///   <item><b>untreeshakeable-package</b> — the same situation inside a
+    ///   dependency, aggregated to one finding per package.</item>
+    ///   <item><b>widely-imported</b> — a first-party hub imported by many files
+    ///   (and, if heavy, a natural shared-chunk boundary).</item>
+    /// </list>
+    /// </summary>
+    private static List<SavingsRecommendation> AnalyzeDeadCodeAndHubs(BundlerContext context)
+    {
+        var root = Environment.CurrentDirectory;
+        var recs = new List<SavingsRecommendation>();
+        var fragments = context.JsFragments;
+
+        if (fragments.IsEmpty)
+        {
+            return recs;
+        }
+
+        // Modules that survive into some bundle (post tree-shake).
+        var retained = new HashSet<Node>();
+        foreach (var bundle in context.Bundles.Values)
+        {
+            foreach (var item in bundle.Items)
+            {
+                if (fragments.ContainsKey(item))
+                {
+                    retained.Add(item);
+                }
+            }
+        }
+
+        // Fan-in: distinct modules that import each module.
+        var importers = new Dictionary<Node, HashSet<Node>>();
+        foreach (var (importer, fragment) in fragments)
+        {
+            foreach (var target in fragment.Replacements.Values)
+            {
+                if (!ReferenceEquals(target, importer) && fragments.ContainsKey(target))
+                {
+                    if (!importers.TryGetValue(target, out var set))
+                    {
+                        importers[target] = set = [];
+                    }
+
+                    set.Add(importer);
+                }
+            }
+        }
+
+        // Entry reachability: which entry outputs pull each module in.
+        var moduleEntries = new Dictionary<Node, HashSet<Node>>();
+        foreach (var entry in context.Bundles.Values.Where(b => b.Type == ".js" && !b.IsShared).Select(b => b.Root))
+        {
+            var seen = new HashSet<Node>();
+            var stack = new Stack<Node>();
+            stack.Push(entry);
+
+            while (stack.Count > 0)
+            {
+                var node = stack.Pop();
+                if (!seen.Add(node))
+                {
+                    continue;
+                }
+
+                if (!moduleEntries.TryGetValue(node, out var set))
+                {
+                    moduleEntries[node] = set = [];
+                }
+
+                set.Add(entry);
+
+                if (fragments.TryGetValue(node, out var frag))
+                {
+                    foreach (var target in frag.Replacements.Values)
+                    {
+                        if (fragments.ContainsKey(target))
+                        {
+                            stack.Push(target);
+                        }
+                    }
+                }
+            }
+        }
+
+        string EntryName(Node r) => context.Bundles.TryGetValue(r, out var b)
+            ? b.GetFileName()
+            : Path.GetRelativePath(root, r.FileName);
+
+        List<string> EntriesFor(Node m) => moduleEntries.TryGetValue(m, out var set)
+            ? set.Select(EntryName).OrderBy(x => x, StringComparer.Ordinal).ToList()
+            : [];
+
+        Dependency? PackageOf(string file)
+        {
+            Dependency? best = null;
+            var bestLength = -1;
+
+            foreach (var dependency in context.Dependencies)
+            {
+                var directory = Path.GetDirectoryName(dependency.Location);
+                if (directory is null)
+                {
+                    continue;
+                }
+
+                var prefix = directory + Path.DirectorySeparatorChar;
+                if (file.StartsWith(prefix, StringComparison.Ordinal) && directory.Length > bestLength)
+                {
+                    best = dependency;
+                    bestLength = directory.Length;
+                }
+            }
+
+            return best;
+        }
+
+        // --- side-effect DCE traps (partial import of a non-pure module) -------
+        var userTraps = new List<(Node Module, int Wasted, int Used, int Total)>();
+        var packageTraps = new Dictionary<string, (int Wasted, int Modules)>(StringComparer.Ordinal);
+
+        foreach (var module in retained)
+        {
+            var fragment = fragments[module];
+            var exports = fragment.ExportNames;
+            if (exports.Length <= 1 || module.Bytes < SideEffectTrapBytes)
+            {
+                continue;
+            }
+
+            var used = context.GetUsedExports(module);
+            if (used.All)
+            {
+                continue; // fully used — nothing to shake
+            }
+
+            var usedCount = exports.Count(e => used.Names.Contains(e));
+            if (usedCount == 0 || usedCount >= exports.Length)
+            {
+                continue; // side-effect-only import, or everything is used
+            }
+
+            var package = PackageOf(module.FileName);
+            var packageMarksPure = package is not null && !package.HasSideEffects(module.FileName);
+            var heuristicPure = !TreeShaker.HasTopLevelSideEffects(fragment.Ast);
+            if (packageMarksPure || heuristicPure)
+            {
+                continue; // shakeable → the unused exports already drop out
+            }
+
+            var wasted = (int)((long)module.Bytes * (exports.Length - usedCount) / exports.Length);
+            if (wasted < 2 * 1024)
+            {
+                continue;
+            }
+
+            if (package is null)
+            {
+                userTraps.Add((module, wasted, usedCount, exports.Length));
+            }
+            else
+            {
+                var aggregate = packageTraps.GetValueOrDefault(package.Name);
+                packageTraps[package.Name] = (aggregate.Wasted + wasted, aggregate.Modules + 1);
+            }
+        }
+
+        foreach (var (module, wasted, usedCount, total) in userTraps.OrderByDescending(t => t.Wasted).Take(12))
+        {
+            var name = Path.GetRelativePath(root, module.FileName);
+            recs.Add(new SavingsRecommendation
+            {
+                Kind = "side-effect-trap",
+                Severity = SeverityForBytes(wasted),
+                Bytes = wasted,
+                Requests = 0,
+                Modules = [name],
+                Bundles = EntriesFor(module),
+                Message =
+                    $"'{name}' has top-level side effects, so importing {usedCount} of its {total} exports still bundles the whole ~{Human(module.Bytes)} "
+                    + $"(~{Human(wasted)} of it unused). Move the side-effectful code into its own module (or make this one pure) so the unused exports can be tree-shaken.",
+            });
+        }
+
+        foreach (var (package, aggregate) in packageTraps.OrderByDescending(p => p.Value.Wasted).Take(8))
+        {
+            recs.Add(new SavingsRecommendation
+            {
+                Kind = "untreeshakeable-package",
+                Severity = SeverityForBytes(aggregate.Wasted),
+                Bytes = aggregate.Wasted,
+                Requests = 0,
+                Modules = [package],
+                Message =
+                    $"'{package}' isn't tree-shaken here — its modules have side effects (or ship no ES-module build), so partial imports still pull in "
+                    + $"~{Human(aggregate.Wasted)} of unused code across {aggregate.Modules} module(s). Import the specific submodule you need "
+                    + $"(e.g. '{package}/feature'), use the package's ESM entry, or switch to a lighter alternative.",
+            });
+        }
+
+        // --- widely-imported first-party hubs ---------------------------------
+        var hubs = new List<(Node Module, int FanIn)>();
+        foreach (var module in retained)
+        {
+            if (PackageOf(module.FileName) is not null)
+            {
+                continue; // only the user's own code is actionable here
+            }
+
+            var fanIn = importers.TryGetValue(module, out var set) ? set.Count : 0;
+            if (fanIn >= WidelyImportedCount)
+            {
+                hubs.Add((module, fanIn));
+            }
+        }
+
+        foreach (var (module, fanIn) in hubs.OrderByDescending(h => h.FanIn).Take(6))
+        {
+            var name = Path.GetRelativePath(root, module.FileName);
+            var heavy = module.Bytes >= WidelyImportedHeavyBytes;
+            var entries = EntriesFor(module);
+            recs.Add(new SavingsRecommendation
+            {
+                Kind = "widely-imported",
+                Severity = heavy ? "medium" : "low",
+                Bytes = 0,
+                Requests = 0,
+                Modules = [name],
+                Bundles = entries,
+                Message =
+                    $"'{name}' is imported by {fanIn} modules"
+                    + (entries.Count > 1 ? $" across {entries.Count} entry points" : "")
+                    + ". It's a hub — keep it small and side-effect-free"
+                    + (heavy ? $"; at ~{Human(module.Bytes)} it is also a natural shared-chunk boundary." : "; changes here ripple widely."),
+            });
+        }
+
+        return recs;
+    }
+
+    /// <summary>Maps a byte figure to a HIGH / MEDIUM / LOW severity.</summary>
+    private static string SeverityForBytes(int bytes)
+        => bytes >= HighBytes ? "high" : bytes >= MediumBytes ? "medium" : "low";
 
     /// <summary>
     /// Finds the natural lazy-load points inside a bundle: each top-level import

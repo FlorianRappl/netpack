@@ -247,6 +247,20 @@ telling you what to do. Three situations are flagged:
 - **Stop inlining asset** — an asset baked into the bundle as a data URI that is
   either large or duplicated across several bundles: emitting it as a file removes
   the bytes (and duplication) and lets the browser cache it on its own.
+- **Side-effect DCE trap** — one of your own modules has top-level side effects, so
+  importing even one of its exports drags the whole file in (the unused exports
+  can't be tree-shaken). Splitting the side-effectful code out — or making the
+  module pure — lets the dead exports drop.
+- **Package not tree-shaken** — the same trap inside a dependency, reported once per
+  package (you can swap a whole dependency but not edit one file inside it). Try a
+  subpath import, the package's ESM build, or a lighter alternative.
+- **Widely-imported hub** — one of your modules is imported by many files (and,
+  when heavy, spans several entry points): a natural refactor target and
+  shared-chunk boundary.
+
+Findings are ranked HIGH / MEDIUM / LOW by impact, and the analysis is
+ownership-aware: your own code is examined module by module (each with a concrete
+fix you can make), while third-party packages are treated as a single unit.
 
 For example, rather than shipping two small entries plus one large shared chunk
 (three requests), the analyzer will suggest folding the shared code back in so the

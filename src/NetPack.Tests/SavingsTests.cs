@@ -177,6 +177,35 @@ public class SavingsTests
     }
 
     [Fact]
+    public async Task Partially_used_side_effect_module_is_flagged_as_a_trap()
+    {
+        var payload = "export const payload = \"" + new string('x', 12 * 1024) + "\";";
+
+        var dir = await SetupProject(
+            ("main.js", "import { used } from './side.js'; export default used();"),
+            // A top-level statement makes the module non-pure, so importing just
+            // `used` still drags in the large unused `payload` export.
+            ("side.js", "console.log('init');\nexport function used() { return 1; }\n" + payload));
+
+        try
+        {
+            using var graph = await Traverse.From(Path.Combine(dir, "main.js"));
+
+            var report = SavingsAnalyzer.Analyze(graph.Context);
+
+            Assert.NotNull(report.Recommendations);
+            var rec = Assert.Single(report.Recommendations!, r => r.Kind == "side-effect-trap");
+            Assert.NotNull(rec.Modules);
+            Assert.Contains(rec.Modules!, m => m.EndsWith("side.js"));
+            Assert.True(rec.Bytes > 0, "the trap should estimate the unused weight carried in");
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task Savings_report_is_embedded_in_the_metafile()
     {
         var dir = await SetupProject(

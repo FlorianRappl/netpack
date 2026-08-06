@@ -28,6 +28,9 @@ let KIND_LABEL: Record<string, string> = {
   'heavy-module': 'Dominant module',
   'inline-asset': 'Inline this asset',
   'stop-inlining-asset': 'Stop inlining asset',
+  'side-effect-trap': 'Side-effect DCE trap',
+  'untreeshakeable-package': 'Package not tree-shaken',
+  'widely-imported': 'Widely-imported hub',
 }
 
 // A distinct hue per kind, used for the summary stack, legend and card marker.
@@ -40,6 +43,9 @@ let KIND_COLOR: Record<string, string> = {
   'inline-small-chunk': '#1976d2',
   'inline-asset': '#1565c0',
   'merge-orphan-chunk': '#00897b',
+  'side-effect-trap': '#c2185b',
+  'untreeshakeable-package': '#ad1457',
+  'widely-imported': '#00838f',
 }
 
 let kindColor = (kind: string): string => KIND_COLOR[kind] || '#6b7280'
