@@ -1,0 +1,12 @@
+{
+  "name": "netpack-analyzer",
+  "type": "module",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "npx esbuild --bundle --external:*.png --inject:src/inject.ts --loader:.css=local-css --loader:.html=copy --mangle-props=_$$ --minify --target=chrome51 --outdir=../../src/resources/analyzer src/index.html src/index.ts"
+  },
+  "dependencies": {
+    "esbuild": "^0.28.1"
+  }
+}

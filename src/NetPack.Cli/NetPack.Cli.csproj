@@ -42,10 +42,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="../resources/analyzer/index.css" />
-    <EmbeddedResource Include="../resources/analyzer/index.html" />
-    <EmbeddedResource Include="../resources/analyzer/index.js" />
-    <EmbeddedResource Include="../resources/analyzer/logo.svg" />
+    <EmbeddedResource Include="../resources/analyzer/*" />
   </ItemGroup>
 
 </Project>
