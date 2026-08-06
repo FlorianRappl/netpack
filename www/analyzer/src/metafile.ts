@@ -1,6 +1,27 @@
 export interface Metafile {
   inputs: Record<string, InputFile>
   outputs: Record<string, OutputFile>
+  audit?: AuditReport
+}
+
+export interface AuditReport {
+  source?: string
+  checked: number
+  summary?: Record<string, number>
+  vulnerabilities?: AuditVulnerability[]
+  error?: string
+}
+
+export interface AuditVulnerability {
+  name?: string
+  version?: string
+  severity?: string
+  title?: string
+  id?: string
+  url?: string
+  vulnerableVersions?: string
+  cwe?: string[]
+  cvssScore?: number
 }
 
 export interface InputFile {

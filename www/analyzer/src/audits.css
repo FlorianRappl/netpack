@@ -1,0 +1,104 @@
+.audits {
+  max-width: 1000px;
+  margin: 30px auto;
+  color: var(--fg);
+}
+
+.header {
+  text-align: center;
+  margin: 20px 0 30px;
+}
+
+.header p {
+  margin: 0;
+}
+
+.ok {
+  color: var(--fg-on);
+}
+
+.error {
+  color: #d32f2f;
+}
+
+.empty {
+  text-align: center;
+  color: var(--fg);
+  opacity: 0.8;
+}
+
+.badge {
+  display: inline-block;
+  padding: 1px 8px;
+  margin: 0 2px;
+  border-radius: 10px;
+  font-size: 0.8em;
+  font-weight: bold;
+  color: #fff;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+
+.critical { background: #b00020; }
+.high { background: #e64a19; }
+.moderate { background: #f9a825; color: #222; }
+.low { background: #1976d2; }
+.info { background: #6b7280; }
+
+.package {
+  margin: 20px auto;
+  border: 1px solid rgba(127, 127, 127, 0.3);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.packageName {
+  margin: 0;
+  padding: 10px 14px;
+  font-size: 1em;
+  font-weight: normal;
+  font-family: monospace;
+  background: rgba(127, 127, 127, 0.08);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.count {
+  margin-left: auto;
+  opacity: 0.6;
+  font-family: sans-serif;
+  font-size: 0.85em;
+}
+
+.vuln {
+  padding: 10px 14px;
+  border-top: 1px solid rgba(127, 127, 127, 0.15);
+}
+
+.vulnHead {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.vulnTitle a {
+  color: inherit;
+}
+
+.meta {
+  margin-top: 4px;
+  opacity: 0.7;
+  font-size: 0.85em;
+}
+
+.meta code {
+  font-family: monospace;
+}
