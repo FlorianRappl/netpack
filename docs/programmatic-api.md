@@ -46,6 +46,37 @@ netpack.serve("src/index.html", { port: 3000, signal: controller.signal });
 controller.abort();
 ```
 
+### Reacting to (re)builds
+
+`serve` and `bundle({ watch: true })` accept three callbacks so a script can
+react to the build lifecycle — most usefully, to know when a rebuild has
+finished after a file change:
+
+```js
+import { netpack } from "netpack";
+
+const controller = new AbortController();
+netpack.serve("src/index.html", {
+  signal: controller.signal,
+  onStart: () => console.log("build started…"),
+  onBuild: ({ initial, durationMs }) =>
+    console.log(initial ? "first build done" : `rebuilt in ${durationMs ?? "?"} ms`),
+  onError: (err) => console.error("rebuild failed:", err.message),
+});
+```
+
+- **`onStart()`** — a build or rebuild has begun.
+- **`onBuild({ initial, durationMs })`** — a build finished successfully.
+  `initial` is `false` for rebuilds triggered by a file change; `durationMs` is
+  the reported build time when available.
+- **`onError(error)`** — a rebuild failed. Under `serve`/`watch` the process
+  keeps running, so more builds can still follow.
+
+These are implemented purely in the npm layer by watching the binary's normal
+stdout/stderr for its build markers — there's no extra IPC channel, and all
+output still reaches your terminal. They're a no-op for one-shot `bundle` calls
+except that `onBuild`/`onError` fire once for that single build.
+
 ## Low-level `run`
 
 For full control there's the lower-level `run`, which spawns the binary with raw

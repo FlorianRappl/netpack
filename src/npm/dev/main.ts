@@ -55,6 +55,32 @@ export type Platform = "web" | "node" | "deno";
 export type PackagesMode = "bundle" | "external";
 export type LicenseMode = "skip" | "preamble" | "json" | "spdx";
 
+/** Details passed to {@link BuildEvents.onBuild} when a (re)build succeeds. */
+export interface BuildInfo {
+  /** Wall-clock build time in milliseconds, when the CLI reported it. */
+  durationMs?: number;
+  /** False for rebuilds triggered by a file change under `watch`/`serve`. */
+  initial: boolean;
+}
+
+/**
+ * Build lifecycle callbacks for the long-running commands (`serve`, and
+ * `bundle` with `watch: true`). They let a program react to each (re)build —
+ * a rebuild starting, finishing, or failing.
+ *
+ * These are wired entirely in the npm layer by watching the binary's stdout/
+ * stderr for its build markers; there is no separate IPC channel. All output
+ * is still forwarded to the terminal unchanged.
+ */
+export interface BuildEvents {
+  /** Fires when a build (or rebuild) begins. */
+  onStart?: () => void;
+  /** Fires when a build (or rebuild) completes successfully. */
+  onBuild?: (info: BuildInfo) => void;
+  /** Fires when a rebuild fails (the process keeps running under watch/serve). */
+  onError?: (error: Error) => void;
+}
+
 export interface CommonOptions {
   /**
    * Aborts the underlying process. Useful for long-running commands
@@ -64,7 +90,7 @@ export interface CommonOptions {
   signal?: AbortSignal;
 }
 
-export interface BundleOptions extends CommonOptions {
+export interface BundleOptions extends CommonOptions, BuildEvents {
   /** Output directory (default "dist"). */
   outdir?: string;
   /** Minify + tree-shake the output. */
@@ -107,7 +133,7 @@ export interface BundleOptions extends CommonOptions {
   inlineLimit?: number;
 }
 
-export interface ServeOptions extends CommonOptions {
+export interface ServeOptions extends CommonOptions, BuildEvents {
   /** Port for the dev server (default 1234). */
   port?: number;
   minify?: boolean;
@@ -161,7 +187,9 @@ function buildArgs(options: Record<string, unknown>): string[] {
   const argv: string[] = [];
 
   for (const [key, value] of Object.entries(options)) {
-    if (key === "signal" || value === undefined || value === null) continue;
+    // Skip control/meta fields that aren't CLI flags: the abort signal and the
+    // build-event callbacks (they're handled by the npm layer, not the binary).
+    if (key === "signal" || value === undefined || value === null || typeof value === "function") continue;
     const flag = toFlag(key);
 
     if (typeof value === "boolean") {
@@ -182,14 +210,111 @@ function buildArgs(options: Record<string, unknown>): string[] {
   return argv;
 }
 
+// ---------------------------------------------------------------------------
+// Build-event detection
+//
+// The binary prints stable, human-readable markers on every (re)build — the
+// same lines you see in the terminal. We tee its stdout/stderr through and scan
+// those lines to drive the onStart/onBuild/onError callbacks. A small state
+// machine collapses the redundant markers a single rebuild emits (e.g. both
+// "File change detected ..." and "Bundling ...") into one onStart per build.
+// ---------------------------------------------------------------------------
+
+const MARK_START = /\[netpack\] (?:Starting build|Bundling '|File change detected)/;
+const MARK_DONE = /\[netpack\] (?:Everything bundled!|Rebuild complete\.|Emitted \d|Nothing was emitted\.)/;
+const MARK_FAIL = /\[netpack\] Rebuild failed:?\s*(.*)$/;
+const MARK_DURATION = /\bin (\d+) ms\b/;
+
+function hasEvents(e?: BuildEvents): boolean {
+  return !!(e && (e.onStart || e.onBuild || e.onError));
+}
+
+/**
+ * Splits a byte stream into lines (buffering partials across chunks) and calls
+ * `onLine` for each complete line. Returns a `flush` for any trailing text.
+ */
+function lineScanner(onLine: (line: string) => void): (chunk: Buffer | string) => void {
+  let buffer = "";
+  return (chunk) => {
+    buffer += chunk.toString();
+    let index: number;
+    while ((index = buffer.indexOf("\n")) >= 0) {
+      onLine(buffer.slice(0, index));
+      buffer = buffer.slice(index + 1);
+    }
+  };
+}
+
+/**
+ * Tees the child's stdout/stderr to this process (so the terminal is unchanged)
+ * while scanning for build markers and firing the lifecycle callbacks.
+ */
+function attachBuildEvents(child: child_process.ChildProcess, events: BuildEvents): void {
+  let building = false;
+  let seenFirst = false;
+
+  const consider = (line: string) => {
+    if (MARK_START.test(line)) {
+      if (!building) {
+        building = true;
+        events.onStart?.();
+      }
+      return;
+    }
+
+    const fail = MARK_FAIL.exec(line);
+    if (fail) {
+      building = false;
+      events.onError?.(new Error(fail[1]?.trim() || "netpack rebuild failed"));
+      return;
+    }
+
+    if (MARK_DONE.test(line) && building) {
+      building = false;
+      const initial = !seenFirst;
+      seenFirst = true;
+      const duration = MARK_DURATION.exec(line);
+      events.onBuild?.({
+        durationMs: duration ? Number(duration[1]) : undefined,
+        initial,
+      });
+    }
+  };
+
+  const scanOut = lineScanner(consider);
+  const scanErr = lineScanner(consider);
+
+  child.stdout?.on("data", (chunk: Buffer) => {
+    process.stdout.write(chunk); // tee raw bytes so output is byte-accurate
+    scanOut(chunk);
+  });
+  child.stderr?.on("data", (chunk: Buffer) => {
+    process.stderr.write(chunk);
+    scanErr(chunk);
+  });
+}
+
 /** Runs an argv through `run` and resolves with the exit code (rejecting on failure). */
-function exec(argv: string[], signal?: AbortSignal): Promise<RunResult> {
+function exec(argv: string[], signal?: AbortSignal, events?: BuildEvents): Promise<RunResult> {
   return new Promise((resolve, reject) => {
     if (signal?.aborted) {
       return reject(new Error(`netpack ${argv[0]} aborted before start`));
     }
 
-    const child = run(argv);
+    // When callbacks are in play we must read stdout/stderr, so pipe them (and
+    // tee them back to the terminal). Otherwise inherit the streams as before.
+    const child = hasEvents(events)
+      ? child_process.spawn(binPath, argv, {
+          windowsHide: true,
+          stdio: ["inherit", "pipe", "pipe"],
+          cwd: process.cwd(),
+        })
+      : run(argv);
+
+    if (hasEvents(events)) {
+      attachBuildEvents(child, events!);
+    }
+
     const onAbort = () => child.kill();
     signal?.addEventListener("abort", onAbort, { once: true });
 
@@ -205,6 +330,8 @@ function exec(argv: string[], signal?: AbortSignal): Promise<RunResult> {
       if (code === 0 || code === null) {
         resolve({ code: code ?? 0 });
       } else {
+        // A one-shot build that failed outright (no watch loop to report it).
+        events?.onError?.(new Error(`netpack ${argv[0]} exited with code ${code}`));
         reject(new Error(`netpack ${argv[0]} exited with code ${code}`));
       }
     });
@@ -249,7 +376,7 @@ async function captureJson(
 export const netpack = {
   /** Produces a production build of `entry` into `options.outdir` (default "dist"). */
   bundle(entry: string, options: BundleOptions = {}): Promise<RunResult> {
-    return exec(["bundle", entry, ...buildArgs(options)], options.signal);
+    return exec(["bundle", entry, ...buildArgs(options)], options.signal, options);
   },
 
   /**
@@ -257,7 +384,7 @@ export const netpack = {
    * resolves once the server stops (e.g. via `options.signal`).
    */
   serve(entry: string, options: ServeOptions = {}): Promise<RunResult> {
-    return exec(["serve", entry, ...buildArgs(options)], options.signal);
+    return exec(["serve", entry, ...buildArgs(options)], options.signal, options);
   },
 
   /** Builds the dependency graph for `entry` and resolves with the parsed JSON. */

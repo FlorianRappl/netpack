@@ -17,6 +17,30 @@ export type Platform = "web" | "node" | "deno";
 export type PackagesMode = "bundle" | "external";
 export type LicenseMode = "skip" | "preamble" | "json" | "spdx";
 
+/** Details passed to {@link BuildEvents.onBuild} when a (re)build succeeds. */
+export interface BuildInfo {
+  /** Wall-clock build time in milliseconds, when the CLI reported it. */
+  durationMs?: number;
+  /** False for rebuilds triggered by a file change under `watch`/`serve`. */
+  initial: boolean;
+}
+
+/**
+ * Build lifecycle callbacks for the long-running commands (`serve`, and
+ * `bundle` with `watch: true`), letting a program react to each (re)build.
+ * Wired entirely in the npm layer by watching the binary's stdout/stderr for
+ * its build markers — there is no separate IPC channel, and all output is
+ * still forwarded to the terminal unchanged.
+ */
+export interface BuildEvents {
+  /** Fires when a build (or rebuild) begins. */
+  onStart?: () => void;
+  /** Fires when a build (or rebuild) completes successfully. */
+  onBuild?: (info: BuildInfo) => void;
+  /** Fires when a rebuild fails (the process keeps running under watch/serve). */
+  onError?: (error: Error) => void;
+}
+
 export interface CommonOptions {
   /**
    * Aborts the underlying process. Useful for long-running commands
@@ -26,7 +50,7 @@ export interface CommonOptions {
   signal?: AbortSignal;
 }
 
-export interface BundleOptions extends CommonOptions {
+export interface BundleOptions extends CommonOptions, BuildEvents {
   /** Output directory (default "dist"). */
   outdir?: string;
   /** Minify + tree-shake the output. */
@@ -69,7 +93,7 @@ export interface BundleOptions extends CommonOptions {
   inlineLimit?: number;
 }
 
-export interface ServeOptions extends CommonOptions {
+export interface ServeOptions extends CommonOptions, BuildEvents {
   /** Port for the dev server (default 1234). */
   port?: number;
   minify?: boolean;
