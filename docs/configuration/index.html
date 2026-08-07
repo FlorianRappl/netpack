@@ -1,7 +1,7 @@
 <!DOCTYPE html><html lang="en"> <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Configuration &amp; presets — netpack docs</title><meta name="description" content="Usage docs for netpack — the fast, batteries-included bundler for the web, built on C#/.NET with Ahead-of-Time compilation."><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="/docs/_astro/_slug_.YjzD3tp3.css"><script type="module">function d(){const e=document.getElementById("docs-nav-toggle"),t=document.getElementById("docs-scrim"),c=document.getElementById("docs-sidebar"),o=n=>{document.body.classList.toggle("docs-nav-open",n),e?.setAttribute("aria-expanded",String(n))};e?.addEventListener("click",()=>{o(!document.body.classList.contains("docs-nav-open"))}),t?.addEventListener("click",()=>o(!1)),c?.addEventListener("click",n=>{n.target.closest("a")&&o(!1)}),document.addEventListener("keydown",n=>{n.key==="Escape"&&o(!1)})}function s(){document.querySelectorAll(".prose pre.astro-code").forEach(e=>{if(e.querySelector(".code-copy-btn"))return;const t=document.createElement("button");t.type="button",t.className="code-copy-btn",t.textContent="copy",t.addEventListener("click",async()=>{const c=e.textContent??"";try{await navigator.clipboard?.writeText(c)}catch{}t.textContent="copied ✓",setTimeout(()=>{t.textContent="copy"},1600)}),e.appendChild(t)})}d();s();document.addEventListener("astro:page-load",()=>{d(),s()});
 </script></head> <body>  <div class="shell" data-astro-cid-zaqc7ala> <div class="dot-grid" aria-hidden="true" data-astro-cid-tw3ctjfb></div> <div class="glow glow-a" aria-hidden="true" data-astro-cid-tw3ctjfb></div> <div class="glow glow-b" aria-hidden="true" data-astro-cid-tw3ctjfb></div> <div class="scanlines" aria-hidden="true" data-astro-cid-tw3ctjfb></div>  <header class="docs-header" data-astro-cid-l4ysfnjo> <div class="docs-header-inner" data-astro-cid-l4ysfnjo> <button type="button" class="nav-toggle" id="docs-nav-toggle" aria-label="Toggle navigation" aria-controls="docs-sidebar" aria-expanded="false" data-astro-cid-l4ysfnjo> <span data-astro-cid-l4ysfnjo></span> <span data-astro-cid-l4ysfnjo></span> <span data-astro-cid-l4ysfnjo></span> </button> <a href="/docs" class="brand" data-astro-cid-l4ysfnjo> <span class="mark" data-astro-cid-l4ysfnjo> <span data-astro-cid-l4ysfnjo>n</span> </span> <span class="wordmark" data-astro-cid-l4ysfnjo>netpack <span class="wordmark-sub" data-astro-cid-l4ysfnjo>docs</span></span> </a> <nav class="links" aria-label="Site" data-astro-cid-l4ysfnjo> <a href="/" data-astro-cid-l4ysfnjo>Home</a> <a href="https://github.com/FlorianRappl/netpack" target="_blank" rel="noopener noreferrer" data-astro-cid-l4ysfnjo> <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true" data-astro-cid-l4ysfnjo> <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z" data-astro-cid-l4ysfnjo></path> </svg> <span class="github-label" data-astro-cid-l4ysfnjo>GitHub</span> </a> </nav> </div> </header>  <main class="content" data-astro-cid-zaqc7ala>   <div class="docs-scrim" id="docs-scrim"></div> <div class="docs-grid"> <nav class="docs-sidebar" id="docs-sidebar" aria-label="Documentation" data-astro-cid-ssfzsv2f> <ul class="top-level" data-astro-cid-ssfzsv2f> <li data-astro-cid-ssfzsv2f> <a href="/docs" class="link overview-link" data-astro-cid-ssfzsv2f>
 Overview
-</a> </li> </ul> <div class="group" data-astro-cid-ssfzsv2f> <div class="group-label" data-astro-cid-ssfzsv2f>General</div> <ul data-astro-cid-ssfzsv2f> <li data-astro-cid-ssfzsv2f> <a href="/docs/getting-started/" class="link" data-astro-cid-ssfzsv2f> Getting started </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/configuration/" class="link active" aria-current="page" data-astro-cid-ssfzsv2f> Configuration &amp; presets </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/programmatic-api/" class="link" data-astro-cid-ssfzsv2f> Programmatic use (Node.js) </a> </li> </ul> </div><div class="group" data-astro-cid-ssfzsv2f> <div class="group-label" data-astro-cid-ssfzsv2f>Use cases</div> <ul data-astro-cid-ssfzsv2f> <li data-astro-cid-ssfzsv2f> <a href="/docs/react-and-jsx/" class="link" data-astro-cid-ssfzsv2f> React &amp; JSX </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/solid/" class="link" data-astro-cid-ssfzsv2f> Solid components </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/vue/" class="link" data-astro-cid-ssfzsv2f> Vue single-file components </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/astro/" class="link" data-astro-cid-ssfzsv2f> Astro components </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/module-federation/" class="link" data-astro-cid-ssfzsv2f> Module Federation </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/native-federation/" class="link" data-astro-cid-ssfzsv2f> Native Federation </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/styling-and-assets/" class="link" data-astro-cid-ssfzsv2f> Styling &amp; assets </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/images-and-assets/" class="link" data-astro-cid-ssfzsv2f> Images &amp; assets </a> </li> </ul> </div><div class="group" data-astro-cid-ssfzsv2f> <div class="group-label" data-astro-cid-ssfzsv2f>Advanced</div> <ul data-astro-cid-ssfzsv2f> <li data-astro-cid-ssfzsv2f> <a href="/docs/importmaps-and-externals/" class="link" data-astro-cid-ssfzsv2f> Import maps &amp; externals </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/codegen/" class="link" data-astro-cid-ssfzsv2f> Build-time code generation (.codegen files) </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/other-features/" class="link" data-astro-cid-ssfzsv2f> Other features </a> </li> </ul> </div><div class="group" data-astro-cid-ssfzsv2f> <div class="group-label" data-astro-cid-ssfzsv2f>.NET</div> <ul data-astro-cid-ssfzsv2f> <li data-astro-cid-ssfzsv2f> <a href="/docs/dotnet-libraries/" class="link" data-astro-cid-ssfzsv2f> Using netpack from .NET </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/netpack-core/" class="link" data-astro-cid-ssfzsv2f> NetPack.Core </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/netpack-build/" class="link" data-astro-cid-ssfzsv2f> NetPack.Build </a> </li> </ul> </div><div class="group" data-astro-cid-ssfzsv2f> <div class="group-label" data-astro-cid-ssfzsv2f>More</div> <ul data-astro-cid-ssfzsv2f> <li data-astro-cid-ssfzsv2f> <a href="/docs/output-formats/" class="link" data-astro-cid-ssfzsv2f> Output formats </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/platforms/" class="link" data-astro-cid-ssfzsv2f> Platforms </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/svelte/" class="link" data-astro-cid-ssfzsv2f> Svelte components </a> </li> </ul> </div> </nav>  <article class="prose docs-main">  <h1 id="configuration--presets">Configuration &#x26; presets</h1>
+</a> </li> </ul> <div class="group" data-astro-cid-ssfzsv2f> <div class="group-label" data-astro-cid-ssfzsv2f>General</div> <ul data-astro-cid-ssfzsv2f> <li data-astro-cid-ssfzsv2f> <a href="/docs/getting-started/" class="link" data-astro-cid-ssfzsv2f> Getting started </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/configuration/" class="link active" aria-current="page" data-astro-cid-ssfzsv2f> Configuration &amp; presets </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/hooks/" class="link" data-astro-cid-ssfzsv2f> Hooks </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/programmatic-api/" class="link" data-astro-cid-ssfzsv2f> Programmatic use (Node.js) </a> </li> </ul> </div><div class="group" data-astro-cid-ssfzsv2f> <div class="group-label" data-astro-cid-ssfzsv2f>Frameworks</div> <ul data-astro-cid-ssfzsv2f> <li data-astro-cid-ssfzsv2f> <a href="/docs/react-and-jsx/" class="link" data-astro-cid-ssfzsv2f> React &amp; JSX </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/solid/" class="link" data-astro-cid-ssfzsv2f> Solid components </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/vue/" class="link" data-astro-cid-ssfzsv2f> Vue single-file components </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/astro/" class="link" data-astro-cid-ssfzsv2f> Astro components </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/svelte/" class="link" data-astro-cid-ssfzsv2f> Svelte components </a> </li> </ul> </div><div class="group" data-astro-cid-ssfzsv2f> <div class="group-label" data-astro-cid-ssfzsv2f>Use cases</div> <ul data-astro-cid-ssfzsv2f> <li data-astro-cid-ssfzsv2f> <a href="/docs/module-federation/" class="link" data-astro-cid-ssfzsv2f> Module Federation </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/native-federation/" class="link" data-astro-cid-ssfzsv2f> Native Federation </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/styling-and-assets/" class="link" data-astro-cid-ssfzsv2f> Styling &amp; assets </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/images-and-assets/" class="link" data-astro-cid-ssfzsv2f> Images &amp; assets </a> </li> </ul> </div><div class="group" data-astro-cid-ssfzsv2f> <div class="group-label" data-astro-cid-ssfzsv2f>Advanced</div> <ul data-astro-cid-ssfzsv2f> <li data-astro-cid-ssfzsv2f> <a href="/docs/platforms/" class="link" data-astro-cid-ssfzsv2f> Platforms </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/output-formats/" class="link" data-astro-cid-ssfzsv2f> Output formats </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/importmaps-and-externals/" class="link" data-astro-cid-ssfzsv2f> Import maps &amp; externals </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/codegen/" class="link" data-astro-cid-ssfzsv2f> Build-time code generation (.codegen files) </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/analyzer/" class="link" data-astro-cid-ssfzsv2f> Bundle analyzer </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/other-features/" class="link" data-astro-cid-ssfzsv2f> Other features </a> </li> </ul> </div><div class="group" data-astro-cid-ssfzsv2f> <div class="group-label" data-astro-cid-ssfzsv2f>.NET</div> <ul data-astro-cid-ssfzsv2f> <li data-astro-cid-ssfzsv2f> <a href="/docs/dotnet-libraries/" class="link" data-astro-cid-ssfzsv2f> Using netpack from .NET </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/netpack-core/" class="link" data-astro-cid-ssfzsv2f> NetPack.Core </a> </li><li data-astro-cid-ssfzsv2f> <a href="/docs/netpack-build/" class="link" data-astro-cid-ssfzsv2f> NetPack.Build </a> </li> </ul> </div> </nav>  <article class="prose docs-main">  <h1 id="configuration--presets">Configuration &#x26; presets</h1>
 <p>Every netpack option is a CLI flag, but you don’t have to pass them by hand on
 every build. A <strong>preset</strong> is a small JSON file that carries a set of options — and,
 unlike the flags, it’s transportable (share it as a file or an npm package) and
@@ -53,100 +53,23 @@ reference <strong>cycles are safe</strong> — an already-seen preset is skipped
 <p>The keys mirror the CLI flags (camelCase where the flag is hyphenated):
 <code>outdir</code>, <code>minify</code>, <code>sourcemap</code>, <code>clean</code>, <code>external</code>, <code>shared</code>, <code>format</code>,
 <code>platform</code>, <code>define</code>, <code>alias</code>, <code>loader</code>, <code>entryNames</code>, <code>publicPath</code>,
-<code>conditions</code>, <code>packages</code>, <code>banner</code>, and <code>port</code>. <code>external</code>/<code>shared</code>/<code>conditions</code>
-are arrays; <code>define</code>/<code>alias</code>/<code>loader</code> are objects. See
+<code>conditions</code>, <code>packages</code>, <code>banner</code>, <code>licenses</code>, and <code>port</code>.
+<code>external</code>/<code>shared</code>/<code>conditions</code> are arrays; <code>define</code>/<code>alias</code>/<code>loader</code> are objects.
+See
 <a href="/docs/getting-started">Getting started</a> and <a href="/docs/other-features">Other features</a>
 for what each does.</p>
 <h2 id="hooks">Hooks</h2>
-<p>Presets are the <em>only</em> place you can register <strong>hooks</strong> — extension points that
-run a JavaScript module through netpack’s Node bridge. Each hook name maps to an
-array of module references, so several callbacks can attach, and the arrays merge
-across the whole preset chain.</p>
+<p>Presets are also the only place to register <strong>hooks</strong> — extension points that run
+a JavaScript module at a specific point in the build (post-transformation, asset
+rewriting, and more):</p>
 <pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="jsonc"><code><span class="line"><span style="color:#666666">{</span></span>
-<span class="line"><span style="color:#B8A96577">  "</span><span style="color:#B8A965">presets</span><span style="color:#B8A96577">"</span><span style="color:#666666">:</span><span style="color:#666666"> [</span><span style="color:#C98A7D77">"</span><span style="color:#C98A7D">@myorg/base</span><span style="color:#C98A7D77">"</span><span style="color:#666666">],</span></span>
 <span class="line"><span style="color:#B8A96577">  "</span><span style="color:#B8A965">hooks</span><span style="color:#B8A96577">"</span><span style="color:#666666">:</span><span style="color:#666666"> {</span></span>
-<span class="line"><span style="color:#B8A96577">    "</span><span style="color:#B8A965">afterBundling</span><span style="color:#B8A96577">"</span><span style="color:#666666">:</span><span style="color:#666666"> [</span><span style="color:#C98A7D77">"</span><span style="color:#C98A7D">./transform.mjs</span><span style="color:#C98A7D77">"</span><span style="color:#666666">,</span><span style="color:#C98A7D77"> "</span><span style="color:#C98A7D">@myorg/tools/stamp.js</span><span style="color:#C98A7D77">"</span><span style="color:#666666">]</span></span>
+<span class="line"><span style="color:#B8A96577">    "</span><span style="color:#B8A965">afterBundling</span><span style="color:#B8A96577">"</span><span style="color:#666666">:</span><span style="color:#666666"> [</span><span style="color:#C98A7D77">"</span><span style="color:#C98A7D">./transform.mjs</span><span style="color:#C98A7D77">"</span><span style="color:#666666">]</span></span>
 <span class="line"><span style="color:#666666">  }</span></span>
 <span class="line"><span style="color:#666666">}</span></span>
 <span class="line"></span></code></pre>
-<p>Hook modules are resolved with the same mechanism as presets. A few properties by
-design:</p>
-<ul>
-<li><strong>Merged, not overridden.</strong> Every preset’s hooks contribute; nothing shadows
-anything.</li>
-<li><strong>Base-first order.</strong> Hooks run in the reverse of option precedence — the
-deepest referenced (base) presets execute first, the entry preset last — so a
-base can set things up before a more specific preset finishes.</li>
-<li><strong>Deduplicated.</strong> The same module reached through two presets runs once, at its
-earliest position.</li>
-<li><strong>You only pay when you use them.</strong> Resolution happens up front in native code;
-the Node bridge is engaged only for hooks that actually have modules registered.
-A build with no hooks is exactly as fast as one with no config at all.</li>
-</ul>
-<h3 id="lifecycle-points">Lifecycle points</h3>
-<p>A hook module default-exports (or <code>module.exports</code>) an async function. It receives
-<code>{ hook, root, dev }</code> — plus <code>module</code> for the per-module hooks, and <code>files</code> for the
-asset hooks — and may return a value the bundler applies. Unknown hook names are
-ignored with a warning.</p>
-<p>Every point in netpack’s build maps to a hook name, mirroring the
-webpack/rspack lifecycle:</p>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<table><thead><tr><th>Phase</th><th>Hooks (in order)</th></tr></thead><tbody><tr><td>Compiler start</td><td><code>initialize</code>, <code>beforeRun</code>, <code>run</code> / <code>watchRun</code>, <code>beforeCompile</code> (alias <code>beforeCompilation</code>), <code>compile</code>, <code>thisCompilation</code>, <code>compilation</code>, <code>make</code></td></tr><tr><td>Per module</td><td><code>buildModule</code>, <code>stillValidModule</code>, <code>succeedModule</code>, <code>failedModule</code></td></tr><tr><td>After the graph</td><td><code>finishMake</code>, <code>finishModules</code></td></tr><tr><td>Optimize (optimized builds)</td><td><code>optimize</code>, <code>optimizeDependencies</code>, <code>afterOptimizeDependencies</code>, <code>optimizeModules</code>, <code>afterOptimizeModules</code>, <code>optimizeChunks</code>, <code>afterOptimizeChunks</code>, <code>optimizeTree</code>, <code>optimizeChunkModules</code></td></tr><tr><td>Ids &#x26; seal</td><td><code>moduleIds</code>, <code>chunkIds</code>, <code>seal</code>, <code>contentHash</code>, <code>afterCodeGeneration</code></td></tr><tr><td>Emit</td><td><code>shouldEmit</code>, <code>emit</code>, <code>additionalAssets</code>, <code>processAssets</code>, <code>afterProcessAssets</code>, <code>afterEmit</code> (alias <code>afterBundling</code>)</td></tr><tr><td>Finish</td><td><code>afterSeal</code>, <code>afterCompile</code>, <code>done</code></td></tr></tbody></table>
-<p>Two kinds carry extra payload and can return a value:</p>
-<ul>
-<li><strong>Asset hooks</strong> (<code>additionalAssets</code>, <code>processAssets</code>, <code>afterProcessAssets</code>,
-<code>afterEmit</code>/<code>afterBundling</code>) receive <code>files: [{ name, text }]</code> — text outputs
-(<code>.js</code>, <code>.css</code>, <code>.html</code>, <code>.json</code>, <code>.map</code>, …) as <code>text</code>, binary assets by <code>name</code>
-only. Return a <code>files</code> array to <strong>replace</strong> an asset’s contents (or add a new
-one). This is your post-transformation slot.</li>
-<li><strong><code>shouldEmit</code></strong> may return <code>{ emit: false }</code> to skip writing entirely.</li>
-</ul>
-<p>The per-module hooks additionally receive the module’s path as <code>module</code>.</p>
-<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="js"><code><span class="line"><span style="color:#758575DD">// transform.mjs — minify-ish: strip // line comments from every JS bundle</span></span>
-<span class="line"><span style="color:#4D9375">export</span><span style="color:#4D9375"> default</span><span style="color:#CB7676"> async</span><span style="color:#666666"> ({</span><span style="color:#BD976A"> files</span><span style="color:#666666"> })</span><span style="color:#666666"> =></span><span style="color:#666666"> ({</span></span>
-<span class="line"><span style="color:#B8A965">  files</span><span style="color:#666666">:</span><span style="color:#BD976A"> files</span></span>
-<span class="line"><span style="color:#666666">    .</span><span style="color:#80A665">filter</span><span style="color:#666666">((</span><span style="color:#BD976A">f</span><span style="color:#666666">)</span><span style="color:#666666"> =></span><span style="color:#BD976A"> f</span><span style="color:#666666">.</span><span style="color:#BD976A">name</span><span style="color:#666666">.</span><span style="color:#80A665">endsWith</span><span style="color:#666666">(</span><span style="color:#C98A7D77">"</span><span style="color:#C98A7D">.js</span><span style="color:#C98A7D77">"</span><span style="color:#666666">))</span></span>
-<span class="line"><span style="color:#666666">    .</span><span style="color:#80A665">map</span><span style="color:#666666">((</span><span style="color:#BD976A">f</span><span style="color:#666666">)</span><span style="color:#666666"> =></span><span style="color:#666666"> ({</span><span style="color:#B8A965"> name</span><span style="color:#666666">:</span><span style="color:#BD976A"> f</span><span style="color:#666666">.</span><span style="color:#BD976A">name</span><span style="color:#666666">,</span><span style="color:#B8A965"> text</span><span style="color:#666666">:</span><span style="color:#BD976A"> f</span><span style="color:#666666">.</span><span style="color:#BD976A">text</span><span style="color:#666666">.</span><span style="color:#80A665">replace</span><span style="color:#666666">(</span><span style="color:#C98A7D77">/</span><span style="color:#4D9375">^</span><span style="color:#6872AB">\s</span><span style="color:#4C9A91">*</span><span style="color:#E6CC77">\/\/</span><span style="color:#6872AB">.</span><span style="color:#4C9A91">*</span><span style="color:#4D9375">$</span><span style="color:#C98A7D77">/</span><span style="color:#4D9375">gm</span><span style="color:#666666">,</span><span style="color:#C98A7D77"> ""</span><span style="color:#666666">)</span><span style="color:#666666"> })),</span></span>
-<span class="line"><span style="color:#666666">});</span></span>
-<span class="line"></span></code></pre>
-<p>Modules run over the Node bridge, so <code>@babel/core</code>, <code>terser</code>, or any npm package
-they <code>import</code> must be installed in the project.</p>
+<p>See <a href="/docs/hooks">Hooks</a> for the full lifecycle, the module contract, and how
+hooks merge across a preset chain.</p>
 <h2 id="net">.NET</h2>
 <p>Presets are part of <code>NetPack.Core</code> (<code>NetPack.Config.Presets</code>), so a managed host
 can resolve the same files and read the merged options and hook list without the
@@ -281,4 +204,4 @@ available for one-off experiments:</p>
 <span class="line"><span style="color:#666666">    }</span></span>
 <span class="line"><span style="color:#666666">  }</span></span>
 <span class="line"><span style="color:#666666">}</span></span>
-<span class="line"></span></code></pre>  </article> <nav class="docs-toc" aria-label="On this page" data-astro-cid-xvrfupwn><div class="toc-label" data-astro-cid-xvrfupwn>On this page</div><ul data-astro-cid-xvrfupwn><li class="depth-2" data-astro-cid-xvrfupwn><a href="#where-config-comes-from" data-astro-cid-xvrfupwn>Where config comes from</a></li><li class="depth-2" data-astro-cid-xvrfupwn><a href="#precedence" data-astro-cid-xvrfupwn>Precedence</a></li><li class="depth-2" data-astro-cid-xvrfupwn><a href="#options" data-astro-cid-xvrfupwn>Options</a></li><li class="depth-2" data-astro-cid-xvrfupwn><a href="#hooks" data-astro-cid-xvrfupwn>Hooks</a></li><li class="depth-3" data-astro-cid-xvrfupwn><a href="#lifecycle-points" data-astro-cid-xvrfupwn>Lifecycle points</a></li><li class="depth-2" data-astro-cid-xvrfupwn><a href="#net" data-astro-cid-xvrfupwn>.NET</a></li><li class="depth-2" data-astro-cid-xvrfupwn><a href="#splitchunks" data-astro-cid-xvrfupwn>splitChunks</a></li><li class="depth-3" data-astro-cid-xvrfupwn><a href="#available-options" data-astro-cid-xvrfupwn>Available options</a></li><li class="depth-3" data-astro-cid-xvrfupwn><a href="#cachegroup-options" data-astro-cid-xvrfupwn>cacheGroup options</a></li></ul></nav> </div>  </main> </div>   </body></html> 
+<span class="line"></span></code></pre>  </article> <nav class="docs-toc" aria-label="On this page" data-astro-cid-xvrfupwn><div class="toc-label" data-astro-cid-xvrfupwn>On this page</div><ul data-astro-cid-xvrfupwn><li class="depth-2" data-astro-cid-xvrfupwn><a href="#where-config-comes-from" data-astro-cid-xvrfupwn>Where config comes from</a></li><li class="depth-2" data-astro-cid-xvrfupwn><a href="#precedence" data-astro-cid-xvrfupwn>Precedence</a></li><li class="depth-2" data-astro-cid-xvrfupwn><a href="#options" data-astro-cid-xvrfupwn>Options</a></li><li class="depth-2" data-astro-cid-xvrfupwn><a href="#hooks" data-astro-cid-xvrfupwn>Hooks</a></li><li class="depth-2" data-astro-cid-xvrfupwn><a href="#net" data-astro-cid-xvrfupwn>.NET</a></li><li class="depth-2" data-astro-cid-xvrfupwn><a href="#splitchunks" data-astro-cid-xvrfupwn>splitChunks</a></li><li class="depth-3" data-astro-cid-xvrfupwn><a href="#available-options" data-astro-cid-xvrfupwn>Available options</a></li><li class="depth-3" data-astro-cid-xvrfupwn><a href="#cachegroup-options" data-astro-cid-xvrfupwn>cacheGroup options</a></li></ul></nav> </div>  </main> </div>   </body></html> 
