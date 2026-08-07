@@ -35,6 +35,35 @@ public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags
     private const string Registry = JsRuntime.Registry;
     private const string Require = JsRuntime.Require;
 
+    /// <summary>
+    /// True when an import carries no runtime module and must be erased entirely:
+    /// an <c>import type …</c> declaration, or one whose every named specifier is
+    /// an individual <c>type</c> import. A side-effect import (<c>import "x"</c>,
+    /// no specifiers) is never type-erased.
+    /// </summary>
+    private static bool IsTypeErasedImport(Ast.ImportDeclaration node)
+    {
+        if (node.TypeOnly)
+        {
+            return true;
+        }
+
+        if (node.Specifiers.Count == 0)
+        {
+            return false;
+        }
+
+        foreach (var specifier in node.Specifiers)
+        {
+            if (specifier is not Ast.ImportSpecifier { TypeOnly: true })
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     public override async Task<Stream> CreateStream(OutputOptions options)
     {
         var content = Stringify(options);
@@ -290,10 +319,21 @@ public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags
                     }
                     else if (statement is Ast.ImportDeclaration importDeclaration)
                     {
-                        // Hoist real ESM imports (e.g. externals) to the bundle top;
-                        // factories close over them. The format decides how the
-                        // import is expressed.
-                        imports.Add(_format.RewriteExternalImport(importDeclaration));
+                        // A type-only import (`import type …`, or one whose every
+                        // specifier is `type`) carries no runtime module — erase it.
+                        // It is unresolved (the graph visitor never reported it), so
+                        // without this it would wrongly be treated as an external.
+                        if (IsTypeErasedImport(importDeclaration))
+                        {
+                            // erased
+                        }
+                        else
+                        {
+                            // Hoist real ESM imports (e.g. externals) to the bundle top;
+                            // factories close over them. The format decides how the
+                            // import is expressed.
+                            imports.Add(_format.RewriteExternalImport(importDeclaration));
+                        }
                     }
                     else if (statement is Ast.ExportNamedDeclaration decl && decl.Declaration is not null)
                     {
@@ -513,6 +553,13 @@ public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags
 
                 foreach (var spec in node.Specifiers)
                 {
+                    // `import { type Foo, bar }` — the `type` member is erased; only
+                    // the real bindings are destructured off the required module.
+                    if (spec is Ast.ImportSpecifier { TypeOnly: true })
+                    {
+                        continue;
+                    }
+
                     if (spec is Ast.ImportNamespaceSpecifier)
                     {
                         var id = new Ast.Identifier(spec.Local.Name);

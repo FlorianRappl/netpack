@@ -65,10 +65,11 @@ class JsVisitor(Bundle bundle, GraphNode current, Func<Bundle?, GraphNode, strin
 
     protected override AstNode VisitImportDeclaration(ImportDeclaration node)
     {
-        // `import type ...` has no runtime module to load — it is erased at print
+        // `import type ...` (or an import whose every specifier is an individual
+        // `type` import) has no runtime module to load — it is erased at print
         // time, so it must not be resolved or bundled (mirrors the Astro/Vue SFC
         // handling of type-only imports).
-        if (node.TypeOnly)
+        if (node.TypeOnly || IsAllTypeOnly(node))
         {
             return base.VisitImportDeclaration(node);
         }
@@ -80,6 +81,26 @@ class JsVisitor(Bundle bundle, GraphNode current, Func<Bundle?, GraphNode, strin
         // file), so nothing extra is passed here.
         _tasks.Add(_report(_bundle, _current, node.Source.Value, default));
         return base.VisitImportDeclaration(node);
+    }
+
+    /// <summary>True when an import has specifiers and every one is a
+    /// member-level <c>type</c> import (so nothing runtime is actually imported).</summary>
+    private static bool IsAllTypeOnly(ImportDeclaration node)
+    {
+        if (node.Specifiers.Count == 0)
+        {
+            return false;
+        }
+
+        foreach (var specifier in node.Specifiers)
+        {
+            if (specifier is not ImportSpecifier { TypeOnly: true })
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     protected override AstNode VisitExportDefaultDeclaration(ExportDefaultDeclaration node)
