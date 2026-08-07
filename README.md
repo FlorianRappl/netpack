@@ -241,7 +241,7 @@ site at [netpack.anglevisions.com/docs](https://netpack.anglevisions.com/docs/))
 - [Styling & assets](./docs/styling-and-assets.md) and [images & assets](./docs/images-and-assets.md).
 - [Output formats](./docs/output-formats.md) and [platforms](./docs/platforms.md) — `--format` and `--platform`.
 - [Import maps & externals](./docs/importmaps-and-externals.md), [Module Federation](./docs/module-federation.md), [Native Federation](./docs/native-federation.md).
-- [Build-time code generation](./docs/codegen.md) and [other features](./docs/other-features.md).
+- [Build-time code generation](./docs/codegen.md), the [bundle analyzer](./docs/analyzer.md), and [other features](./docs/other-features.md).
 
 ## Repository structure
 

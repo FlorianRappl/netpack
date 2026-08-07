@@ -48,6 +48,7 @@ const NAV_GROUPS: { label: string; ids: string[] }[] = [
       'output-formats',
       'importmaps-and-externals',
       'codegen',
+      'analyzer',
       'other-features',
     ],
   },

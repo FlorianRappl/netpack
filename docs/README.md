@@ -58,8 +58,12 @@ Usage docs for netpack, in addition to the feature overview in the
   and wire it up itself with `--shared`.
 - **[Build-time code generation](./codegen.md)** — `.codegen` files: the
   loader context, async support, and the current watch-mode limitations.
-- **[Other features](./other-features.md)** — tree shaking, source maps,
-  minification, and the bundle analyzer.
+- **[Bundle analyzer](./analyzer.md)** — the interactive graph explorer, the
+  dependency vulnerability audit, and the optimization recommendations that flag
+  where your chunks could be split more efficiently.
+- **[Other features](./other-features.md)** — output formats, tree shaking,
+  source maps, minification, `--define`/`--alias`/`--loader`, banners, licenses,
+  and more.
 
 ## .NET
 
