@@ -67,6 +67,44 @@ public class ResolutionEdgeTests
     }
 
     [Fact]
+    public async Task Resolves_a_package_main_without_an_extension()
+    {
+        // Some packages set "main" without a file extension (e.g. "index"); the
+        // resolver should fall back to extension probing when the bare path isn't
+        // a file on its own.
+        var output = await Bundle(dir =>
+        {
+            var pkg = Path.Combine(dir, "node_modules", "extless-main");
+            Directory.CreateDirectory(pkg);
+            File.WriteAllText(Path.Combine(pkg, "package.json"),
+                "{\"name\":\"extless-main\",\"version\":\"1.0.0\",\"main\":\"index\"}");
+            File.WriteAllText(Path.Combine(pkg, "index.js"), "export const a = 'EXTLESS_MAIN_MARKER';");
+            File.WriteAllText(Path.Combine(dir, "main.js"), "import { a } from 'extless-main';\nconsole.log(a);");
+        });
+
+        Assert.Contains("EXTLESS_MAIN_MARKER", output);
+        AssertValid(output);
+    }
+
+    [Fact]
+    public async Task Resolves_a_package_main_pointing_at_a_directory()
+    {
+        // "main" points at a directory; it should resolve that directory's index.
+        var output = await Bundle(dir =>
+        {
+            var pkg = Path.Combine(dir, "node_modules", "dir-main");
+            Directory.CreateDirectory(Path.Combine(pkg, "lib"));
+            File.WriteAllText(Path.Combine(pkg, "package.json"),
+                "{\"name\":\"dir-main\",\"version\":\"1.0.0\",\"main\":\"lib\"}");
+            File.WriteAllText(Path.Combine(pkg, "lib", "index.js"), "export const a = 'DIRMAIN_MARKER';");
+            File.WriteAllText(Path.Combine(dir, "main.js"), "import { a } from 'dir-main';\nconsole.log(a);");
+        });
+
+        Assert.Contains("DIRMAIN_MARKER", output);
+        AssertValid(output);
+    }
+
+    [Fact]
     public async Task Prefers_a_typescript_extension_when_resolving()
     {
         var output = await Bundle(dir =>

@@ -671,6 +671,33 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
         return ResolveFromFileSystem(CombinePath(dir, name)) ?? throw new Exception($"Could not find the module '{name}' in '{dir}'. Make sure the module is installed (npm install {name}).");
     }
 
+    /// <summary>
+    /// Resolves a package's legacy entry (its <c>main</c>/<c>module</c>/… field).
+    /// Normally that field points straight at a file; some packages omit the
+    /// extension (e.g. <c>"main": "index"</c>) or point at a directory. Those are
+    /// the unhappy path — only when the field is not a file on its own do we retry
+    /// with the same extension/index probing used for bare file references, so the
+    /// common case stays a single existence check.
+    /// </summary>
+    private string? ResolveEntry(Dependency dependency)
+    {
+        var entry = dependency.Entry;
+
+        if (File.Exists(entry))
+        {
+            return entry;
+        }
+
+        var probeDir = Directory.Exists(entry) ? entry : Path.GetDirectoryName(entry);
+
+        if (probeDir is not null && Directory.Exists(probeDir))
+        {
+            return ResolveFromFileSystem(entry);
+        }
+
+        return null;
+    }
+
     private string? ResolveFromFileSystem(string fn)
     {
         if (Directory.Exists(fn))
@@ -742,9 +769,11 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
                 }
                 else if (subpath == ".")
                 {
-                    if (File.Exists(dependency.Entry))
+                    var entry = ResolveEntry(dependency);
+
+                    if (entry is not null)
                     {
-                        return dependency.Entry;
+                        return entry;
                     }
                 }
             }
@@ -760,10 +789,11 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
                 if (File.Exists(subPackageJsonPath))
                 {
                     var dependency = await LoadDependency(subPackageJsonPath);
+                    var entry = ResolveEntry(dependency);
 
-                    if (File.Exists(dependency.Entry))
+                    if (entry is not null)
                     {
-                        return dependency.Entry;
+                        return entry;
                     }
                 }
                 else
