@@ -31,6 +31,36 @@ Options are typed per command and mirror the CLI flags (camelCase, so
 `--entry-names` becomes `entryNames`, `--public-path` becomes `publicPath`, and so
 on).
 
+## Presets
+
+`bundle`, `serve`, and `analyze` accept a `preset` option, mirroring the
+[`--preset`](./configuration.md) flag. Pass a **reference** (a path to a
+`netpack.json`-style file, or a module name resolved like a dependency):
+
+```js
+await netpack.bundle("src/index.html", { preset: "./netpack.prod.json" });
+await netpack.bundle("src/index.html", { preset: ["@acme/netpack-preset", "./local.json"] });
+```
+
+You can also pass an **inline preset object** — the API writes it to a temporary
+file and points `--preset` at it, so it feels like configuring the preset in
+code:
+
+```js
+await netpack.bundle("src/index.html", {
+  preset: {
+    minify: true,
+    define: { __VERSION__: '"1.4.0"' },
+    hooks: ["./build/my-hook.js"], // relative paths are resolved from cwd
+  },
+});
+```
+
+Relative paths inside an inline preset (`./…`, `../…`) are resolved against the
+current working directory before the temp file is written, so references such as
+hooks or composed presets keep working. Options passed directly to the command
+still take precedence over preset values.
+
 ## Long-running commands
 
 `serve` (and `bundle` with `watch: true`) run until stopped. Pass an

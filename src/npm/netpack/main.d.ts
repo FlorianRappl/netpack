@@ -41,6 +41,27 @@ export interface BuildEvents {
   onError?: (error: Error) => void;
 }
 
+/**
+ * A preset: either a reference (a path to a `netpack.json`-style file, or a
+ * package/module name resolved like a dependency), or an inline preset object.
+ * An inline object is written to a temporary file automatically; any relative
+ * path inside it (`./…`, `../…`) is resolved against the current working
+ * directory first, so it keeps working from the temp location.
+ */
+export type Preset = string | Record<string, unknown>;
+
+/**
+ * Mixed into the commands that support presets (`bundle`, `serve`, `analyze`).
+ */
+export interface PresetOptions {
+  /**
+   * One or more presets to apply, mirroring `--preset`. Pass a reference
+   * (path or module name), an inline preset object, or an array of either.
+   * CLI options passed directly still win over preset values.
+   */
+  preset?: Preset | Preset[];
+}
+
 export interface CommonOptions {
   /**
    * Aborts the underlying process. Useful for long-running commands
@@ -50,7 +71,7 @@ export interface CommonOptions {
   signal?: AbortSignal;
 }
 
-export interface BundleOptions extends CommonOptions, BuildEvents {
+export interface BundleOptions extends CommonOptions, BuildEvents, PresetOptions {
   /** Output directory (default "dist"). */
   outdir?: string;
   /** Minify + tree-shake the output. */
@@ -93,7 +114,7 @@ export interface BundleOptions extends CommonOptions, BuildEvents {
   inlineLimit?: number;
 }
 
-export interface ServeOptions extends CommonOptions, BuildEvents {
+export interface ServeOptions extends CommonOptions, BuildEvents, PresetOptions {
   /** Port for the dev server (default 1234). */
   port?: number;
   minify?: boolean;
@@ -116,7 +137,7 @@ export interface GraphOptions extends CommonOptions {
   outfile?: string;
 }
 
-export interface AnalyzeOptions extends CommonOptions {
+export interface AnalyzeOptions extends CommonOptions, PresetOptions {
   /** A file to also persist the analysis JSON to (a temp file is used otherwise). */
   outfile?: string;
   external?: string[];

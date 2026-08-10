@@ -81,6 +81,27 @@ export interface BuildEvents {
   onError?: (error: Error) => void;
 }
 
+/**
+ * A preset: either a reference (a path to a `netpack.json`-style file, or a
+ * package/module name resolved like a dependency), or an inline preset object.
+ * An inline object is written to a temporary file automatically; any relative
+ * path inside it (`./…`, `../…`) is resolved against the current working
+ * directory first, so it keeps working from the temp location.
+ */
+export type Preset = string | Record<string, unknown>;
+
+/**
+ * Mixed into the commands that support presets (`bundle`, `serve`, `analyze`).
+ */
+export interface PresetOptions {
+  /**
+   * One or more presets to apply, mirroring `--preset`. Pass a reference
+   * (path or module name), an inline preset object, or an array of either.
+   * CLI options passed directly still win over preset values.
+   */
+  preset?: Preset | Preset[];
+}
+
 export interface CommonOptions {
   /**
    * Aborts the underlying process. Useful for long-running commands
@@ -90,7 +111,7 @@ export interface CommonOptions {
   signal?: AbortSignal;
 }
 
-export interface BundleOptions extends CommonOptions, BuildEvents {
+export interface BundleOptions extends CommonOptions, BuildEvents, PresetOptions {
   /** Output directory (default "dist"). */
   outdir?: string;
   /** Minify + tree-shake the output. */
@@ -133,7 +154,7 @@ export interface BundleOptions extends CommonOptions, BuildEvents {
   inlineLimit?: number;
 }
 
-export interface ServeOptions extends CommonOptions, BuildEvents {
+export interface ServeOptions extends CommonOptions, BuildEvents, PresetOptions {
   /** Port for the dev server (default 1234). */
   port?: number;
   minify?: boolean;
@@ -156,7 +177,7 @@ export interface GraphOptions extends CommonOptions {
   outfile?: string;
 }
 
-export interface AnalyzeOptions extends CommonOptions {
+export interface AnalyzeOptions extends CommonOptions, PresetOptions {
   /** A file to also persist the analysis JSON to (a temp file is used otherwise). */
   outfile?: string;
   external?: string[];
@@ -187,9 +208,10 @@ function buildArgs(options: Record<string, unknown>): string[] {
   const argv: string[] = [];
 
   for (const [key, value] of Object.entries(options)) {
-    // Skip control/meta fields that aren't CLI flags: the abort signal and the
-    // build-event callbacks (they're handled by the npm layer, not the binary).
-    if (key === "signal" || value === undefined || value === null || typeof value === "function") continue;
+    // Skip control/meta fields that aren't plain CLI flags: the abort signal,
+    // the build-event callbacks, and `preset` (handled separately since it may
+    // be an inline object written to a temp file).
+    if (key === "signal" || key === "preset" || value === undefined || value === null || typeof value === "function") continue;
     const flag = toFlag(key);
 
     if (typeof value === "boolean") {
@@ -294,6 +316,70 @@ function attachBuildEvents(child: child_process.ChildProcess, events: BuildEvent
   });
 }
 
+/**
+ * Recursively resolves relative path strings (`./…`, `../…`) inside an inline
+ * preset to absolute paths from the current working directory, so references
+ * (hooks, composed presets, …) still resolve once the object is written to a
+ * temp file elsewhere. Bare specifiers and absolute paths are left untouched.
+ */
+function resolvePresetPaths(value: unknown): unknown {
+  if (typeof value === "string") {
+    return /^\.\.?[/\\]/.test(value) ? path.resolve(process.cwd(), value) : value;
+  }
+  if (Array.isArray(value)) {
+    return value.map(resolvePresetPaths);
+  }
+  if (value && typeof value === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
+      out[key] = resolvePresetPaths(item);
+    }
+    return out;
+  }
+  return value;
+}
+
+/**
+ * Turns the `preset` option into `--preset` argv tokens. String entries pass
+ * through as references; object entries are written to temp files (with relative
+ * paths absolutized) so an inline preset "just works". Returns a `cleanup` to
+ * remove any temp files once the process has finished.
+ */
+function materializePresets(preset: Preset | Preset[] | undefined): { args: string[]; cleanup: () => void } {
+  if (preset === undefined || preset === null) {
+    return { args: [], cleanup: () => {} };
+  }
+
+  const list = Array.isArray(preset) ? preset : [preset];
+  const args: string[] = [];
+  const files: string[] = [];
+
+  list.forEach((entry, index) => {
+    if (typeof entry === "string") {
+      args.push("--preset", entry);
+    } else if (entry && typeof entry === "object") {
+      const file = path.join(
+        os.tmpdir(),
+        `netpack-preset-${process.pid}-${Date.now()}-${index}.json`
+      );
+      fs.writeFileSync(file, JSON.stringify(resolvePresetPaths(entry)));
+      files.push(file);
+      args.push("--preset", file);
+    }
+  });
+
+  return {
+    args,
+    cleanup: () => {
+      for (const file of files) {
+        try {
+          fs.unlinkSync(file);
+        } catch {}
+      }
+    },
+  };
+}
+
 /** Runs an argv through `run` and resolves with the exit code (rejecting on failure). */
 function exec(argv: string[], signal?: AbortSignal, events?: BuildEvents): Promise<RunResult> {
   return new Promise((resolve, reject) => {
@@ -342,7 +428,8 @@ function exec(argv: string[], signal?: AbortSignal, events?: BuildEvents): Promi
 async function captureJson(
   command: string,
   entry: string,
-  options: Record<string, unknown>
+  options: Record<string, unknown>,
+  extraArgs: string[] = []
 ): Promise<{ code: number; json: unknown }> {
   const signal = options.signal as AbortSignal | undefined;
   const explicit = typeof options.outfile === "string" ? (options.outfile as string) : undefined;
@@ -351,7 +438,7 @@ async function captureJson(
     path.join(os.tmpdir(), `netpack-${command}-${process.pid}-${Date.now()}.json`);
 
   const args = buildArgs({ ...options, outfile });
-  const result = await exec([command, entry, ...args], signal);
+  const result = await exec([command, entry, ...extraArgs, ...args], signal);
 
   let json: unknown;
   try {
@@ -376,7 +463,9 @@ async function captureJson(
 export const netpack = {
   /** Produces a production build of `entry` into `options.outdir` (default "dist"). */
   bundle(entry: string, options: BundleOptions = {}): Promise<RunResult> {
-    return exec(["bundle", entry, ...buildArgs(options)], options.signal, options);
+    const preset = materializePresets(options.preset);
+    return exec(["bundle", entry, ...preset.args, ...buildArgs(options)], options.signal, options)
+      .finally(preset.cleanup);
   },
 
   /**
@@ -384,7 +473,9 @@ export const netpack = {
    * resolves once the server stops (e.g. via `options.signal`).
    */
   serve(entry: string, options: ServeOptions = {}): Promise<RunResult> {
-    return exec(["serve", entry, ...buildArgs(options)], options.signal, options);
+    const preset = materializePresets(options.preset);
+    return exec(["serve", entry, ...preset.args, ...buildArgs(options)], options.signal, options)
+      .finally(preset.cleanup);
   },
 
   /** Builds the dependency graph for `entry` and resolves with the parsed JSON. */
@@ -395,8 +486,13 @@ export const netpack = {
 
   /** Analyzes `entry` and resolves with the parsed analysis JSON. */
   async analyze(entry: string, options: AnalyzeOptions = {}): Promise<AnalyzeResult> {
-    const { code, json } = await captureJson("analyze", entry, options);
-    return { code, analysis: json };
+    const preset = materializePresets(options.preset);
+    try {
+      const { code, json } = await captureJson("analyze", entry, options, preset.args);
+      return { code, analysis: json };
+    } finally {
+      preset.cleanup();
+    }
   },
 
   /** Inspects a previously produced graph JSON file. */
