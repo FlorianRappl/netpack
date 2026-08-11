@@ -110,6 +110,14 @@ public sealed class BundlerContext(string root, FeatureFlags features, ModuleIdM
     public ConcurrentDictionary<string, string> Aliases = [];
 
     /// <summary>
+    /// Resolves the closest <c>tsconfig.json</c> path mapping for a given file's
+    /// directory (per-directory, so a monorepo with many tsconfigs works), caching
+    /// each parsed file. Consulted only as a resolution fallback for aliased
+    /// specifiers (e.g. <c>@/components</c>).
+    /// </summary>
+    internal TsConfigResolver TsConfig { get; } = new();
+
+    /// <summary>
     /// Compile-time constant substitutions applied to JS/TS source before
     /// parsing (the <c>--define</c> option), e.g. <c>process.env.NODE_ENV</c> →
     /// <c>"production"</c>. Ordered longest-key-first so a more specific key

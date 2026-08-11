@@ -698,6 +698,52 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
         return null;
     }
 
+    /// <summary>
+    /// Resolution fallback via TypeScript <c>tsconfig.json</c> path mapping. When a
+    /// specifier like <c>@/components</c> doesn't resolve normally, this tries the
+    /// aliases from the (once-loaded) tsconfig <c>paths</c>, resolving the first
+    /// candidate that exists on disk (with the usual extension/index probing) and
+    /// wiring it into the graph exactly as a normal import would be.
+    /// </summary>
+    private async Task<Node?> ResolveViaTsConfigPaths(
+        Bundle? bundle, Node parent, string specifier,
+        int? width, int? height, string? format, int? inlineOverride)
+    {
+        // Use the tsconfig closest to the importing file, so each package in a
+        // monorepo gets its own path mapping.
+        var tsPaths = _context.TsConfig.ForDirectory(parent.ParentDir);
+
+        if (tsPaths is null)
+        {
+            return null;
+        }
+
+        foreach (var candidate in tsPaths.Resolve(specifier))
+        {
+            var file = ResolveFromFileSystem(candidate);
+
+            if (file is null)
+            {
+                continue;
+            }
+
+            var module = await AddToBundle(bundle, file, width, height, format, inlineOverride);
+
+            if (bundle is null)
+            {
+                parent.References.Add(module);
+            }
+            else
+            {
+                parent.Children.Add(module);
+            }
+
+            return module;
+        }
+
+        return null;
+    }
+
     private string? ResolveFromFileSystem(string fn)
     {
         if (Directory.Exists(fn))
@@ -706,6 +752,14 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
         }
 
         var directory = Path.GetDirectoryName(fn)!;
+
+        // The directory may not exist (e.g. a tsconfig "paths" candidate that
+        // points nowhere); treat that as "not found" rather than throwing.
+        if (!Directory.Exists(directory))
+        {
+            return null;
+        }
+
         var files = _directoryFiles is not null
             ? _directoryFiles.GetFiles(directory)
             : Directory.GetFiles(directory);
@@ -928,9 +982,18 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
         }
         catch (Exception err)
         {
-            // Nothing resolved locally. A bare specifier that is a known runtime
-            // built-in (e.g. `fs` / `path` / `test` on Node) is provided by the
-            // runtime — keep it external, canonicalized to the `node:` scheme.
+            // Nothing resolved locally. Before giving up, try a TypeScript path
+            // alias (tsconfig "paths", e.g. `@/*` -> `./src/*`) — loaded once per
+            // build and only consulted here, on the unhappy path.
+            var aliased = await ResolveViaTsConfigPaths(bundle, parent, path, width, height, format, inlineOverride);
+            if (aliased is not null)
+            {
+                return aliased;
+            }
+
+            // A bare specifier that is a known runtime built-in (e.g. `fs` /
+            // `path` / `test` on Node) is provided by the runtime — keep it
+            // external, canonicalized to the `node:` scheme.
             var builtin = _context.Platform.BuiltinFallback(name);
             if (builtin is not null)
             {

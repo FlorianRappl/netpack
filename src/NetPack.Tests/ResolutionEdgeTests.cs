@@ -105,6 +105,73 @@ public class ResolutionEdgeTests
     }
 
     [Fact]
+    public async Task Resolves_a_tsconfig_paths_alias()
+    {
+        // `@/components` doesn't resolve normally; the tsconfig "paths" alias
+        // `@/*` -> `./src/*` should map it to src/components.ts.
+        var output = await Bundle(dir =>
+        {
+            File.WriteAllText(Path.Combine(dir, "tsconfig.json"),
+                "{ \"compilerOptions\": { \"paths\": { \"@/*\": [\"./src/*\"] } } }");
+            Directory.CreateDirectory(Path.Combine(dir, "src"));
+            File.WriteAllText(Path.Combine(dir, "src", "components.ts"),
+                "export const Foo = 'TSPATHS_MARKER';");
+            File.WriteAllText(Path.Combine(dir, "main.ts"),
+                "import { Foo } from '@/components';\nconsole.log(Foo);");
+        }, "main.ts");
+
+        Assert.Contains("TSPATHS_MARKER", output);
+        AssertValid(output);
+    }
+
+    [Fact]
+    public async Task Resolves_a_tsconfig_paths_alias_relative_to_baseurl()
+    {
+        // Targets are resolved relative to "baseUrl" (here ./app).
+        var output = await Bundle(dir =>
+        {
+            File.WriteAllText(Path.Combine(dir, "tsconfig.json"),
+                "{ \"compilerOptions\": { \"baseUrl\": \"./app\", \"paths\": { \"@components/*\": [\"components/*\"] } } }");
+            Directory.CreateDirectory(Path.Combine(dir, "app", "components"));
+            File.WriteAllText(Path.Combine(dir, "app", "components", "button.ts"),
+                "export const Button = 'BASEURL_MARKER';");
+            File.WriteAllText(Path.Combine(dir, "main.ts"),
+                "import { Button } from '@components/button';\nconsole.log(Button);");
+        }, "main.ts");
+
+        Assert.Contains("BASEURL_MARKER", output);
+        AssertValid(output);
+    }
+
+    [Fact]
+    public async Task Uses_the_closest_tsconfig_per_package_in_a_monorepo()
+    {
+        // Two packages each define their own `@/*` mapping; the same specifier must
+        // resolve within whichever package the importing file lives in.
+        var output = await Bundle(dir =>
+        {
+            foreach (var (pkg, marker) in new[] { ("a", "PKG_A_MARKER"), ("b", "PKG_B_MARKER") })
+            {
+                var root = Path.Combine(dir, "packages", pkg);
+                Directory.CreateDirectory(Path.Combine(root, "src"));
+                File.WriteAllText(Path.Combine(root, "tsconfig.json"),
+                    "{ \"compilerOptions\": { \"paths\": { \"@/*\": [\"./src/*\"] } } }");
+                File.WriteAllText(Path.Combine(root, "index.ts"),
+                    "import { X } from '@/thing';\nexport default X;");
+                File.WriteAllText(Path.Combine(root, "src", "thing.ts"),
+                    $"export const X = '{marker}';");
+            }
+
+            File.WriteAllText(Path.Combine(dir, "main.ts"),
+                "import a from './packages/a/index';\nimport b from './packages/b/index';\nconsole.log(a, b);");
+        }, "main.ts");
+
+        Assert.Contains("PKG_A_MARKER", output);
+        Assert.Contains("PKG_B_MARKER", output);
+        AssertValid(output);
+    }
+
+    [Fact]
     public async Task Prefers_a_typescript_extension_when_resolving()
     {
         var output = await Bundle(dir =>

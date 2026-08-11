@@ -59,6 +59,26 @@ A bare target (`preact/compat`) is resolved like any dependency; a path target
 (`./src`) is resolved from the working directory. Matching is on the specifier,
 so `import "@"` picks up the alias.
 
+### TypeScript `paths`
+
+netpack also honours the `compilerOptions.paths` mapping from the `tsconfig.json`
+closest to the **importing file** as a resolution fallback, so aliases like
+`@/*` → `./src/*` work without a matching `--alias`. Because the lookup is
+per-file, a monorepo where each package has its own `tsconfig.json` (and its own
+`paths`) resolves correctly:
+
+```jsonc
+// tsconfig.json
+{ "compilerOptions": { "baseUrl": ".", "paths": { "@/*": ["./src/*"] } } }
+```
+
+With that, `import { Foo } from "@/components"` resolves to `src/components`.
+Targets are resolved relative to `baseUrl` (or the tsconfig's own directory when
+`baseUrl` is absent). Each `tsconfig.json` is parsed at most once and the
+directory lookup is cached, and the mapping is only consulted when a specifier
+doesn't resolve normally, so it adds no cost to regular imports. An explicit
+`--alias` still wins.
+
 ## Loaders (`--loader`)
 
 Overrides how a file extension is turned into a module, replacing the built-in
