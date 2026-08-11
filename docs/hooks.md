@@ -65,7 +65,46 @@ The per-module hooks additionally receive the module's path as `module`.
 ## Lifecycle points
 
 Every point in netpack's build maps to a hook name, mirroring the webpack/rspack
-lifecycle:
+lifecycle. The build runs left to right; your post-transformation hooks most
+commonly tap the **Emit** phase:
+
+<svg viewBox="0 0 980 236" role="img" aria-labelledby="np-life-t np-life-d" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;max-width:960px;font-family:ui-sans-serif,system-ui,sans-serif">
+<title id="np-life-t">The netpack build lifecycle</title>
+<desc id="np-life-d">Build phases from compiler start through per-module builds, graph completion, optimization, sealing, emit, and finish, each mapping to hook names.</desc>
+<style>.np-life .ph{fill:currentColor;font-weight:600;font-size:13px}.np-life .hk{fill:currentColor;fill-opacity:0.7;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10.5px}.np-life .sp{stroke:currentColor;stroke-opacity:0.35;stroke-width:2}.np-life .nd{fill:currentColor;fill-opacity:0.18;stroke:currentColor;stroke-opacity:0.5}.np-life .co{fill:#14b8a6;fill-opacity:0.08;stroke:#14b8a6;stroke-opacity:0.8}.np-life .ct{fill:currentColor;fill-opacity:0.85;font-size:11px}.np-life .em{fill:#14b8a6;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10.5px}</style>
+<g class="np-life">
+<line class="sp" x1="70" y1="80" x2="910" y2="80"/>
+<circle class="nd" cx="70" cy="80" r="8"/>
+<circle class="nd" cx="210" cy="80" r="8"/>
+<circle class="nd" cx="350" cy="80" r="8"/>
+<circle class="nd" cx="490" cy="80" r="8"/>
+<circle class="nd" cx="630" cy="80" r="8"/>
+<circle cx="770" cy="80" r="9" fill="#14b8a6"/>
+<circle class="nd" cx="910" cy="80" r="8"/>
+<text class="ph" x="70" y="50" text-anchor="middle">Compiler</text>
+<text class="ph" x="210" y="50" text-anchor="middle">Modules</text>
+<text class="ph" x="350" y="50" text-anchor="middle">Graph</text>
+<text class="ph" x="490" y="50" text-anchor="middle">Optimize</text>
+<text class="ph" x="630" y="50" text-anchor="middle">Seal</text>
+<text class="ph" x="770" y="50" text-anchor="middle" fill="#14b8a6">Emit</text>
+<text class="ph" x="910" y="50" text-anchor="middle">Finish</text>
+<text class="hk" x="70" y="108" text-anchor="middle">initialize</text>
+<text class="hk" x="70" y="124" text-anchor="middle">compilation</text>
+<text class="hk" x="210" y="108" text-anchor="middle">buildModule</text>
+<text class="hk" x="210" y="124" text-anchor="middle">succeedModule</text>
+<text class="hk" x="350" y="108" text-anchor="middle">finishModules</text>
+<text class="hk" x="490" y="108" text-anchor="middle">optimizeModules</text>
+<text class="hk" x="630" y="108" text-anchor="middle">moduleIds</text>
+<text class="hk" x="630" y="124" text-anchor="middle">seal</text>
+<text class="em" x="770" y="108" text-anchor="middle">processAssets</text>
+<text class="em" x="770" y="124" text-anchor="middle">afterBundling</text>
+<text class="hk" x="910" y="108" text-anchor="middle">done</text>
+<line class="sp" x1="770" y1="89" x2="770" y2="158" style="stroke:#14b8a6;stroke-opacity:0.7"/>
+<rect class="co" x="612" y="158" width="316" height="60" rx="8"/>
+<text class="ct" x="770" y="182" text-anchor="middle">Post-transformation hooks tap here —</text>
+<text class="ct" x="770" y="200" text-anchor="middle">replace or add output files before they're written.</text>
+</g>
+</svg>
 
 | Phase | Hooks (in order) |
 |---|---|

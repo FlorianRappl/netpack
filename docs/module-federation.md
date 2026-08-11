@@ -4,6 +4,37 @@ netpack can produce a [Module Federation](https://module-federation.io/)
 remote container directly, without a separate plugin — it's a special entry
 point, not a separate command.
 
+A host loads the generated `remoteEntry.js` at runtime and dynamically imports
+the modules it exposes; dependencies marked `shared` are resolved through a
+common share scope instead of being bundled twice:
+
+<svg viewBox="0 0 880 300" role="img" aria-labelledby="np-fed-t np-fed-d" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;max-width:860px;font-family:ui-sans-serif,system-ui,sans-serif">
+<title id="np-fed-t">A Module Federation host and remote</title>
+<desc id="np-fed-d">A host application dynamically imports modules exposed by a checkout remote's remoteEntry.js, while both resolve shared dependencies through a common share scope.</desc>
+<defs><marker id="np-fed-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="currentColor" fill-opacity="0.55"/></marker></defs>
+<style>.np-fed .b{fill:currentColor;fill-opacity:0.05;stroke:currentColor;stroke-opacity:0.35}.np-fed .t{fill:currentColor;font-weight:600;font-size:15px}.np-fed .m{fill:currentColor;fill-opacity:0.8;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px}.np-fed .s{fill:currentColor;fill-opacity:0.6;font-size:11px}.np-fed .l{stroke:currentColor;stroke-opacity:0.5}.np-fed .div{stroke:currentColor;stroke-opacity:0.2}</style>
+<g class="np-fed">
+<rect class="b" x="40" y="50" width="250" height="120" rx="12"/>
+<rect class="b" x="590" y="40" width="250" height="160" rx="12" style="stroke:#14b8a6;stroke-opacity:0.85"/>
+<rect x="300" y="212" width="280" height="72" rx="12" fill="#8b5cf6" fill-opacity="0.09" stroke="#8b5cf6" stroke-opacity="0.8"/>
+<text class="t" x="165" y="84" text-anchor="middle">Host application</text>
+<text class="m" x="165" y="112" text-anchor="middle">import("checkout/CheckoutForm")</text>
+<text class="s" x="165" y="140" text-anchor="middle">loads remoteEntry.js at runtime</text>
+<text class="t" x="715" y="72" text-anchor="middle" fill="#14b8a6">checkout remote</text>
+<text class="m" x="715" y="97" text-anchor="middle">remoteEntry.js</text>
+<line class="div" x1="606" y1="110" x2="824" y2="110"/>
+<text class="s" x="715" y="130" text-anchor="middle">exposes</text>
+<text class="m" x="715" y="151" text-anchor="middle">./CheckoutForm</text>
+<text class="m" x="715" y="172" text-anchor="middle">./useCart</text>
+<text class="t" x="440" y="242" text-anchor="middle" font-size="13">Shared scope (default)</text>
+<text class="s" x="440" y="264" text-anchor="middle">react · react-dom — singleton, version-negotiated</text>
+<line class="l" x1="292" y1="92" x2="588" y2="92" marker-end="url(#np-fed-arrow)"/>
+<text class="m" x="440" y="82" text-anchor="middle" fill-opacity="0.6">dynamic import()</text>
+<line class="l" x1="150" y1="172" x2="360" y2="216" marker-end="url(#np-fed-arrow)"/>
+<line class="l" x1="720" y1="202" x2="512" y2="216" marker-end="url(#np-fed-arrow)"/>
+</g>
+</svg>
+
 ## The `federation.json` convention
 
 Point `bundle`/`serve`/`analyze` at a file literally named `federation.json`

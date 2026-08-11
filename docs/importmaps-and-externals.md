@@ -73,6 +73,41 @@ matters to you, prefer top-level package names for `--shared`.
 
 ## Choosing between them
 
+The three modes differ in what happens to a dependency like `react` — whether
+its code is bundled in, and who resolves it at runtime:
+
+<svg viewBox="0 0 900 272" role="img" aria-labelledby="np-im-t np-im-d" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;max-width:880px;font-family:ui-sans-serif,system-ui,sans-serif">
+<title id="np-im-t">Bundled versus --external versus --shared</title>
+<desc id="np-im-d">By default react is bundled inline; with --external it stays an import the browser resolves; with --shared netpack builds react.js as its own chunk and writes an import map entry.</desc>
+<defs><marker id="np-im-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="currentColor" fill-opacity="0.55"/></marker></defs>
+<style>.np-im .p{fill:currentColor;fill-opacity:0.03;stroke:currentColor;stroke-opacity:0.2}.np-im .b{fill:currentColor;fill-opacity:0.06;stroke:currentColor;stroke-opacity:0.35}.np-im .h{fill:currentColor;font-weight:600;font-size:14px}.np-im .hm{fill:currentColor;font-weight:600;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px}.np-im .t{fill:currentColor;font-weight:600;font-size:14px}.np-im .s{fill:currentColor;fill-opacity:0.8;font-size:12px}.np-im .c{fill:currentColor;fill-opacity:0.7;font-size:11.5px}.np-im .m{fill:currentColor;fill-opacity:0.85;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px}.np-im .l{stroke:currentColor;stroke-opacity:0.5}</style>
+<g class="np-im">
+<rect class="p" x="20" y="44" width="270" height="210" rx="12"/>
+<rect class="p" x="315" y="44" width="270" height="210" rx="12"/>
+<rect class="p" x="610" y="44" width="270" height="210" rx="12"/>
+<text class="h" x="155" y="74" text-anchor="middle">default</text>
+<text class="hm" x="450" y="74" text-anchor="middle">--external</text>
+<text class="hm" x="745" y="74" text-anchor="middle" fill="#14b8a6">--shared</text>
+<rect class="b" x="45" y="98" width="220" height="104" rx="8"/>
+<text class="t" x="155" y="124" text-anchor="middle">app.js</text>
+<rect x="95" y="142" width="120" height="40" rx="6" fill="#8b5cf6" fill-opacity="0.14" stroke="#8b5cf6" stroke-opacity="0.6"/>
+<text class="m" x="155" y="167" text-anchor="middle">react</text>
+<text class="c" x="155" y="234" text-anchor="middle">react is bundled inline</text>
+<rect class="b" x="340" y="98" width="220" height="46" rx="8"/>
+<text class="m" x="450" y="126" text-anchor="middle">import "react"</text>
+<line class="l" x1="450" y1="146" x2="450" y2="166" marker-end="url(#np-im-arrow)"/>
+<rect class="b" x="340" y="168" width="220" height="46" rx="8"/>
+<text class="s" x="450" y="195" text-anchor="middle">browser resolves it</text>
+<text class="c" x="450" y="234" text-anchor="middle">you own the import map</text>
+<rect class="b" x="635" y="98" width="220" height="46" rx="8"/>
+<text class="m" x="745" y="126" text-anchor="middle">import "react"</text>
+<line class="l" x1="745" y1="146" x2="745" y2="166" marker-end="url(#np-im-arrow)"/>
+<rect x="635" y="168" width="220" height="46" rx="8" fill="#14b8a6" fill-opacity="0.08" stroke="#14b8a6" stroke-opacity="0.8"/>
+<text class="t" x="745" y="195" text-anchor="middle" fill="#14b8a6" font-size="13">react.js — own chunk</text>
+<text class="c" x="745" y="234" text-anchor="middle">netpack writes the import map</text>
+</g>
+</svg>
+
 | | Bundled | Own output chunk | Import map entry written |
 | --- | --- | --- | --- |
 | (default) | yes | — | — |

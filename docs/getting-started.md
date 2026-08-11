@@ -30,6 +30,41 @@ You don't need a build config. If your project needs externals, shared
 dependencies, or has a `tsconfig.json` with JSX options, netpack picks that up
 automatically (see the other docs in this folder).
 
+## How a build flows
+
+Whatever the entry, the shape of a build is the same: netpack parses the entry,
+follows what it references to build a module graph, groups that graph into chunks
+(pulling shared code into its own chunk), and renders each chunk to disk.
+
+<svg viewBox="0 0 920 172" role="img" aria-labelledby="np-pipe-t np-pipe-d" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;max-width:900px;font-family:ui-sans-serif,system-ui,sans-serif">
+<title id="np-pipe-t">The netpack build pipeline</title>
+<desc id="np-pipe-d">A single entry point is parsed into a module graph, grouped into chunks, and emitted to the output directory.</desc>
+<defs><marker id="np-pipe-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="currentColor" fill-opacity="0.55"/></marker></defs>
+<style>.np-pipe .b{fill:currentColor;fill-opacity:0.05;stroke:currentColor;stroke-opacity:0.35}.np-pipe .t{fill:currentColor;font-weight:600;font-size:15px}.np-pipe .s{fill:currentColor;fill-opacity:0.7;font-size:11px}.np-pipe .c{fill:currentColor;fill-opacity:0.75;font-size:12px}.np-pipe .l{stroke:currentColor;stroke-opacity:0.5}</style>
+<g class="np-pipe">
+<rect class="b" x="20" y="38" width="160" height="74" rx="10"/>
+<rect class="b" x="200" y="38" width="160" height="74" rx="10"/>
+<rect class="b" x="380" y="38" width="160" height="74" rx="10"/>
+<rect class="b" x="560" y="38" width="160" height="74" rx="10"/>
+<rect class="b" x="740" y="38" width="160" height="74" rx="10" style="stroke:#14b8a6;stroke-opacity:0.85"/>
+<text class="t" x="100" y="72" text-anchor="middle">Entry</text>
+<text class="s" x="100" y="94" text-anchor="middle">html · js · ts</text>
+<text class="t" x="280" y="72" text-anchor="middle">Parse</text>
+<text class="s" x="280" y="94" text-anchor="middle">native, no Babel</text>
+<text class="t" x="460" y="72" text-anchor="middle">Graph</text>
+<text class="s" x="460" y="94" text-anchor="middle">resolve imports</text>
+<text class="t" x="640" y="72" text-anchor="middle">Chunks</text>
+<text class="s" x="640" y="94" text-anchor="middle">shared splitting</text>
+<text class="t" x="820" y="72" text-anchor="middle">Emit</text>
+<text class="s" x="820" y="94" text-anchor="middle">minify · maps</text>
+<line class="l" x1="182" y1="75" x2="198" y2="75" marker-end="url(#np-pipe-arrow)"/>
+<line class="l" x1="362" y1="75" x2="378" y2="75" marker-end="url(#np-pipe-arrow)"/>
+<line class="l" x1="542" y1="75" x2="558" y2="75" marker-end="url(#np-pipe-arrow)"/>
+<line class="l" x1="722" y1="75" x2="738" y2="75" marker-end="url(#np-pipe-arrow)"/>
+<text class="c" x="460" y="150" text-anchor="middle">One entry point becomes a module graph, then chunks, then files in dist/ — tree-shaking runs over the graph before emit.</text>
+</g>
+</svg>
+
 ## Commands
 
 ### `bundle` — one-shot production build
