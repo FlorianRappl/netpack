@@ -82,7 +82,7 @@ public class AnalyzeCommand : ICommand
 
         if (report.Error is { Length: > 0 } error)
         {
-            Console.WriteLine("[netpack] Audit could not complete: {0}", error);
+            Log.Warning($"[netpack] Audit could not complete: {error}");
         }
         else if (report.Vulnerabilities is { Count: > 0 } vulnerabilities)
         {

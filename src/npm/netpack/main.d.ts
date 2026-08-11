@@ -62,6 +62,8 @@ export interface PresetOptions {
   preset?: Preset | Preset[];
 }
 
+export type LogLevel = "silent" | "error" | "warning" | "info" | "debug" | "verbose";
+
 export interface CommonOptions {
   /**
    * Aborts the underlying process. Useful for long-running commands
@@ -69,6 +71,13 @@ export interface CommonOptions {
    * stop the bundler.
    */
   signal?: AbortSignal;
+
+  /**
+   * Console verbosity, mirroring `--log-level` (default "info"). Note that
+   * "silent"/"error"/"warning" suppress the build progress lines the build-event
+   * callbacks rely on, so `onStart`/`onBuild` may not fire at those levels.
+   */
+  logLevel?: LogLevel;
 }
 
 export interface BundleOptions extends CommonOptions, BuildEvents, PresetOptions {

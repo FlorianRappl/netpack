@@ -235,6 +235,7 @@ public class BundleCommand : ICommand
     {
         var watch = Stopwatch.StartNew();
         Console.WriteLine("[netpack] Bundling '{0}' ({1}) ...", FilePath, platform.ToString().ToLowerInvariant());
+        Log.Debug($"[netpack] options: minify={Minify}, sourcemap={SourceMap}, format={Format}, packages={Packages}, outdir={outdir}");
         using var graph = await Traverse.From(
             file, Externals, Shared, platform: platform,
             defines: defines, aliases: aliases, loaders: loaders,

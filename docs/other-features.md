@@ -33,6 +33,21 @@ npx netpack bundle src/index.html --minify
 Optimizes JS, CSS and the HTML shell for size. `bundle`'s summary table
 shows the effect directly — compare a build with and without `--minify`.
 
+## Log level (`--log-level`)
+
+Controls how much netpack prints. It is a global flag — it works with any
+command (`bundle`, `serve`, `analyze`, …):
+
+```sh
+npx netpack bundle src/index.html --log-level warning
+```
+
+The levels, least to most verbose, are `silent`, `error`, `warning`, `info`
+(default), `debug`, and `verbose`. Each shows its own tier and everything below
+it — `warning` shows warnings and errors but not the normal build chatter,
+`silent` shows nothing, and `debug`/`verbose` add extra diagnostic detail on top
+of the usual output.
+
 ## Compile-time constants (`--define`)
 
 Replaces a global identifier or member expression with a constant expression
