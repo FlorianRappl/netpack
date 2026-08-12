@@ -16,10 +16,12 @@ public class BasePresetConfig
     [JsonPropertyName("presets")]
     public List<string>? Presets { get; set; }
 
-    /// <summary>Lifecycle hook name → JS module references (resolved and run via
-    /// the Node bridge). Multiple callbacks per hook; arrays merge across presets.</summary>
+    /// <summary>Lifecycle hook name → hook entries (resolved and run via the Node
+    /// bridge). Each entry is a module reference string, or an object that adds a
+    /// <c>test</c> filter and/or <c>options</c> (see <see cref="HookEntry"/>).
+    /// Multiple callbacks per hook; arrays merge across presets.</summary>
     [JsonPropertyName("hooks")]
-    public Dictionary<string, List<string>>? Hooks { get; set; }
+    public Dictionary<string, List<HookEntry>>? Hooks { get; set; }
 
     [JsonPropertyName("outdir")] public string? OutDir { get; set; }
 
@@ -87,7 +89,7 @@ public sealed class ResolvedPresets
 {
     public ResolvedPresets(
         PresetConfig options,
-        IReadOnlyDictionary<string, IReadOnlyList<string>> hooks,
+        IReadOnlyDictionary<string, IReadOnlyList<NetPack.Plugins.HookBinding>> hooks,
         IReadOnlyList<string> sources)
     {
         Options = options;
@@ -98,9 +100,10 @@ public sealed class ResolvedPresets
     /// <summary>The merged options (first-write-wins across the resolved chain).</summary>
     public PresetConfig Options { get; }
 
-    /// <summary>Hook name → resolved absolute module paths, in execution order
-    /// (base presets first), deduplicated by path.</summary>
-    public IReadOnlyDictionary<string, IReadOnlyList<string>> Hooks { get; }
+    /// <summary>Hook name → resolved hook bindings (module path plus its optional
+    /// <c>test</c>/<c>options</c>), in execution order (base presets first),
+    /// deduplicated by module + test + options.</summary>
+    public IReadOnlyDictionary<string, IReadOnlyList<NetPack.Plugins.HookBinding>> Hooks { get; }
 
     /// <summary>Every resolved preset file, in option-precedence order (highest
     /// first). Useful for diagnostics and change-watching.</summary>
@@ -120,6 +123,9 @@ public sealed class ResolvedPresets
     PropertyNameCaseInsensitive = true)]
 [JsonSerializable(typeof(PresetConfig))]
 [JsonSerializable(typeof(BasePresetConfig))]
+[JsonSerializable(typeof(HookEntry))]
+[JsonSerializable(typeof(List<HookEntry>))]
+[JsonSerializable(typeof(Dictionary<string, List<HookEntry>>))]
 [JsonSerializable(typeof(SplitChunksConfig))]
 [JsonSerializable(typeof(CacheGroupConfig))]
 internal partial class ConfigSourceGenerationContext : JsonSerializerContext

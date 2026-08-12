@@ -19,6 +19,52 @@ attach, and the arrays merge across the whole preset chain. Hook modules are
 resolved with the same mechanism as presets (a path, or a package reference
 through `node_modules`).
 
+## Entry shape
+
+An entry can be a bare string (the module to run) or an object that also scopes
+and parameterizes it:
+
+```jsonc
+{
+  "hooks": {
+    "afterBundling": [
+      "./transform.mjs",                       // shorthand
+      {
+        "source": "./stamp.mjs",               // the module (required)
+        "test": "\\.js$",                        // only .js files/modules
+        "exclude": "\\.min\\.js$",               // …but not minified ones
+        "mode": "prod",                          // only in optimized builds
+        "order": -1,                             // run before default hooks
+        "name": "stamp",                         // label for diagnostics
+        "options": { "year": 2026 }              // passed to the hook
+      }
+    ]
+  }
+}
+```
+
+- **`source`** — the hook module (path or package reference). A plain string entry
+  is exactly `{ "source": "…" }`.
+- **`test`** — a regular expression matched against the name. For **asset** hooks it
+  filters which files the hook receives (and may rewrite); for **per-module** hooks
+  it skips modules whose path doesn't match. Omitted means "everything". A filtered
+  asset hook with no matching files isn't invoked at all — the Node bridge only
+  spins up when there's work to do. An invalid regex is reported and ignored.
+- **`exclude`** — a regular expression for names to **skip**, applied after `test`.
+- **`mode`** — `dev` (dev server only), `prod` (optimized builds only), or `both`
+  (default). A hook that doesn't apply to the current build is never invoked.
+- **`order`** — an integer that shifts the hook **earlier** (negative) or **later**
+  (positive) among the hooks for the same phase. The default (0) keeps the
+  base-first order presets already give; use `order` only to override it.
+- **`name`** — a label surfaced in diagnostics and passed to the hook as
+  `payload.name`.
+- **`options`** — any JSON value, handed to the hook function as `payload.options`
+  (default `{}`). Use it to reuse one hook module with different settings.
+
+The two forms mix freely in the same array, and dedup is by the **whole** entry
+(module plus its `test`/`exclude`/`mode`/`order`/`name`/`options`), so the same
+module with different settings runs more than once by design.
+
 ## Behaviour
 
 - **Merged, not overridden.** Every preset's hooks contribute; nothing shadows
@@ -35,9 +81,10 @@ through `node_modules`).
 ## The module contract
 
 A hook module default-exports (or `module.exports`) an async function. It receives
-`{ hook, root, dev }` — plus `module` for the per-module hooks, and `files` for the
-asset hooks — and may return a value the bundler applies. Unknown hook names are
-ignored with a warning.
+`{ hook, root, dev, options, name }` — plus `module` for the per-module hooks, and
+`files` for the asset hooks — and may return a value the bundler applies. `options`
+is the entry's `options` value (or `{}`), and `name` its label (if set). Unknown
+hook names are ignored with a warning.
 
 ```js
 // transform.mjs — strip // line comments from every JS bundle

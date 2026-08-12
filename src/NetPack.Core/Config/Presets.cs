@@ -161,10 +161,10 @@ public static class Presets
     /// presets run first; a preset's own list keeps its authored order. Duplicate
     /// module paths (the same hook reached through two presets) run once.
     /// </summary>
-    private static IReadOnlyDictionary<string, IReadOnlyList<string>> ResolveHooks(
+    private static IReadOnlyDictionary<string, IReadOnlyList<NetPack.Plugins.HookBinding>> ResolveHooks(
         List<(PresetConfig Config, string Dir, string Path)> ordered)
     {
-        var result = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+        var result = new Dictionary<string, List<NetPack.Plugins.HookBinding>>(StringComparer.Ordinal);
         var seen = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
 
         for (var i = ordered.Count - 1; i >= 0; i--)
@@ -176,22 +176,24 @@ public static class Presets
                 continue;
             }
 
-            foreach (var (name, references) in config.Hooks)
+            foreach (var (name, entries) in config.Hooks)
             {
-                if (references is null)
+                if (entries is null)
                 {
                     continue;
                 }
 
-                foreach (var reference in references)
+                foreach (var entry in entries)
                 {
-                    var path = ResolveModule(reference, dir, HookExtensions)
+                    var path = ResolveModule(entry.Source, dir, HookExtensions)
                         ?? throw new InvalidOperationException(
-                            $"Could not resolve hook module '{reference}' for hook '{name}' from '{dir}'.");
+                            $"Could not resolve hook module '{entry.Source}' for hook '{name}' from '{dir}'.");
+
+                    var options = entry.Options?.GetRawText();
 
                     if (!seen.TryGetValue(name, out var set))
                     {
-                        seen[name] = set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                        seen[name] = set = new HashSet<string>(StringComparer.Ordinal);
                     }
 
                     if (!result.TryGetValue(name, out var list))
@@ -199,9 +201,23 @@ public static class Presets
                         result[name] = list = [];
                     }
 
-                    if (set.Add(path))
+                    // The same module can appear more than once for a hook (a diamond
+                    // in the preset graph, or two entries of the same module with
+                    // different test/options); only exact duplicates are collapsed.
+                    var key = string.Join('\0', path, entry.Test, entry.Exclude, entry.Mode, entry.Order.ToString(), entry.Name, options);
+
+                    if (set.Add(key))
                     {
-                        list.Add(path);
+                        list.Add(new NetPack.Plugins.HookBinding
+                        {
+                            Module = path,
+                            Test = entry.Test,
+                            Exclude = entry.Exclude,
+                            Mode = entry.Mode,
+                            Order = entry.Order,
+                            Name = entry.Name,
+                            Options = options,
+                        });
                     }
                 }
             }
@@ -209,7 +225,7 @@ public static class Presets
 
         return result.ToDictionary(
             kv => kv.Key,
-            kv => (IReadOnlyList<string>)kv.Value,
+            kv => (IReadOnlyList<NetPack.Plugins.HookBinding>)kv.Value,
             StringComparer.Ordinal);
     }
 

@@ -86,7 +86,9 @@ const commands = {
     if (typeof fn !== 'function') {
       throw new Error('hook module has no callable default export: ' + modulePath);
     }
-    const result = await fn(JSON.parse(payload));
+    const parsed = JSON.parse(payload);
+    if (parsed.options == null) parsed.options = {};
+    const result = await fn(parsed);
     return result === undefined ? null : result;
   },
 };

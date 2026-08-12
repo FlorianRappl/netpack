@@ -45,8 +45,8 @@ static class PresetArgs
     /// absolute module paths, execution order). Commands pass this into
     /// <c>Traverse.From(hookModules:)</c>, which binds them as taps executed over
     /// the Node bridge.</summary>
-    public static IReadOnlyDictionary<string, IReadOnlyList<string>> Hooks { get; private set; }
-        = new Dictionary<string, IReadOnlyList<string>>();
+    public static IReadOnlyDictionary<string, IReadOnlyList<NetPack.Plugins.HookBinding>> Hooks { get; private set; }
+        = new Dictionary<string, IReadOnlyList<NetPack.Plugins.HookBinding>>();
 
     /// <summary>
     /// Returns one arg set per variant when the resolved preset contains variants,

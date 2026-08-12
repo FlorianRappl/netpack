@@ -128,11 +128,55 @@ public class PresetTests
                 "{ \"presets\": [\"./base.json\"], \"hooks\": { \"afterBundling\": [\"./shared.js\", \"./entryHook.js\"] } }");
 
             var resolved = Presets.Resolve([Path.Combine(dir, "entry.json")], dir);
-            var hook = resolved.Hooks["afterBundling"].Select(Path.GetFileName).ToList();
+            var hook = resolved.Hooks["afterBundling"].Select(b => Path.GetFileName(b.Module)).ToList();
 
             // Base preset runs first; the shared module (reached from both) appears
             // once, keeping its earliest (base) position.
             Assert.Equal(new[] { "baseHook.js", "shared.js", "entryHook.js" }, hook);
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Hook_object_form_carries_test_and_options()
+    {
+        var dir = Dir();
+
+        try
+        {
+            Write(dir, "stamp.mjs", "export default () => {};");
+            Write(dir, "plain.mjs", "export default () => {};");
+
+            // One string entry (shorthand) and one full object entry.
+            Write(dir, "netpack.json",
+                "{ \"hooks\": { \"afterBundling\": [ \"./plain.mjs\", " +
+                "{ \"source\": \"./stamp.mjs\", \"test\": \"\\\\.js$\", \"exclude\": \"\\\\.min\\\\.js$\", " +
+                "\"mode\": \"prod\", \"order\": -1, \"name\": \"stamp\", \"options\": { \"year\": 2026 } } ] } }");
+
+            var resolved = Presets.Resolve([Path.Combine(dir, "netpack.json")], dir);
+            var bindings = resolved.Hooks["afterBundling"];
+
+            Assert.Equal(2, bindings.Count);
+
+            var plain = bindings.Single(b => Path.GetFileName(b.Module) == "plain.mjs");
+            Assert.Null(plain.Test);
+            Assert.Null(plain.Exclude);
+            Assert.Null(plain.Mode);
+            Assert.Equal(0, plain.Order);
+            Assert.Null(plain.Name);
+            Assert.Null(plain.Options);
+
+            var stamp = bindings.Single(b => Path.GetFileName(b.Module) == "stamp.mjs");
+            Assert.Equal("\\.js$", stamp.Test);
+            Assert.Equal("\\.min\\.js$", stamp.Exclude);
+            Assert.Equal("prod", stamp.Mode);
+            Assert.Equal(-1, stamp.Order);
+            Assert.Equal("stamp", stamp.Name);
+            Assert.NotNull(stamp.Options);
+            Assert.Contains("2026", stamp.Options!);
         }
         finally
         {
