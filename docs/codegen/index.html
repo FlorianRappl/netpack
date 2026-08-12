@@ -18,6 +18,30 @@ module (imports, tree shaking, minification, all of it apply normally).</p>
 helper process — the one place the otherwise-native, no-runtime binary
 reaches out to Node — so it needs Node.js available, and the module itself
 can <code>require()</code> anything installed in your project.</p>
+<svg viewBox="0 0 850 176" role="img" aria-labelledby="np-cg-t np-cg-d" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;max-width:840px;font-family:ui-sans-serif,system-ui,sans-serif">
+<title id="np-cg-t">How a .codegen file is processed</title>
+<desc id="np-cg-d">A .codegen module runs in netpack's Node bridge, returns a JavaScript source string, and that source re-enters the normal netpack pipeline.</desc>
+<defs><marker id="np-cg-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="currentColor" fill-opacity="0.55"></path></marker></defs>
+<style>.np-cg .b{fill:currentColor;fill-opacity:0.05;stroke:currentColor;stroke-opacity:0.35}.np-cg .t{fill:currentColor;font-weight:600;font-size:15px}.np-cg .m{fill:currentColor;font-weight:600;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:14px}.np-cg .s{fill:currentColor;fill-opacity:0.7;font-size:11px}.np-cg .c{fill:currentColor;fill-opacity:0.75;font-size:12px}.np-cg .l{stroke:currentColor;stroke-opacity:0.5}</style>
+<g class="np-cg">
+<rect class="b" x="20" y="34" width="180" height="74" rx="10"></rect>
+<rect class="b" x="230" y="34" width="180" height="74" rx="10" style="stroke:#14b8a6;stroke-opacity:0.85"></rect>
+<rect class="b" x="440" y="34" width="180" height="74" rx="10"></rect>
+<rect class="b" x="650" y="34" width="180" height="74" rx="10"></rect>
+<text class="m" x="110" y="66" text-anchor="middle">.codegen</text>
+<text class="s" x="110" y="88" text-anchor="middle">a Node module</text>
+<text class="t" x="320" y="66" text-anchor="middle" fill="#14b8a6">Node bridge</text>
+<text class="s" x="320" y="88" text-anchor="middle">runs it → returns a string</text>
+<text class="t" x="530" y="66" text-anchor="middle">JS source</text>
+<text class="s" x="530" y="88" text-anchor="middle">the returned code</text>
+<text class="t" x="740" y="66" text-anchor="middle">Pipeline</text>
+<text class="s" x="740" y="88" text-anchor="middle">parse · shake · minify</text>
+<line class="l" x1="202" y1="71" x2="228" y2="71" marker-end="url(#np-cg-arrow)"></line>
+<line class="l" x1="412" y1="71" x2="438" y2="71" marker-end="url(#np-cg-arrow)"></line>
+<line class="l" x1="622" y1="71" x2="648" y2="71" marker-end="url(#np-cg-arrow)"></line>
+<text class="c" x="425" y="150" text-anchor="middle">The generated source re-enters the same pipeline as any module — imports, tree-shaking and minification all apply.</text>
+</g>
+</svg>
 <h2 id="the-loader-context">The loader context</h2>
 <p>Your exported function is called with <code>this</code> bound to a small
 loader-style context, deliberately similar in shape to a webpack loader’s:</p>

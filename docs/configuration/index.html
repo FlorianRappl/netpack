@@ -37,6 +37,33 @@ sources can’t override it. Sources are read highest priority first:</p>
 <li>Each preset’s <strong>referenced presets</strong> (the <code>presets</code> array), in order,
 depth-first.</li>
 </ol>
+<svg viewBox="0 0 820 330" role="img" aria-labelledby="np-cfg-t np-cfg-d" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;max-width:800px;font-family:ui-sans-serif,system-ui,sans-serif">
+<title id="np-cfg-t">How netpack config is derived</title>
+<desc id="np-cfg-d">Options resolve first-write-wins from highest to lowest priority: CLI flags, then --preset presets, then the auto-discovered netpack.json, then referenced base presets.</desc>
+<defs><marker id="np-cfg-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="currentColor" fill-opacity="0.6"></path></marker></defs>
+<style>.np-cfg .b{fill:currentColor;fill-opacity:0.05;stroke:currentColor;stroke-opacity:0.3}.np-cfg .t{fill:currentColor;font-weight:600;font-size:14px}.np-cfg .tm{fill:currentColor;font-weight:600;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13.5px}.np-cfg .s{fill:currentColor;fill-opacity:0.7;font-size:11.5px}.np-cfg .c{fill:currentColor;fill-opacity:0.75;font-size:12px}.np-cfg .l{stroke:currentColor;stroke-opacity:0.55}.np-cfg .bg{fill:currentColor;fill-opacity:0.12;stroke:currentColor;stroke-opacity:0.4}.np-cfg .bn{fill:currentColor;font-weight:600;font-size:12px}</style>
+<g class="np-cfg">
+<rect x="150" y="40" width="560" height="56" rx="10" fill="#14b8a6" fill-opacity="0.09" stroke="#14b8a6" stroke-opacity="0.8"></rect>
+<rect class="b" x="150" y="108" width="560" height="56" rx="10"></rect>
+<rect class="b" x="150" y="176" width="560" height="56" rx="10"></rect>
+<rect class="b" x="150" y="244" width="560" height="56" rx="10"></rect>
+<circle class="bg" cx="180" cy="68" r="13"></circle><text class="bn" x="180" y="72" text-anchor="middle">1</text>
+<circle class="bg" cx="180" cy="136" r="13"></circle><text class="bn" x="180" y="140" text-anchor="middle">2</text>
+<circle class="bg" cx="180" cy="204" r="13"></circle><text class="bn" x="180" y="208" text-anchor="middle">3</text>
+<circle class="bg" cx="180" cy="272" r="13"></circle><text class="bn" x="180" y="276" text-anchor="middle">4</text>
+<text class="t" x="210" y="72" fill="#14b8a6">CLI flags</text>
+<text class="s" x="690" y="72" text-anchor="end">always win</text>
+<text class="tm" x="210" y="140">--preset</text>
+<text class="s" x="690" y="140" text-anchor="end">in the order given</text>
+<text class="tm" x="210" y="208">netpack.json</text>
+<text class="s" x="690" y="208" text-anchor="end">auto-discovered</text>
+<text class="t" x="210" y="276">referenced presets</text>
+<text class="s" x="690" y="276" text-anchor="end">presets: […], depth-first</text>
+<line class="l" x1="96" y1="298" x2="96" y2="46" marker-end="url(#np-cfg-arrow)"></line>
+<text class="s" x="66" y="172" text-anchor="middle" transform="rotate(-90 66 172)">priority · first write wins</text>
+<text class="c" x="430" y="322" text-anchor="middle">Reading top-down, the first source to set an option wins — lower layers only fill the gaps.</text>
+</g>
+</svg>
 <p>So a preset’s own values take precedence over the ones it pulls in — <code>presets</code>
 behaves like inheritance, but you can list several (more like layering plugins).</p>
 <pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="jsonc"><code><span class="line"><span style="color:#758575DD">// prod.json — layer CDN + banner onto a shared base, override nothing else</span></span>

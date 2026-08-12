@@ -17,6 +17,48 @@ build. They live under the <code>hooks</code> key of a <a href="/docs/configurat
 attach, and the arrays merge across the whole preset chain. Hook modules are
 resolved with the same mechanism as presets (a path, or a package reference
 through <code>node_modules</code>).</p>
+<h2 id="entry-shape">Entry shape</h2>
+<p>An entry can be a bare string (the module to run) or an object that also scopes
+and parameterizes it:</p>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="jsonc"><code><span class="line"><span style="color:#666666">{</span></span>
+<span class="line"><span style="color:#B8A96577">  "</span><span style="color:#B8A965">hooks</span><span style="color:#B8A96577">"</span><span style="color:#666666">:</span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#B8A96577">    "</span><span style="color:#B8A965">afterBundling</span><span style="color:#B8A96577">"</span><span style="color:#666666">:</span><span style="color:#666666"> [</span></span>
+<span class="line"><span style="color:#C98A7D77">      "</span><span style="color:#C98A7D">./transform.mjs</span><span style="color:#C98A7D77">"</span><span style="color:#666666">,</span><span style="color:#758575DD">                       // shorthand</span></span>
+<span class="line"><span style="color:#666666">      {</span></span>
+<span class="line"><span style="color:#B8A96577">        "</span><span style="color:#B8A965">source</span><span style="color:#B8A96577">"</span><span style="color:#666666">:</span><span style="color:#C98A7D77"> "</span><span style="color:#C98A7D">./stamp.mjs</span><span style="color:#C98A7D77">"</span><span style="color:#666666">,</span><span style="color:#758575DD">               // the module (required)</span></span>
+<span class="line"><span style="color:#B8A96577">        "</span><span style="color:#B8A965">test</span><span style="color:#B8A96577">"</span><span style="color:#666666">:</span><span style="color:#C98A7D77"> "</span><span style="color:#C99076">\\</span><span style="color:#C98A7D">.js$</span><span style="color:#C98A7D77">"</span><span style="color:#666666">,</span><span style="color:#758575DD">                        // only .js files/modules</span></span>
+<span class="line"><span style="color:#B8A96577">        "</span><span style="color:#B8A965">exclude</span><span style="color:#B8A96577">"</span><span style="color:#666666">:</span><span style="color:#C98A7D77"> "</span><span style="color:#C99076">\\</span><span style="color:#C98A7D">.min</span><span style="color:#C99076">\\</span><span style="color:#C98A7D">.js$</span><span style="color:#C98A7D77">"</span><span style="color:#666666">,</span><span style="color:#758575DD">               // …but not minified ones</span></span>
+<span class="line"><span style="color:#B8A96577">        "</span><span style="color:#B8A965">mode</span><span style="color:#B8A96577">"</span><span style="color:#666666">:</span><span style="color:#C98A7D77"> "</span><span style="color:#C98A7D">prod</span><span style="color:#C98A7D77">"</span><span style="color:#666666">,</span><span style="color:#758575DD">                          // only in optimized builds</span></span>
+<span class="line"><span style="color:#B8A96577">        "</span><span style="color:#B8A965">order</span><span style="color:#B8A96577">"</span><span style="color:#666666">:</span><span style="color:#4C9A91"> -1</span><span style="color:#666666">,</span><span style="color:#758575DD">                             // run before default hooks</span></span>
+<span class="line"><span style="color:#B8A96577">        "</span><span style="color:#B8A965">name</span><span style="color:#B8A96577">"</span><span style="color:#666666">:</span><span style="color:#C98A7D77"> "</span><span style="color:#C98A7D">stamp</span><span style="color:#C98A7D77">"</span><span style="color:#666666">,</span><span style="color:#758575DD">                         // label for diagnostics</span></span>
+<span class="line"><span style="color:#B8A96577">        "</span><span style="color:#B8A965">options</span><span style="color:#B8A96577">"</span><span style="color:#666666">:</span><span style="color:#666666"> {</span><span style="color:#B8A96577"> "</span><span style="color:#B8A965">year</span><span style="color:#B8A96577">"</span><span style="color:#666666">:</span><span style="color:#4C9A91"> 2026</span><span style="color:#666666"> }</span><span style="color:#758575DD">              // passed to the hook</span></span>
+<span class="line"><span style="color:#666666">      }</span></span>
+<span class="line"><span style="color:#666666">    ]</span></span>
+<span class="line"><span style="color:#666666">  }</span></span>
+<span class="line"><span style="color:#666666">}</span></span>
+<span class="line"></span></code></pre>
+<ul>
+<li><strong><code>source</code></strong> — the hook module (path or package reference). A plain string entry
+is exactly <code>{ "source": "…" }</code>.</li>
+<li><strong><code>test</code></strong> — a regular expression matched against the name. For <strong>asset</strong> hooks it
+filters which files the hook receives (and may rewrite); for <strong>per-module</strong> hooks
+it skips modules whose path doesn’t match. Omitted means “everything”. A filtered
+asset hook with no matching files isn’t invoked at all — the Node bridge only
+spins up when there’s work to do. An invalid regex is reported and ignored.</li>
+<li><strong><code>exclude</code></strong> — a regular expression for names to <strong>skip</strong>, applied after <code>test</code>.</li>
+<li><strong><code>mode</code></strong> — <code>dev</code> (dev server only), <code>prod</code> (optimized builds only), or <code>both</code>
+(default). A hook that doesn’t apply to the current build is never invoked.</li>
+<li><strong><code>order</code></strong> — an integer that shifts the hook <strong>earlier</strong> (negative) or <strong>later</strong>
+(positive) among the hooks for the same phase. The default (0) keeps the
+base-first order presets already give; use <code>order</code> only to override it.</li>
+<li><strong><code>name</code></strong> — a label surfaced in diagnostics and passed to the hook as
+<code>payload.name</code>.</li>
+<li><strong><code>options</code></strong> — any JSON value, handed to the hook function as <code>payload.options</code>
+(default <code>{}</code>). Use it to reuse one hook module with different settings.</li>
+</ul>
+<p>The two forms mix freely in the same array, and dedup is by the <strong>whole</strong> entry
+(module plus its <code>test</code>/<code>exclude</code>/<code>mode</code>/<code>order</code>/<code>name</code>/<code>options</code>), so the same
+module with different settings runs more than once by design.</p>
 <h2 id="behaviour">Behaviour</h2>
 <ul>
 <li><strong>Merged, not overridden.</strong> Every preset’s hooks contribute; nothing shadows
@@ -32,9 +74,10 @@ A build with no hooks is exactly as fast as one with no config at all.</li>
 </ul>
 <h2 id="the-module-contract">The module contract</h2>
 <p>A hook module default-exports (or <code>module.exports</code>) an async function. It receives
-<code>{ hook, root, dev }</code> — plus <code>module</code> for the per-module hooks, and <code>files</code> for the
-asset hooks — and may return a value the bundler applies. Unknown hook names are
-ignored with a warning.</p>
+<code>{ hook, root, dev, options, name }</code> — plus <code>module</code> for the per-module hooks, and
+<code>files</code> for the asset hooks — and may return a value the bundler applies. <code>options</code>
+is the entry’s <code>options</code> value (or <code>{}</code>), and <code>name</code> its label (if set). Unknown
+hook names are ignored with a warning.</p>
 <pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="js"><code><span class="line"><span style="color:#758575DD">// transform.mjs — strip // line comments from every JS bundle</span></span>
 <span class="line"><span style="color:#4D9375">export</span><span style="color:#4D9375"> default</span><span style="color:#CB7676"> async</span><span style="color:#666666"> ({</span><span style="color:#BD976A"> files</span><span style="color:#666666"> })</span><span style="color:#666666"> =></span><span style="color:#666666"> ({</span></span>
 <span class="line"><span style="color:#B8A965">  files</span><span style="color:#666666">:</span><span style="color:#BD976A"> files</span></span>
@@ -56,7 +99,45 @@ new one). This is your post-transformation slot.</li>
 <p>The per-module hooks additionally receive the module’s path as <code>module</code>.</p>
 <h2 id="lifecycle-points">Lifecycle points</h2>
 <p>Every point in netpack’s build maps to a hook name, mirroring the webpack/rspack
-lifecycle:</p>
+lifecycle. The build runs left to right; your post-transformation hooks most
+commonly tap the <strong>Emit</strong> phase:</p>
+<svg viewBox="0 0 980 236" role="img" aria-labelledby="np-life-t np-life-d" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;max-width:960px;font-family:ui-sans-serif,system-ui,sans-serif">
+<title id="np-life-t">The netpack build lifecycle</title>
+<desc id="np-life-d">Build phases from compiler start through per-module builds, graph completion, optimization, sealing, emit, and finish, each mapping to hook names.</desc>
+<style>.np-life .ph{fill:currentColor;font-weight:600;font-size:13px}.np-life .hk{fill:currentColor;fill-opacity:0.7;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10.5px}.np-life .sp{stroke:currentColor;stroke-opacity:0.35;stroke-width:2}.np-life .nd{fill:currentColor;fill-opacity:0.18;stroke:currentColor;stroke-opacity:0.5}.np-life .co{fill:#14b8a6;fill-opacity:0.08;stroke:#14b8a6;stroke-opacity:0.8}.np-life .ct{fill:currentColor;fill-opacity:0.85;font-size:11px}.np-life .em{fill:#14b8a6;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10.5px}</style>
+<g class="np-life">
+<line class="sp" x1="70" y1="80" x2="910" y2="80"></line>
+<circle class="nd" cx="70" cy="80" r="8"></circle>
+<circle class="nd" cx="210" cy="80" r="8"></circle>
+<circle class="nd" cx="350" cy="80" r="8"></circle>
+<circle class="nd" cx="490" cy="80" r="8"></circle>
+<circle class="nd" cx="630" cy="80" r="8"></circle>
+<circle cx="770" cy="80" r="9" fill="#14b8a6"></circle>
+<circle class="nd" cx="910" cy="80" r="8"></circle>
+<text class="ph" x="70" y="50" text-anchor="middle">Compiler</text>
+<text class="ph" x="210" y="50" text-anchor="middle">Modules</text>
+<text class="ph" x="350" y="50" text-anchor="middle">Graph</text>
+<text class="ph" x="490" y="50" text-anchor="middle">Optimize</text>
+<text class="ph" x="630" y="50" text-anchor="middle">Seal</text>
+<text class="ph" x="770" y="50" text-anchor="middle" fill="#14b8a6">Emit</text>
+<text class="ph" x="910" y="50" text-anchor="middle">Finish</text>
+<text class="hk" x="70" y="108" text-anchor="middle">initialize</text>
+<text class="hk" x="70" y="124" text-anchor="middle">compilation</text>
+<text class="hk" x="210" y="108" text-anchor="middle">buildModule</text>
+<text class="hk" x="210" y="124" text-anchor="middle">succeedModule</text>
+<text class="hk" x="350" y="108" text-anchor="middle">finishModules</text>
+<text class="hk" x="490" y="108" text-anchor="middle">optimizeModules</text>
+<text class="hk" x="630" y="108" text-anchor="middle">moduleIds</text>
+<text class="hk" x="630" y="124" text-anchor="middle">seal</text>
+<text class="em" x="770" y="108" text-anchor="middle">processAssets</text>
+<text class="em" x="770" y="124" text-anchor="middle">afterBundling</text>
+<text class="hk" x="910" y="108" text-anchor="middle">done</text>
+<line class="sp" x1="770" y1="89" x2="770" y2="158" style="stroke:#14b8a6;stroke-opacity:0.7"></line>
+<rect class="co" x="612" y="158" width="316" height="60" rx="8"></rect>
+<text class="ct" x="770" y="182" text-anchor="middle">Post-transformation hooks tap here —</text>
+<text class="ct" x="770" y="200" text-anchor="middle">replace or add output files before they're written.</text>
+</g>
+</svg>
 
 
 
@@ -100,4 +181,4 @@ recognized (you can register them) but reserved — they aren’t fired yet.</p>
 <h2 id="net">.NET</h2>
 <p>Hooks map onto the <code>CompilerHooks</code> / <code>CompilationHooks</code> tap system in
 <code>NetPack.Core</code>, which .NET plugins can tap directly (no Node bridge). See
-<a href="/docs/dotnet-libraries">.NET libraries</a>.</p>  </article> <nav class="docs-toc" aria-label="On this page" data-astro-cid-xvrfupwn><div class="toc-label" data-astro-cid-xvrfupwn>On this page</div><ul data-astro-cid-xvrfupwn><li class="depth-2" data-astro-cid-xvrfupwn><a href="#behaviour" data-astro-cid-xvrfupwn>Behaviour</a></li><li class="depth-2" data-astro-cid-xvrfupwn><a href="#the-module-contract" data-astro-cid-xvrfupwn>The module contract</a></li><li class="depth-2" data-astro-cid-xvrfupwn><a href="#lifecycle-points" data-astro-cid-xvrfupwn>Lifecycle points</a></li><li class="depth-2" data-astro-cid-xvrfupwn><a href="#net" data-astro-cid-xvrfupwn>.NET</a></li></ul></nav> </div>  </main> </div>   </body></html> 
+<a href="/docs/dotnet-libraries">.NET libraries</a>.</p>  </article> <nav class="docs-toc" aria-label="On this page" data-astro-cid-xvrfupwn><div class="toc-label" data-astro-cid-xvrfupwn>On this page</div><ul data-astro-cid-xvrfupwn><li class="depth-2" data-astro-cid-xvrfupwn><a href="#entry-shape" data-astro-cid-xvrfupwn>Entry shape</a></li><li class="depth-2" data-astro-cid-xvrfupwn><a href="#behaviour" data-astro-cid-xvrfupwn>Behaviour</a></li><li class="depth-2" data-astro-cid-xvrfupwn><a href="#the-module-contract" data-astro-cid-xvrfupwn>The module contract</a></li><li class="depth-2" data-astro-cid-xvrfupwn><a href="#lifecycle-points" data-astro-cid-xvrfupwn>Lifecycle points</a></li><li class="depth-2" data-astro-cid-xvrfupwn><a href="#net" data-astro-cid-xvrfupwn>.NET</a></li></ul></nav> </div>  </main> </div>   </body></html> 
