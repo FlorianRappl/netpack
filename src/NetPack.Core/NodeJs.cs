@@ -34,11 +34,82 @@ const commands = {
     const rootpath = dirname(file);
     return less.render(content, { rootFileInfo: { filename, rootpath } });
   },
-  postcss: (content, file, root) => {
+  postcss: async (content, file) => {
     const postcss = require('postcss');
-    const config = require('./postcss.config.js');
-    const instance = postcss(config.plugins);
-    return instance.process(content, { to: file, from: file });
+    const path = require('path');
+    const fs = require('fs');
+    const cwd = process.cwd();
+
+    // Resolve a module from the project's node_modules (not the bundler's).
+    const resolveFrom = (name) => require(require.resolve(name, { paths: [cwd] }));
+
+    // Turn a required module + options into an actual PostCSS plugin instance.
+    // A plugin author exports either a factory (call it with options) or, rarely,
+    // an already-built plugin object/function (use as-is).
+    const instantiate = (mod, opts) => {
+      const factory = (mod && mod.default) || mod;
+      if (typeof factory === 'function') {
+        return (opts === undefined || opts === null || opts === true) ? factory() : factory(opts);
+      }
+      return factory;
+    };
+
+    // Normalize the many `plugins` shapes into an array of instances. The object
+    // shorthand ({ 'tailwindcss': {}, 'autoprefixer': {} }) is what postcss(...)
+    // itself cannot consume — passing it raw is what triggers the classic
+    // '[object Object] is not a PostCSS plugin' error.
+    const normalize = (plugins) => {
+      if (!plugins) return [];
+      if (Array.isArray(plugins)) {
+        return plugins.map((p) => (typeof p === 'string' ? instantiate(resolveFrom(p)) : p)).filter(Boolean);
+      }
+      const out = [];
+      for (const name of Object.keys(plugins)) {
+        const opts = plugins[name];
+        if (opts === false || opts === null) continue; // disabled
+        out.push(instantiate(resolveFrom(name), opts));
+      }
+      return out;
+    };
+
+    const loadConfigFile = () => {
+      const names = ['postcss.config.js', 'postcss.config.cjs', '.postcssrc.js', '.postcssrc.cjs', '.postcssrc.json', '.postcssrc'];
+      for (const name of names) {
+        const p = path.join(cwd, name);
+        if (!fs.existsSync(p)) continue;
+        if (name.endsWith('.json') || name === '.postcssrc') return JSON.parse(fs.readFileSync(p, 'utf8'));
+        return require(p);
+      }
+      const pkgPath = path.join(cwd, 'package.json');
+      if (fs.existsSync(pkgPath)) {
+        const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+        if (pkg && pkg.postcss) return pkg.postcss;
+      }
+      return null;
+    };
+
+    let plugins;
+    let options = {};
+
+    // Prefer postcss-load-config (the loader Vite/most tools use): it handles
+    // every config format and normalizes plugins for us. Fall back to a manual
+    // load + normalize when it isn't installed.
+    try {
+      const mod = resolveFrom('postcss-load-config');
+      const load = (mod && mod.default) || mod;
+      const loaded = await load({ cwd, env: process.env.NODE_ENV || 'production' }, cwd);
+      plugins = loaded.plugins;
+      options = loaded.options || {};
+    } catch (e) {
+      let config = loadConfigFile();
+      if (typeof config === 'function') config = config({ cwd, env: process.env.NODE_ENV || 'production' });
+      config = config || {};
+      options = config.options || {};
+      plugins = normalize(config.plugins);
+    }
+
+    const result = await postcss(plugins || []).process(content, Object.assign({}, options, { from: file, to: file }));
+    return { css: result.css };
   },
   svelte: (content, file) => {
     const { compile, VERSION } = require('svelte/compiler');
