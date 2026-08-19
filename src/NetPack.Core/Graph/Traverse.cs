@@ -64,7 +64,7 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
 
     public static Task<Traverse> From(string path) => From(path, [], []);
 
-    public static async Task<Traverse> From(string path, IEnumerable<string> externals, IEnumerable<string> shared, ModuleIdMap? moduleIds = null, bool devServer = false, Platform platform = Platform.Web, IReadOnlyDictionary<string, string>? defines = null, IReadOnlyDictionary<string, string>? aliases = null, IReadOnlyDictionary<string, string>? loaders = null, IEnumerable<string>? conditions = null, bool externalPackages = false, string? mode = null, IReadOnlyDictionary<string, string>? envVars = null, DirectoryListingCache? directoryFiles = null, BuildCache? buildCache = null, CodegenCache? codegenCache = null, RenderCache? renderCache = null, PassContext? passContext = null, BuildSnapshot? snapshot = null, NetPack.Config.SplitChunksConfig? splitChunks = null, IReadOnlyDictionary<string, IReadOnlyList<NetPack.Plugins.HookBinding>>? hookModules = null, bool quiet = false)
+    public static async Task<Traverse> From(string path, IEnumerable<string> externals, IEnumerable<string> shared, ModuleIdMap? moduleIds = null, bool devServer = false, Platform platform = Platform.Web, IReadOnlyDictionary<string, string>? defines = null, IReadOnlyDictionary<string, string>? aliases = null, IReadOnlyDictionary<string, string>? loaders = null, IEnumerable<string>? conditions = null, bool externalPackages = false, string? mode = null, IReadOnlyDictionary<string, string>? envVars = null, DirectoryListingCache? directoryFiles = null, BuildCache? buildCache = null, CodegenCache? codegenCache = null, RenderCache? renderCache = null, PassContext? passContext = null, BuildSnapshot? snapshot = null, NetPack.Config.SplitChunksConfig? splitChunks = null, IReadOnlyDictionary<string, IReadOnlyList<NetPack.Plugins.HookBinding>>? hookModules = null, CssMode cssMode = CssMode.Auto, bool quiet = false)
     {
         var root = Path.GetDirectoryName(path)!;
         var packageRoot = FindRoot(root);
@@ -91,6 +91,13 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
         traverse.Context.DefaultJsxImportModule = defaultJsxImportModule;
         traverse.Context.DefaultJsxImportIdentifier = defaultJsxImportIdentifier;
         traverse.Context.UseSolid = await FindSolidRuntime(packageRoot);
+        // Resolve the CSS output mode: `auto` picks link for an HTML entry, none
+        // for a JS/TS entry. Stored resolved so the rest of the build never sees Auto.
+        var isHtmlEntry = path.EndsWith(".html", StringComparison.OrdinalIgnoreCase)
+            || path.EndsWith(".htm", StringComparison.OrdinalIgnoreCase);
+        traverse.Context.CssMode = cssMode == CssMode.Auto
+            ? (isHtmlEntry ? CssMode.Link : CssMode.None)
+            : cssMode;
         traverse.Context.Externals = [.. externals, .. shared];
         traverse.Context.Shared = [.. shared];
 

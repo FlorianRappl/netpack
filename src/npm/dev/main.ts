@@ -54,6 +54,7 @@ export type ModuleFormat = "esm" | "cjs" | "umd" | "systemjs";
 export type Platform = "web" | "node" | "deno";
 export type PackagesMode = "bundle" | "external";
 export type LicenseMode = "skip" | "preamble" | "json" | "spdx";
+export type CssMode = "auto" | "link" | "style" | "none" | "export";
 
 /** Details passed to {@link BuildEvents.onBuild} when a (re)build succeeds. */
 export interface BuildInfo {
@@ -151,6 +152,8 @@ export interface BundleOptions extends CommonOptions, BuildEvents, PresetOptions
   banner?: string;
   /** Third-party license handling (default "skip"). */
   licenses?: LicenseMode;
+  /** How imported CSS is referenced (default "auto"). */
+  css?: CssMode;
   /** Extra package.json `exports` conditions. */
   conditions?: string[];
   /** Set to "external" to keep every node_modules import external. */
@@ -174,6 +177,8 @@ export interface ServeOptions extends CommonOptions, BuildEvents, PresetOptions 
   loader?: Record<string, string>;
   /** Text placed on top of the entry JS bundle, followed by a newline. */
   banner?: string;
+  /** How imported CSS is referenced (default "auto"). */
+  css?: CssMode;
   /** Maximum size in bytes to inline assets as data URIs (0 = disabled). */
   inlineLimit?: number;
 }
@@ -191,6 +196,8 @@ export interface AnalyzeOptions extends CommonOptions, PresetOptions {
   outfile?: string;
   external?: string[];
   shared?: string[];
+  /** How imported CSS is referenced (default "auto"). */
+  css?: CssMode;
 }
 
 export interface RunResult {

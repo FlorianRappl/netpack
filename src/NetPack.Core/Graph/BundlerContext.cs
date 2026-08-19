@@ -118,6 +118,13 @@ public sealed class BundlerContext(string root, FeatureFlags features, ModuleIdM
     internal TsConfigResolver TsConfig { get; } = new();
 
     /// <summary>
+    /// How imported stylesheets are referenced in the output (the <c>--css</c>
+    /// option). Resolved from the entry kind once per build (see
+    /// <see cref="Traverse.From"/>), so it is never <see cref="CssMode.Auto"/> here.
+    /// </summary>
+    public CssMode CssMode { get; set; } = CssMode.None;
+
+    /// <summary>
     /// Compile-time constant substitutions applied to JS/TS source before
     /// parsing (the <c>--define</c> option), e.g. <c>process.env.NODE_ENV</c> →
     /// <c>"production"</c>. Ordered longest-key-first so a more specific key

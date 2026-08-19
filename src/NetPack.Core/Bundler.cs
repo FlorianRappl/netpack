@@ -39,6 +39,10 @@ public sealed record BundleOptions
     /// to <see cref="LicenseMode.Skip"/>.</summary>
     public LicenseMode Licenses { get; init; } = LicenseMode.Skip;
 
+    /// <summary>How imported CSS is referenced (<c>--css</c>). Defaults to
+    /// <see cref="CssMode.Auto"/> (link for an HTML entry, none for a JS/TS entry).</summary>
+    public CssMode Css { get; init; } = CssMode.Auto;
+
     /// <summary>Import specifiers to keep external (not bundled).</summary>
     public IEnumerable<string> Externals { get; init; } = [];
 
@@ -106,7 +110,7 @@ public static class Bundler
         entryPath, options.Externals, options.Shared, platform: options.Platform,
         defines: options.Define, aliases: options.Alias, loaders: options.Loader,
         conditions: options.Conditions, externalPackages: options.ExternalPackages,
-        splitChunks: options.SplitChunks);
+        splitChunks: options.SplitChunks, cssMode: options.Css);
 
     /// <summary>Bundles the project and returns every emitted file in memory.</summary>
     public static async Task<BundleResult> BundleAsync(string entryPath, BundleOptions? options = null)

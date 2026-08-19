@@ -40,6 +40,9 @@ public class AnalyzeCommand : ICommand
     [Option("licenses", Default = "skip", HelpText = "Third-party license handling: skip (default), preamble, json, or spdx.")]
     public string Licenses { get; set; } = "skip";
 
+    [Option("css", Default = "auto", HelpText = "How imported CSS is referenced: auto (default), link, style, none, or export.")]
+    public string Css { get; set; } = "auto";
+
     [Option("inline-limit", Default = 0, HelpText = "Maximum size in bytes to inline assets as data URIs instead of emitting files (0 = disabled).")]
     public int InlineLimit { get; set; } = 0;
 
@@ -57,7 +60,7 @@ public class AnalyzeCommand : ICommand
             Licenses = BundleCommand.ParseLicenses(Licenses),
             InlineLimit = InlineLimit,
         };
-        using var graph = await Traverse.From(file, Externals, Shared, hookModules: PresetArgs.Hooks);
+        using var graph = await Traverse.From(file, Externals, Shared, hookModules: PresetArgs.Hooks, cssMode: BundleCommand.ParseCssMode(Css));
         var compilation = new MemoryResultWriter(graph.Context);
         await compilation.WriteOut(options);
 

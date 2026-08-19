@@ -66,6 +66,9 @@ public class BundleCommand : ICommand
     [Option("licenses", Default = "skip", HelpText = "Third-party license handling: skip (default), preamble (keep legal comments in each bundle head), json (write licenses.json), or spdx (write licenses.spdx).")]
     public string Licenses { get; set; } = "skip";
 
+    [Option("css", Default = "auto", HelpText = "How imported CSS is referenced: auto (default), link, style, none, or export.")]
+    public string Css { get; set; } = "auto";
+
     [Option("conditions", HelpText = "Extra package.json 'exports' conditions to honour, on top of the platform defaults (e.g. --conditions development).")]
     public IEnumerable<string> Conditions { get; set; } = [];
 
@@ -125,6 +128,16 @@ public class BundleCommand : ICommand
         "json" => LicenseMode.Json,
         "spdx" => LicenseMode.Spdx,
         _ => throw new InvalidOperationException($"Unknown --licenses '{value}'. Available: skip, preamble, json, spdx."),
+    };
+
+    internal static CssMode ParseCssMode(string value) => value.ToLowerInvariant() switch
+    {
+        "auto" or "" => CssMode.Auto,
+        "link" => CssMode.Link,
+        "style" => CssMode.Style,
+        "none" => CssMode.None,
+        "export" => CssMode.Export,
+        _ => throw new InvalidOperationException($"Unknown --css '{value}'. Available: auto, link, style, none, export."),
     };
 
     private static ModuleFormat ParseFormat(string format) => format.ToLowerInvariant() switch
@@ -241,7 +254,7 @@ public class BundleCommand : ICommand
             defines: defines, aliases: aliases, loaders: loaders,
             conditions: Conditions, externalPackages: externalPackages, directoryFiles: Watch ? _resolutionCache : null,
             buildCache: _buildCache, codegenCache: _codegenCache, renderCache: _renderCache, passContext: _passContext,
-            splitChunks: splitChunks, hookModules: PresetArgs.Hooks);
+            splitChunks: splitChunks, hookModules: PresetArgs.Hooks, cssMode: ParseCssMode(Css));
         var result = new DiskResultWriter(graph.Context, outdir);
         var emitted = await result.WriteOut(options);
         watch.Stop();

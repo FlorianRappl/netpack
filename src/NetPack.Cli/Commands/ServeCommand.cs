@@ -63,6 +63,9 @@ public class ServeCommand : ICommand
     [Option("licenses", Default = "skip", HelpText = "Third-party license handling: skip (default), preamble, json, or spdx.")]
     public string Licenses { get; set; } = "skip";
 
+    [Option("css", Default = "auto", HelpText = "How imported CSS is referenced: auto (default), link, style, none, or export.")]
+    public string Css { get; set; } = "auto";
+
     [Option("clear-screen", Default = false, HelpText = "Clear the terminal on rebuild.")]
     public bool ClearScreen { get; set; } = false;
 
@@ -85,7 +88,7 @@ public class ServeCommand : ICommand
         var aliases = BundleCommand.ParseKeyValues(Alias, "alias");
         var loaders = BundleCommand.ParseKeyValues(Loader, "loader");
         Console.WriteLine("[netpack] Starting build ...");
-        using var graph = await Traverse.From(file, Externals, Shared, _moduleIds, devServer: true, defines: defines, aliases: aliases, loaders: loaders, directoryFiles: _resolutionCache, buildCache: _buildCache, codegenCache: _codegenCache, renderCache: _renderCache, passContext: _passContext, splitChunks: BundleCommand.ParseSplitChunks(SplitChunksJson), hookModules: PresetArgs.Hooks);
+        using var graph = await Traverse.From(file, Externals, Shared, _moduleIds, devServer: true, defines: defines, aliases: aliases, loaders: loaders, directoryFiles: _resolutionCache, buildCache: _buildCache, codegenCache: _codegenCache, renderCache: _renderCache, passContext: _passContext, splitChunks: BundleCommand.ParseSplitChunks(SplitChunksJson), hookModules: PresetArgs.Hooks, cssMode: BundleCommand.ParseCssMode(Css));
         var compilation = new MemoryResultWriter(graph.Context);
         var options = new OutputOptions
         {

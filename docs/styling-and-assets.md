@@ -129,6 +129,27 @@ import styles from './app.css';
 <button className={styles.button}>Go</button>
 ```
 
+## CSS output (`--css`)
+
+`--css <mode>` selects how the stylesheets a build pulls in are referenced in the
+output. It applies to `bundle`, `serve`, and `analyze` (and the `css` preset /
+programmatic key), defaulting to `auto`:
+
+| Mode | HTML entry | JS/TS entry |
+| --- | --- | --- |
+| `auto` (default) | `link` | `none` |
+| `link` | `<link rel="stylesheet">` in `<head>` | `document.head.appendChild(link)` at load |
+| `style` | inline `<style>` in `<head>` | `document.head.appendChild(style)` at load |
+| `none` | emit the `.css` file, no reference | emit the `.css` file, no reference |
+| `export` | export `styles` from the entry's script bundle | `export const styles` from the root bundle |
+
+`auto` picks `link` for an HTML entry point and `none` for a JS/TS entry point (a
+library emits its CSS as a file for the consumer to include). The mode is resolved
+once per build from the entry kind.
+
+> The `--css` option and its resolution are in place; the per-mode emission
+> behavior is being enabled incrementally.
+
 ## Sass / LESS / PostCSS (incl. Tailwind)
 
 Import a `.scss`/`.sass` or `.less` file the same way as `.css` — netpack
