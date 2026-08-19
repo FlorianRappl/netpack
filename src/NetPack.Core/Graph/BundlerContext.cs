@@ -120,7 +120,7 @@ public sealed class BundlerContext(string root, FeatureFlags features, ModuleIdM
     /// <summary>
     /// How imported stylesheets are referenced in the output (the <c>--css</c>
     /// option). Resolved from the entry kind once per build (see
-    /// <see cref="Traverse.From"/>), so it is never <see cref="CssMode.Auto"/> here.
+    /// <see cref="Traverse"/>.<c>From</c>), so it is never <see cref="CssMode.Auto"/> here.
     /// </summary>
     public CssMode CssMode { get; set; } = CssMode.None;
 
