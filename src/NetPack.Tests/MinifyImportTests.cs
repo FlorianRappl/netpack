@@ -76,6 +76,37 @@ public class MinifyImportTests
         }
     }
 
+    [Fact]
+    public async Task Default_exported_component_survives_tree_shaking_in_a_library()
+    {
+        // Reproduces a library build dropping component bodies: the entry re-exports
+        // a component whose file uses the common `export default <identifier>` form.
+        // Tree-shaking must keep the referenced declaration, not just the re-export.
+        var dir = Path.Combine(Path.GetTempPath(), "netpack-lib-" + Path.GetRandomFileName());
+        Directory.CreateDirectory(dir);
+
+        try
+        {
+            await File.WriteAllTextAsync(Path.Combine(dir, "package.json"), "{}");
+            await File.WriteAllTextAsync(Path.Combine(dir, "AuditTable.js"),
+                "function AuditTable() { return 'BIG_TABLE_MARKER'; }\nexport default AuditTable;");
+            await File.WriteAllTextAsync(Path.Combine(dir, "index.js"),
+                "export { default as AuditTable } from './AuditTable';");
+
+            using var graph = await Traverse.From(Path.Combine(dir, "index.js"));
+            TreeShakePass.Run(graph.Context); // the whole-program pass the optimizing writer runs
+
+            var bundle = graph.Context.Bundles.Values.OfType<JsBundle>().First(b => b.IsPrimary);
+            var output = bundle.Stringify(new OutputOptions { IsOptimizing = true, IsReloading = false });
+
+            Assert.Contains("BIG_TABLE_MARKER", output);
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
     private static async Task<string> BundleMinified(string entry, params (string Name, string Content)[] files)
     {
         var dir = Path.Combine(Path.GetTempPath(), "netpack-min-" + Path.GetRandomFileName());

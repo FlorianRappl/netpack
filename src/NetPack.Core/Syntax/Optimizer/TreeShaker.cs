@@ -65,6 +65,15 @@ public static class TreeShaker
             {
                 if (used.Contains(pair.Key)) MarkLive(pair.Value);
             }
+
+            // A used `export default <expr>` keeps whatever top-level bindings the
+            // expression refers to — e.g. `export default AuditTable;` must keep the
+            // separately-declared `AuditTable`. Without this the export survives but
+            // its target is pruned, leaving a dangling reference.
+            if (info.Kind == StatementKind.ExportDefault && used.Contains("default"))
+            {
+                foreach (var use in info.Uses) MarkLive(use);
+            }
         }
 
         while (worklist.Count > 0)

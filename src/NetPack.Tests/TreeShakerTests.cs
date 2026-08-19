@@ -66,6 +66,43 @@ public class TreeShakerTests
     }
 
     [Fact]
+    public void Keeps_default_exported_identifier_declaration()
+    {
+        // `export default AuditTable;` (a bare identifier referring to a locally
+        // declared function) must keep that function — the classic library
+        // component pattern. Regression for the tree-shaker dropping the body and
+        // leaving a dangling default export.
+        var output = Shake(
+            "function AuditTable() { return 'BIG_TABLE'; }\nexport default AuditTable;",
+            "default");
+
+        Assert.Contains("function AuditTable", output);
+        Assert.Contains("BIG_TABLE", output);
+    }
+
+    [Fact]
+    public void Keeps_default_exported_const_arrow_declaration()
+    {
+        var output = Shake(
+            "const AuditTable = () => 'BIG_TABLE';\nexport default AuditTable;",
+            "default");
+
+        Assert.Contains("AuditTable", output);
+        Assert.Contains("BIG_TABLE", output);
+    }
+
+    [Fact]
+    public void Keeps_default_export_target_when_whole_module_is_kept()
+    {
+        // The entry (bundle root) is shaken with "everything used"; the default
+        // export's target must survive there too.
+        var output = ShakeAll("function AuditTable() { return 'BIG_TABLE'; }\nexport default AuditTable;");
+
+        Assert.Contains("function AuditTable", output);
+        Assert.Contains("BIG_TABLE", output);
+    }
+
+    [Fact]
     public void Keeps_transitively_referenced_helpers()
     {
         var output = Shake(
