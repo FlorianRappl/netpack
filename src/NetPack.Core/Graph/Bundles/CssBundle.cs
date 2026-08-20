@@ -1,15 +1,27 @@
 namespace NetPack.Graph.Bundles;
 
+using System.Collections.Generic;
 using System.Text;
 using System.Text.RegularExpressions;
 using AngleSharp.Css;
 
 public sealed class CssBundle(BundlerContext context, Node root, BundleFlags flags) : Bundle(context, root, flags)
 {
+    /// <summary>
+    /// When set, this bundle is a per-chunk combined stylesheet: the listed CSS
+    /// nodes are rendered concatenated in order (each with its own <c>url()</c>
+    /// asset rewrites) rather than the single <see cref="Bundle.Root"/> fragment.
+    /// Used by the <c>--css link</c>/<c>none</c> build-time split, which merges all
+    /// of a JS chunk's non-shared stylesheets into one file.
+    /// </summary>
+    public List<Node> Parts { get; } = [];
+
     public override Task<Stream> CreateStream(OutputOptions options)
     {
-        // Render cache.
-        if (TryGetRenderCache(options) is { } cached)
+        // A combined bundle renders from several source fragments whose content is
+        // not captured by the render-cache key (which keys on this bundle's own
+        // Items), so skip the cache for it to stay correct across rebuilds.
+        if (Parts.Count == 0 && TryGetRenderCache(options) is { } cached)
         {
             return Task.FromResult<Stream>(new MemoryStream(cached));
         }
@@ -17,19 +29,29 @@ public sealed class CssBundle(BundlerContext context, Node root, BundleFlags fla
         var src = new MemoryStream();
         Stringify(src, options);
         src.Position = 0;
-        PutRenderCache(options, src.ToArray());
-        src.Position = 0;
+
+        if (Parts.Count == 0)
+        {
+            PutRenderCache(options, src.ToArray());
+            src.Position = 0;
+        }
+
         return Task.FromResult<Stream>(src);
     }
 
     private void Stringify(MemoryStream ms, OutputOptions options)
     {
-        var fragments = _context.CssFragments;
-        
-        if (fragments.TryGetValue(Root, out var root))
+        var sources = Parts.Count > 0 ? (IReadOnlyList<Node>)Parts : [Root];
+
+        foreach (var source in sources)
         {
-            var replacements = root.Replacements;
-            var stylesheet = root.Stylesheet;
+            if (!_context.CssFragments.TryGetValue(source, out var fragment))
+            {
+                continue;
+            }
+
+            var replacements = fragment.Replacements;
+            var stylesheet = fragment.Stylesheet;
 
             foreach (var replacement in replacements)
             {

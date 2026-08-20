@@ -44,6 +44,11 @@ sealed class CommonJsModuleFormat : JsModuleFormat
     public override IReadOnlyList<Ast.Statement> ExportRoot(Ast.Expression rootRequire, IReadOnlyList<string> exportNames)
         => new List<Ast.Statement> { ModuleExports(rootRequire) };
 
+    // Runs after ExportRoot (which sets `module.exports = <root>`), so the property
+    // lands on the already-exported object.
+    public override IReadOnlyList<Ast.Statement> ExportCssStyles(string css)
+        => FormatSupport.Parse($"module.exports.styles = {CssModules.JsString(css)};");
+
     public override Ast.Expression AutoReference(string fileName)
     {
         _needsBaseUrl = true;

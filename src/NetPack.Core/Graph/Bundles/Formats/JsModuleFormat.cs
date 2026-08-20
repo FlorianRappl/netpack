@@ -51,6 +51,14 @@ abstract class JsModuleFormat
     /// <c>require(id)</c> result and its export names.</summary>
     public abstract IReadOnlyList<Ast.Statement> ExportRoot(Ast.Expression rootRequire, IReadOnlyList<string> exportNames);
 
+    /// <summary>
+    /// Adds a bundle-level <c>styles</c> export carrying the chunk's combined CSS
+    /// text (the <c>--css export</c> mode). Only meaningful for formats whose
+    /// trailer statements are top-level (ESM, CommonJS); the wrapped formats (UMD,
+    /// SystemJS) return nothing, so <c>export</c> emits no <c>styles</c> there.
+    /// </summary>
+    public virtual IReadOnlyList<Ast.Statement> ExportCssStyles(string css) => [];
+
     /// <summary>The expression a module-relative reference (a dynamic-import chunk
     /// or an emitted asset) resolves to at runtime.</summary>
     public abstract Ast.Expression AutoReference(string fileName);

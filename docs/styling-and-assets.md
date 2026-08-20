@@ -139,16 +139,34 @@ programmatic key), defaulting to `auto`:
 | --- | --- | --- |
 | `auto` (default) | `link` | `none` |
 | `link` | `<link rel="stylesheet">` in `<head>` | `document.head.appendChild(link)` at load |
-| `style` | inline `<style>` in `<head>` | `document.head.appendChild(style)` at load |
+| `style` | runtime `<style>` injection | runtime `<style>` injection |
 | `none` | emit the `.css` file, no reference | emit the `.css` file, no reference |
 | `export` | export `styles` from the entry's script bundle | `export const styles` from the root bundle |
 
-`auto` picks `link` for an HTML entry point and `none` for a JS/TS entry point (a
-library emits its CSS as a file for the consumer to include). The mode is resolved
-once per build from the entry kind.
+In `link` and `none`, each JS chunk's non-shared stylesheets are merged into a
+single combined `.css` file named after the chunk (the `app.js` chunk emits
+`app.css`), concatenated in evaluation order. Shared stylesheets (imported by more
+than one entry) are always extracted to their own chunk regardless of mode.
 
-> The `--css` option and its resolution are in place; the per-mode emission
-> behavior is being enabled incrementally.
+`auto` picks `link` for an HTML entry point (its stylesheets are emitted as `.css`
+files and referenced with `<link>` in `<head>`) and `none` for a JS/TS entry point
+(a library emits its CSS as a file for the consumer to include). The mode is
+resolved once per build from the entry kind.
+
+The dev server (`serve`) always injects styles at runtime, overriding the mode, so
+a CSS edit hot-reloads without re-emitting and re-linking files.
+
+`export` gives each chunk a bundle-level `styles` string export holding its
+combined CSS (so a consumer can inject it however they like), rather than emitting
+or injecting a stylesheet. It is emitted for the `esm` and `cjs` output formats;
+the wrapped `umd`/`systemjs` formats don't get a `styles` export. The exported text
+is the rewritten (class-hashed) CSS but does not have `url()` asset references
+rewritten to their emitted names.
+
+> **Rollout status.** All five modes are wired. `link`/`none`/`export` perform the
+> per-chunk build-time split (a class-map-only shim replaces each import); `style`
+> and the dev server inject a runtime `<style>` per module so CSS keeps
+> hot-reloading.
 
 ## Sass / LESS / PostCSS (incl. Tailwind)
 

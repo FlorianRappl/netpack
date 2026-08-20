@@ -180,6 +180,31 @@ public sealed class BundlerContext(string root, FeatureFlags features, ModuleIdM
     public ConcurrentDictionary<Node, HashSet<Bundle>> CssImportedByBundles = [];
 
     /// <summary>
+    /// For a build-time split CSS file (the <c>--css link</c>/<c>none</c> path),
+    /// maps the emitted combined <c>.css</c> chunk node back to the earliest CSS
+    /// module it contains. Lets <see cref="Bundles.HtmlBundle"/> order the generated
+    /// <c>&lt;link&gt;</c> tags by the importer's post-order index so the cascade
+    /// matches evaluation order.
+    /// </summary>
+    public ConcurrentDictionary<Node, Node> CssFileOrigin = [];
+
+    /// <summary>
+    /// For the <c>--css link</c>/<c>none</c> split, maps a JS chunk (the bundle that
+    /// imported the stylesheets) to the single combined CSS bundle holding all of
+    /// its non-shared stylesheets. An HTML build references it with a
+    /// <c>&lt;link&gt;</c>; a JS/TS-entry <c>link</c> build appends the
+    /// <c>&lt;link&gt;</c> at load from the chunk itself.
+    /// </summary>
+    public ConcurrentDictionary<Bundle, Bundles.CssBundle> CssChunkBundle = [];
+
+    /// <summary>
+    /// For the <c>--css export</c> mode, maps a JS chunk to its combined CSS text.
+    /// The chunk exports it as a <c>styles</c> string at render time instead of
+    /// emitting or injecting a stylesheet.
+    /// </summary>
+    public ConcurrentDictionary<Bundle, string> CssChunkStyles = [];
+
+    /// <summary>
     /// Maps a CSS node to the post-order index of the JS module that first
     /// imported it. Used for deterministic CSS ordering: CSS files are sorted
     /// by their importer's position in the JS evaluation order so that the

@@ -91,13 +91,21 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
         traverse.Context.DefaultJsxImportModule = defaultJsxImportModule;
         traverse.Context.DefaultJsxImportIdentifier = defaultJsxImportIdentifier;
         traverse.Context.UseSolid = await FindSolidRuntime(packageRoot);
-        // Resolve the CSS output mode: `auto` picks link for an HTML entry, none
-        // for a JS/TS entry. Stored resolved so the rest of the build never sees Auto.
+        // Resolve the CSS output mode:
+        //  * `auto` picks `link` for an HTML entry point (stylesheets are emitted as
+        //    .css files and referenced with <link>) and `none` for a JS/TS entry
+        //    point (a library emits its CSS as a file for the consumer to include).
+        //  * The dev server always injects styles at runtime (CssMode.Style),
+        //    overriding any mode, so a CSS edit hot-reloads without re-emitting and
+        //    re-linking files.
+        // Stored resolved so the rest of the build never sees Auto.
         var isHtmlEntry = path.EndsWith(".html", StringComparison.OrdinalIgnoreCase)
             || path.EndsWith(".htm", StringComparison.OrdinalIgnoreCase);
-        traverse.Context.CssMode = cssMode == CssMode.Auto
-            ? (isHtmlEntry ? CssMode.Link : CssMode.None)
-            : cssMode;
+        traverse.Context.CssMode = devServer
+            ? CssMode.Style
+            : cssMode == CssMode.Auto
+                ? (isHtmlEntry ? CssMode.Link : CssMode.None)
+                : cssMode;
         traverse.Context.Externals = [.. externals, .. shared];
         traverse.Context.Shared = [.. shared];
 
@@ -1535,27 +1543,107 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
         // Process CSS modules in post-order so their virtual JS modules are
         // registered in the same order as the JS modules that imported them.
         var sortedCssImports = _context.CssImports.ToArray()
-            .OrderBy(kv => _context.CssImporterOrder.TryGetValue(kv.Key, out var order) ? order : 0);
+            .OrderBy(kv => _context.CssImporterOrder.TryGetValue(kv.Key, out var order) ? order : 0)
+            .Where(kv => sharedCss is null || !sharedCss.ContainsKey(kv.Key))
+            .ToArray();
+
+        // `link`/`none`/`export` combine each JS chunk's non-shared stylesheets and
+        // leave a class-map-only shim in their place: `link`/`none` emit the
+        // combined CSS as a file, `export` hands it back as a `styles` string.
+        // `style` keeps the CSS inline (runtime <style>).
+        if (_context.CssMode is CssMode.Link or CssMode.None or CssMode.Export)
+        {
+            await CombineCssPerChunk(sortedCssImports);
+            return;
+        }
 
         foreach (var (node, bundle) in sortedCssImports)
         {
-            // Skip shared CSS - it's already been created as a separate CSS bundle
-            if (sharedCss is not null && sharedCss.ContainsKey(node))
-            {
-                continue;
-            }
-
-            if (!_context.CssFragments.TryRemove(node, out var cssFragment))
-            {
-                continue;
-            }
-
             var relative = Path.GetRelativePath(_context.Root, node.FileName).Replace('\\', '/');
             var isModule = _context.CssModuleNodes.ContainsKey(node);
-            var (map, css) = CssModules.Rewrite(cssFragment.Stylesheet, relative, isModule);
-            var source = CssModules.GenerateModule(css, map);
+
+            if (!_context.CssFragments.TryRemove(node, out var inlineFragment))
+            {
+                continue;
+            }
+
+            var (inlineMap, inlineCss) = CssModules.Rewrite(inlineFragment.Stylesheet, relative, isModule);
+            var source = CssModules.GenerateModule(inlineCss, inlineMap);
             var fragment = await ParseJsModule(bundle, node, source);
             _context.JsFragments.TryAdd(node, fragment);
+        }
+    }
+
+    /// <summary>
+    /// The <c>--css link</c>/<c>none</c> build-time split: for each JS chunk, merges
+    /// all of its non-shared stylesheets into a single combined <c>.css</c> file
+    /// (concatenated in evaluation order) and replaces every CSS import with a
+    /// class-map-only shim, so the JS no longer carries the stylesheet text. The
+    /// combined file is referenced by <see cref="Bundles.HtmlBundle"/> (an HTML
+    /// build) or appended as a <c>&lt;link&gt;</c> from the chunk itself (a JS/TS
+    /// entry) when the mode is <see cref="CssMode.Link"/>; <see cref="CssMode.None"/>
+    /// emits it unreferenced.
+    /// </summary>
+    private async Task CombineCssPerChunk(IReadOnlyList<KeyValuePair<Node, Bundle>> imports)
+    {
+        // Group each chunk's stylesheets, preserving evaluation order.
+        var groups = new List<(Bundle Bundle, List<Node> Nodes)>();
+        var index = new Dictionary<Bundle, int>();
+
+        foreach (var (node, bundle) in imports)
+        {
+            if (!index.TryGetValue(bundle, out var i))
+            {
+                i = groups.Count;
+                index[bundle] = i;
+                groups.Add((bundle, new List<Node>()));
+            }
+
+            groups[i].Nodes.Add(node);
+        }
+
+        var exportStyles = _context.CssMode == CssMode.Export;
+
+        foreach (var (bundle, nodes) in groups)
+        {
+            // Rewrite each stylesheet in place (hashing CSS-module class names) and
+            // replace the import with a class-map-only shim. The rewritten fragments
+            // stay in CssFragments so the combined bundle can render them.
+            var styles = exportStyles ? new StringBuilder() : null;
+
+            foreach (var node in nodes)
+            {
+                if (!_context.CssFragments.TryGetValue(node, out var fragment))
+                {
+                    continue;
+                }
+
+                var relative = Path.GetRelativePath(_context.Root, node.FileName).Replace('\\', '/');
+                var isModule = _context.CssModuleNodes.ContainsKey(node);
+                var (map, css) = CssModules.Rewrite(fragment.Stylesheet, relative, isModule);
+                styles?.Append(css);
+                var shim = CssModules.GenerateModule(string.Empty, map, inject: false);
+                var shimFragment = await ParseJsModule(bundle, node, shim);
+                _context.JsFragments.TryAdd(node, shimFragment);
+            }
+
+            if (exportStyles)
+            {
+                // `export`: the chunk hands its combined CSS back as a `styles`
+                // string at render time — no file, no reference.
+                _context.CssChunkStyles.TryAdd(bundle, styles!.ToString());
+                continue;
+            }
+
+            // `link`/`none`: one combined stylesheet per chunk, named after the
+            // chunk (e.g. the `app.js` chunk emits `app.css`).
+            var dir = Path.GetDirectoryName(nodes[0].FileName)!;
+            var combinedNode = new Node(Path.Combine(dir, bundle.BaseName + ".css"), nodes.Sum(n => n.Bytes));
+            var combined = new CssBundle(_context, combinedNode, BundleFlags.None);
+            combined.Parts.AddRange(nodes);
+            _context.Bundles.TryAdd(combinedNode, combined);
+            _context.CssFileOrigin.TryAdd(combinedNode, nodes[0]);
+            _context.CssChunkBundle.TryAdd(bundle, combined);
         }
     }
 

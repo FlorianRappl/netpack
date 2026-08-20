@@ -168,6 +168,22 @@ public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags
             }
         }
 
+        // `--css link` for a JS/TS entry (no HTML document to hold the tag): the
+        // chunk references its own combined stylesheet by appending a <link> at
+        // load. When an HTML entry is present the document owns the <link>, so the
+        // chunk stays silent.
+        if (!IsShared
+            && _context.CssMode == CssMode.Link
+            && !_context.Bundles.Values.Any(b => b.Type == ".html")
+            && _context.CssChunkBundle.TryGetValue(this, out var cssChunk))
+        {
+            var href = Helpers.PublicUrl(options.PublicPath, cssChunk.GetFileName());
+            head.Append(
+                "if(typeof document!==\"undefined\"){var __l=document.createElement(\"link\");" +
+                "__l.rel=\"stylesheet\";__l.href=" + CssModules.JsString(href) +
+                ";document.head.appendChild(__l);}\n");
+        }
+
         if (head.Length == 0)
         {
             return code;
@@ -391,6 +407,15 @@ public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags
                     new Ast.Identifier(Require),
                     new List<Ast.Expression> { IdLiteral(GetId(rootFragment.Root)) }, false);
                 trailer.AddRange(_format.ExportRoot(rootRequire, rootFragment.ExportNames));
+
+                // `--css export`: append the chunk's combined stylesheet as a
+                // bundle-level `styles` string export (after ExportRoot so a
+                // CommonJS `module.exports.styles` lands on the exported object).
+                if (context.CssMode == CssMode.Export
+                    && context.CssChunkStyles.TryGetValue(_bundle, out var css))
+                {
+                    trailer.AddRange(_format.ExportCssStyles(css));
+                }
             }
 
             var runtime = BuildRuntime(sharedNames);

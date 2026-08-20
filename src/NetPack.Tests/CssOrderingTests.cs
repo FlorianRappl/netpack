@@ -43,7 +43,11 @@ public class CssOrderingTests
                 await File.WriteAllTextAsync(fullPath, content);
             }
 
-            using var graph = await Traverse.From(Path.Combine(dir, entry));
+            // These cases assert on the runtime-injected CSS text and its order, so
+            // pin the mode to `style`; a bare JS entry now defaults to `none` (the
+            // build-time split), which emits the CSS as files instead of inlining it.
+            using var graph = await Traverse.From(
+                Path.Combine(dir, entry), Array.Empty<string>(), Array.Empty<string>(), cssMode: CssMode.Style);
             var bundle = graph.Context.Bundles.Values.OfType<JsBundle>().First(b => b.IsPrimary);
             return bundle.Stringify(_defaultOptions);
         }
@@ -225,7 +229,11 @@ public class CssOrderingTests
                 "<script type=\"module\" src=\"./app2.js\"></script>" +
                 "</head><body></body></html>");
 
-            using var graph = await Traverse.From(Path.Combine(dir, "index.html"));
+            // `style` keeps non-shared CSS inlined in the JS bundles (shared CSS is
+            // still extracted to a chunk regardless of mode).
+            using var graph = await Traverse.From(
+                Path.Combine(dir, "index.html"), Array.Empty<string>(), Array.Empty<string>(),
+                cssMode: CssMode.Style);
 
             // Verify shared CSS chunk was created
             var sharedCssBundles = graph.Context.Bundles.Values

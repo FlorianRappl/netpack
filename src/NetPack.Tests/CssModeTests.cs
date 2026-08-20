@@ -13,7 +13,8 @@ using Xunit;
 /// </summary>
 public class CssModeTests
 {
-    private static async Task<CssMode> Resolve(string entryName, string entryContent, CssMode mode)
+    private static async Task<CssMode> Resolve(
+        string entryName, string entryContent, CssMode mode, bool devServer = false)
     {
         var dir = Path.Combine(Path.GetTempPath(), "netpack-css-" + Path.GetRandomFileName());
         Directory.CreateDirectory(dir);
@@ -24,7 +25,8 @@ public class CssModeTests
             await File.WriteAllTextAsync(Path.Combine(dir, entryName), entryContent);
 
             using var graph = await Traverse.From(
-                Path.Combine(dir, entryName), Array.Empty<string>(), Array.Empty<string>(), cssMode: mode);
+                Path.Combine(dir, entryName), Array.Empty<string>(), Array.Empty<string>(),
+                devServer: devServer, cssMode: mode);
 
             return graph.Context.CssMode;
         }
@@ -34,6 +36,9 @@ public class CssModeTests
         }
     }
 
+    // `auto` picks link for an HTML entry point (its stylesheets are emitted as .css
+    // files and referenced with <link>) and none for a JS/TS entry point (a library
+    // emits its CSS as a file for the consumer to include).
     [Fact]
     public async Task Auto_resolves_to_link_for_an_html_entry()
     {
@@ -49,6 +54,19 @@ public class CssModeTests
         var resolved = await Resolve("index.js", "export const x = 1;", CssMode.Auto);
 
         Assert.Equal(CssMode.None, resolved);
+    }
+
+    // The dev server always injects styles at runtime for CSS hot-reload, overriding
+    // whatever mode was requested.
+    [Theory]
+    [InlineData(CssMode.Auto)]
+    [InlineData(CssMode.Link)]
+    [InlineData(CssMode.None)]
+    [InlineData(CssMode.Export)]
+    public async Task Dev_server_forces_style_regardless_of_mode(CssMode mode)
+    {
+        Assert.Equal(CssMode.Style, await Resolve("index.html",
+            "<!doctype html><html><body></body></html>", mode, devServer: true));
     }
 
     [Theory]

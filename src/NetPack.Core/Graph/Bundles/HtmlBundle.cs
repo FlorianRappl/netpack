@@ -97,15 +97,21 @@ public sealed class HtmlBundle(BundlerContext context, Graph.Node root, BundleFl
                 WriteImportmap(importmap, content);
             }
 
-            // Add shared CSS chunks as <link> tags in the <head>, ordered by the
-            // post-order index of their first importing JS module so that CSS
-            // cascade matches module evaluation order.
-            var sharedCssBundles = _context.Bundles.Values
-                .Where(b => b is CssBundle && b.IsShared)
-                .OrderBy(b => b.Root.PostOrderIndex)
+            // Add CSS chunks as <link> tags in the <head>, ordered by the post-order
+            // index of the importing module so the cascade matches evaluation order.
+            // Shared chunks are always extracted to files; in `link` mode the
+            // per-module build-time split chunks are referenced here too. In `none`
+            // mode the split files are emitted but intentionally left unreferenced.
+            var linkSplitCss = _context.CssMode == CssMode.Link;
+            var cssBundles = _context.Bundles.Values
+                .Where(b => b is CssBundle
+                    && (b.IsShared || (linkSplitCss && _context.CssFileOrigin.ContainsKey(b.Root))))
+                .OrderBy(b => _context.CssFileOrigin.TryGetValue(b.Root, out var origin)
+                    ? origin.PostOrderIndex
+                    : b.Root.PostOrderIndex)
                 .ToList();
 
-            foreach (var cssBundle in sharedCssBundles)
+            foreach (var cssBundle in cssBundles)
             {
                 var link = document.CreateElement("link");
                 link.SetAttribute("rel", "stylesheet");

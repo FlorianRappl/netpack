@@ -121,20 +121,27 @@ public static class CssModules
     }
 
     /// <summary>
-    /// Builds the virtual JavaScript module for a CSS import: it injects the CSS
-    /// at runtime and exports the class-name map (named exports for identifier-safe
-    /// names, plus a default export object covering every class).
+    /// Builds the virtual JavaScript module for a CSS import. It exports the
+    /// class-name map (named exports for identifier-safe names, plus a default
+    /// export object covering every class). When <paramref name="inject"/> is set
+    /// (the default) it also injects the CSS at runtime via a &lt;style&gt; element;
+    /// when it is clear the module is a class-map-only shim and the CSS itself is
+    /// emitted as a separate <c>.css</c> file (the <c>--css link</c>/<c>none</c>
+    /// build-time split).
     /// </summary>
-    public static string GenerateModule(string css, IReadOnlyDictionary<string, string> map)
+    public static string GenerateModule(string css, IReadOnlyDictionary<string, string> map, bool inject = true)
     {
         var sb = new StringBuilder();
 
-        sb.Append("const __css = ").Append(JsString(css)).Append(";\n");
-        sb.Append("if (typeof document !== \"undefined\") {\n");
-        sb.Append("  const __el = document.createElement(\"style\");\n");
-        sb.Append("  __el.textContent = __css;\n");
-        sb.Append("  document.head.appendChild(__el);\n");
-        sb.Append("}\n");
+        if (inject)
+        {
+            sb.Append("const __css = ").Append(JsString(css)).Append(";\n");
+            sb.Append("if (typeof document !== \"undefined\") {\n");
+            sb.Append("  const __el = document.createElement(\"style\");\n");
+            sb.Append("  __el.textContent = __css;\n");
+            sb.Append("  document.head.appendChild(__el);\n");
+            sb.Append("}\n");
+        }
 
         foreach (var (name, hashed) in map)
         {

@@ -68,6 +68,9 @@ sealed class EsmModuleFormat : JsModuleFormat
         return trailer;
     }
 
+    public override IReadOnlyList<Ast.Statement> ExportCssStyles(string css)
+        => FormatSupport.Parse($"export const styles = {CssModules.JsString(css)};");
+
     public override Ast.Expression AutoReference(string fileName)
     {
         var importMeta = new Ast.MemberExpression(new Ast.Identifier("import"), new Ast.Identifier("meta"), false, false);
