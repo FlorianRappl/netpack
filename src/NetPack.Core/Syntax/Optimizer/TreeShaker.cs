@@ -22,13 +22,16 @@ using NetPack.Syntax.Ast;
 public static class TreeShaker
 {
     /// <summary>
-    /// Shakes <paramref name="file"/> in place and returns the import
-    /// declarations that were removed (imports of side-effect-free modules whose
-    /// bindings are all unused).
+    /// Shakes <paramref name="file"/> in place and returns the import and
+    /// re-export statements that were removed (edges to side-effect-free modules
+    /// whose every binding / re-exported name is unused). The caller recomputes
+    /// module reachability over the surviving edges to drop whole dead modules.
+    /// <paramref name="isTargetPure"/> reports whether the module an
+    /// <c>import</c> or <c>export … from</c> statement targets is side-effect-free.
     /// </summary>
-    public static List<ImportDeclaration> Shake(SourceFile file, UsedExports used, Func<ImportDeclaration, bool>? isImportPure = null)
+    public static List<Node> Shake(SourceFile file, UsedExports used, Func<Node, bool>? isTargetPure = null)
     {
-        var removed = new List<ImportDeclaration>();
+        var removed = new List<Node>();
         var statements = file.Body;
         var infos = new List<StatementInfo>(statements.Count);
         var topNames = new HashSet<string>(StringComparer.Ordinal);
@@ -36,7 +39,7 @@ public static class TreeShaker
 
         foreach (var statement in statements)
         {
-            var info = Classify(statement, isImportPure);
+            var info = Classify(statement, isTargetPure);
             infos.Add(info);
             foreach (var name in info.Declares) topNames.Add(name);
             foreach (var name in info.Declares) declarers[name] = info;
@@ -96,6 +99,24 @@ public static class TreeShaker
                 case StatementKind.ExportSpecifiers:
                     if (PruneExportSpecifiers(info, used)) kept.Add(info.Statement);
                     break;
+                case StatementKind.ReExport:
+                    // A re-export of a side-effect-free module (ForceKeep is false):
+                    // drop the names the program doesn't use, and if none survive,
+                    // remove the statement and report the edge so the target module
+                    // is pruned. A side-effectful target keeps the whole statement.
+                    if (info.ForceKeep)
+                    {
+                        kept.Add(info.Statement);
+                    }
+                    else if (PruneExportSpecifiers(info, used))
+                    {
+                        kept.Add(info.Statement);
+                    }
+                    else
+                    {
+                        removed.Add(info.Statement);
+                    }
+                    break;
                 case StatementKind.ExportDefault:
                     if (info.ForceKeep || used.Contains("default")) kept.Add(info.Statement);
                     break;
@@ -112,7 +133,7 @@ public static class TreeShaker
         return removed;
     }
 
-    private static void KeepOrPruneImport(StatementInfo info, HashSet<string> live, List<Statement> kept, List<ImportDeclaration> removed)
+    private static void KeepOrPruneImport(StatementInfo info, HashSet<string> live, List<Statement> kept, List<Node> removed)
     {
         var import = (ImportDeclaration)info.Statement;
 
@@ -204,6 +225,7 @@ public static class TreeShaker
         Declaration,
         ExportDeclaration,
         ExportSpecifiers,
+        ReExport,
         ExportDefault,
         ForceKeep,
     }
@@ -218,7 +240,7 @@ public static class TreeShaker
         public HashSet<string> Uses = new(StringComparer.Ordinal);
     }
 
-    private static StatementInfo Classify(Statement statement, Func<ImportDeclaration, bool>? isImportPure)
+    private static StatementInfo Classify(Statement statement, Func<Node, bool>? isTargetPure)
     {
         var info = new StatementInfo { Statement = statement };
 
@@ -228,7 +250,7 @@ public static class TreeShaker
                 info.Kind = StatementKind.Import;
                 foreach (var specifier in import.Specifiers) info.Declares.Add(specifier.Local.Name);
                 // Impure (side-effectful target) imports must always be kept.
-                info.ForceKeep = !(isImportPure?.Invoke(import) ?? false);
+                info.ForceKeep = !(isTargetPure?.Invoke(import) ?? false);
                 break;
 
             case FunctionDeclaration func:
@@ -250,15 +272,19 @@ public static class TreeShaker
 
             case ExportNamedDeclaration { Declaration: { } declaration }:
                 info.Kind = StatementKind.ExportDeclaration;
-                var innerInfo = Classify(declaration, isImportPure);
+                var innerInfo = Classify(declaration, isTargetPure);
                 info.Declares.AddRange(innerInfo.Declares);
                 info.ForceKeep = innerInfo.ForceKeep;
                 foreach (var name in innerInfo.Declares) info.Exports[name] = name;
                 break;
 
-            case ExportNamedDeclaration { Source: not null }:
-                info.Kind = StatementKind.ForceKeep;
-                info.ForceKeep = true;
+            // A re-export `export { x as y } from 'src'`: prunable per exported name
+            // when the source is side-effect-free (so a barrel file that re-exports a
+            // whole package doesn't drag every module in). A side-effectful source is
+            // force-kept so it still runs.
+            case ExportNamedDeclaration { Source: not null } reExport:
+                info.Kind = StatementKind.ReExport;
+                info.ForceKeep = !(isTargetPure?.Invoke(reExport) ?? false);
                 break;
 
             case ExportNamedDeclaration named:

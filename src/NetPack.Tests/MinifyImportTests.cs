@@ -107,6 +107,46 @@ public class MinifyImportTests
         }
     }
 
+    [Fact]
+    public async Task Named_import_from_a_side_effect_free_barrel_prunes_unused_reexports()
+    {
+        // Reproduces the lucide-react report: importing one named export from a
+        // side-effect-free package whose entry is a barrel of `export … from` lines
+        // must pull in only the used module, not every re-exported one.
+        var dir = Path.Combine(Path.GetTempPath(), "netpack-barrel-" + Path.GetRandomFileName());
+        var pkg = Path.Combine(dir, "node_modules", "pkg");
+        Directory.CreateDirectory(pkg);
+
+        try
+        {
+            await File.WriteAllTextAsync(Path.Combine(dir, "package.json"), "{}");
+            await File.WriteAllTextAsync(Path.Combine(pkg, "package.json"),
+                "{ \"name\": \"pkg\", \"module\": \"index.mjs\", \"sideEffects\": false }");
+            await File.WriteAllTextAsync(Path.Combine(pkg, "index.mjs"),
+                "export { default as Used } from './used.mjs';\n" +
+                "export { default as Unused } from './unused.mjs';");
+            await File.WriteAllTextAsync(Path.Combine(pkg, "used.mjs"),
+                "export default function Used() { return 'USED_MARKER'; }");
+            await File.WriteAllTextAsync(Path.Combine(pkg, "unused.mjs"),
+                "export default function Unused() { return 'UNUSED_MARKER'; }");
+            await File.WriteAllTextAsync(Path.Combine(dir, "index.js"),
+                "import { Used } from 'pkg';\nexport const x = Used;");
+
+            using var graph = await Traverse.From(Path.Combine(dir, "index.js"));
+            TreeShakePass.Run(graph.Context);
+
+            var bundle = graph.Context.Bundles.Values.OfType<JsBundle>().First(b => b.IsPrimary);
+            var output = bundle.Stringify(new OutputOptions { IsOptimizing = true, IsReloading = false });
+
+            Assert.Contains("USED_MARKER", output);
+            Assert.DoesNotContain("UNUSED_MARKER", output);
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
     private static async Task<string> BundleMinified(string entry, params (string Name, string Content)[] files)
     {
         var dir = Path.Combine(Path.GetTempPath(), "netpack-min-" + Path.GetRandomFileName());

@@ -30,19 +30,20 @@ public static class TreeShakePass
         var fragments = context.JsFragments;
         var sideEffectFree = ComputeSideEffectFree(context);
 
-        // 1. Shake every module; collect the imports that were dropped.
-        var removedImports = new HashSet<Ast.ImportDeclaration>(ReferenceComparer<Ast.ImportDeclaration>.Instance);
+        // 1. Shake every module; collect the import / re-export edges that were
+        //    dropped (keyed by the AST node, matching fragment.Replacements keys).
+        var removedEdges = new HashSet<Ast.Node>(ReferenceComparer<Ast.Node>.Instance);
         foreach (var entry in fragments)
         {
             var fragment = entry.Value;
             var used = context.GetUsedExports(entry.Key);
 
-            bool ImportPure(Ast.ImportDeclaration import)
-                => fragment.Replacements.TryGetValue(import, out var target) && IsTargetFree(target, fragments, sideEffectFree);
+            bool TargetPure(Ast.Node statement)
+                => fragment.Replacements.TryGetValue(statement, out var target) && IsTargetFree(target, fragments, sideEffectFree);
 
-            foreach (var dropped in TreeShaker.Shake(fragment.Ast, used, ImportPure))
+            foreach (var dropped in TreeShaker.Shake(fragment.Ast, used, TargetPure))
             {
-                removedImports.Add(dropped);
+                removedEdges.Add(dropped);
             }
         }
 
@@ -65,9 +66,9 @@ public static class TreeShakePass
             {
                 foreach (var edge in fragment.Replacements)
                 {
-                    if (edge.Key is Ast.ImportDeclaration import && removedImports.Contains(import))
+                    if (removedEdges.Contains(edge.Key))
                     {
-                        continue; // this import was shaken away
+                        continue; // this import / re-export was shaken away
                     }
                     queue.Enqueue(edge.Value);
                 }

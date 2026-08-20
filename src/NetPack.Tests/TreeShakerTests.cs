@@ -189,6 +189,55 @@ public class TreeShakerTests
     }
 
     [Fact]
+    public void Prunes_unused_reexport_from_a_side_effect_free_barrel()
+    {
+        // A barrel re-exporting several modules must drop the `export … from`
+        // lines whose names nobody uses (and report the dropped edge), so the
+        // reachability pass can prune the module behind it.
+        var module = Parser.ParseModule(
+            "export { default as Keep } from './keep';\n" +
+            "export { default as Drop } from './drop';",
+            "barrel.js");
+        var used = new UsedExports();
+        used.Add("Keep");
+        var removed = TreeShaker.Shake(module, used, _ => true); // both targets side-effect-free
+
+        var output = JsPrinter.Print(module);
+        Assert.Contains("./keep", output);
+        Assert.DoesNotContain("./drop", output);
+        Assert.Single(removed);
+    }
+
+    [Fact]
+    public void Keeps_reexport_of_a_side_effectful_module()
+    {
+        // An unused re-export whose source has side effects must stay so the module
+        // still runs.
+        var module = Parser.ParseModule("export { default as Drop } from './drop';", "barrel.js");
+        var removed = TreeShaker.Shake(module, new UsedExports(), _ => false); // ./drop has side effects
+
+        Assert.Contains("./drop", JsPrinter.Print(module));
+        Assert.Empty(removed);
+    }
+
+    [Fact]
+    public void Keeps_only_the_used_names_of_a_multi_name_reexport()
+    {
+        var module = Parser.ParseModule(
+            "export { default as Keep, default as KeepAlias, default as Drop } from './icon';",
+            "barrel.js");
+        var used = new UsedExports();
+        used.Add("KeepAlias");
+        var removed = TreeShaker.Shake(module, used, _ => true);
+
+        var output = JsPrinter.Print(module);
+        Assert.Contains("KeepAlias", output);
+        Assert.Contains("./icon", output);       // the edge survives (a used name remains)
+        Assert.DoesNotContain("Drop", output);
+        Assert.Empty(removed);                    // statement kept, so no edge dropped
+    }
+
+    [Fact]
     public void All_usage_still_drops_dead_private_declarations()
     {
         var output = ShakeAll("function deadPrivate() {}\nexport function api() {}");
