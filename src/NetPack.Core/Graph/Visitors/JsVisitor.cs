@@ -171,10 +171,10 @@ class JsVisitor(Bundle bundle, GraphNode current, Func<Bundle?, GraphNode, strin
 
     protected override AstNode VisitImportExpression(ImportExpression node)
     {
-        if (node.Source is StringLiteral str)
+        if (StaticString(node.Source) is { } specifier)
         {
             _elements.Add(node);
-            _tasks.Add(_report(null, _current, str.Value, default));
+            _tasks.Add(_report(null, _current, specifier, default));
         }
 
         return base.VisitImportExpression(node);
@@ -182,13 +182,34 @@ class JsVisitor(Bundle bundle, GraphNode current, Func<Bundle?, GraphNode, strin
 
     protected override AstNode VisitCallExpression(CallExpression node)
     {
-        if (node.Callee is Identifier ident && node.Arguments.Count == 1 &&
-            node.Arguments[0] is StringLiteral str && ident.Name == "require")
+        if (node.Callee is Identifier ident && ident.Name == "require" && node.Arguments.Count == 1 &&
+            StaticString(node.Arguments[0]) is { } specifier)
         {
             _elements.Add(node);
-            _tasks.Add(_report(_bundle, _current, str.Value, default));
+            _tasks.Add(_report(_bundle, _current, specifier, default));
         }
 
         return base.VisitCallExpression(node);
     }
+
+    /// <summary>
+    /// Evaluates a <c>require()</c> / <c>import()</c> argument to a constant module
+    /// specifier when it is statically knowable, so accidental-dynamic forms are
+    /// still bundled: a plain string, a parenthesized one, a template literal with
+    /// no substitutions (<c>`./a`</c>), and concatenation of any of these
+    /// (<c>"./" + "a"</c>). A genuinely dynamic argument (a variable, a call, a
+    /// template with substitutions) returns null and is left untouched — a real
+    /// runtime <c>require</c>/<c>import</c>.
+    /// </summary>
+    private static string? StaticString(Expression expression) => expression switch
+    {
+        StringLiteral s => s.Value,
+        ParenthesizedExpression p => StaticString(p.Expression),
+        TemplateLiteral { Expressions.Count: 0, Quasis.Count: 1 } t => t.Quasis[0].Cooked,
+        BinaryExpression { Operator: TokenKind.Plus } b
+            => StaticString(b.Left) is { } left && StaticString(b.Right) is { } right
+                ? left + right
+                : null,
+        _ => null,
+    };
 }

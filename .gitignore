@@ -7,3 +7,6 @@ node_modules
 **/bin/
 **/obj/
 /artifacts/
+
+# Real-world bundling corpus assembled by ./corpus.sh (opt-in; not committed)
+/test-corpus/

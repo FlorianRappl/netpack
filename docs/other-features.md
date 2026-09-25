@@ -15,6 +15,26 @@ netpack computes which exports of each module are actually used across the
 whole graph (once per build, cached) and drops the rest — an `export` no
 importer ever references doesn't make it into the output bundle.
 
+## Dynamic `require()` / `import()`
+
+A `require()` or `import()` whose argument is a **constant string** is bundled
+like a static import — and that includes the accidentally-dynamic forms whose
+value is still knowable at build time:
+
+```js
+require("./a")                 // plain string
+require(`./a`)                 // template literal, no substitutions
+require("./" + "a")            // concatenation of string literals
+import("./chunks/" + name)     // NOT folded — `name` is dynamic
+```
+
+The first three resolve to a single module and are bundled (a dynamic `import()`
+still becomes its own chunk). A genuinely dynamic argument — a variable, a call, a
+template with substitutions — is **left untouched** as a real runtime
+`require`/`import`, so Node projects that rely on dynamic requires keep working.
+(Interpolated "context" imports like `` import(`./locales/${lang}.js`) `` are not
+yet expanded into a chunk-per-match; that's a separate feature.)
+
 ## Source maps
 
 ```sh

@@ -924,11 +924,77 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
         return dependency;
     }
 
+    /// <summary>
+    /// Consults the <c>browser</c> object-map of the package that owns
+    /// <paramref name="parent"/> for a bare <paramref name="specifier"/>. Returns
+    /// the remap/stub outcome, or <see cref="Dependency.BrowserOverride.None"/> when
+    /// there is no owning package or no matching entry.
+    /// </summary>
+    private async Task<Dependency.BrowserOverride> ResolveBrowserOverride(Node parent, string specifier)
+    {
+        var owner = FindRoot(parent.ParentDir);
+        if (owner is null)
+        {
+            return Dependency.BrowserOverride.None;
+        }
+
+        var packageJsonPath = Path.Combine(owner, "package.json");
+        if (!File.Exists(packageJsonPath))
+        {
+            return Dependency.BrowserOverride.None;
+        }
+
+        var dependency = await LoadDependency(packageJsonPath);
+        return dependency.ResolveBrowser(specifier);
+    }
+
+    /// <summary>
+    /// A single shared empty JS module, used to satisfy a <c>browser: { "x": false }</c>
+    /// stub: it exports nothing, so a default import resolves to an empty object and
+    /// named imports are <c>undefined</c> — matching Node's browser-field semantics.
+    /// </summary>
+    private async Task<Node> AddEmptyModule(Bundle bundle, Node parent)
+    {
+        const string key = "\0netpack-empty.js";
+
+        var node = _context.Modules.GetOrAdd(key, k => new Node(k, 0));
+
+        if (!_context.JsFragments.ContainsKey(node))
+        {
+            var fragment = await ParseJsModule(bundle, node, "");
+            _context.JsFragments.TryAdd(node, fragment);
+        }
+
+        parent.Children.Add(node);
+        return node;
+    }
+
     private async Task<Node?> InnerProcess(Bundle? bundle, Node parent, string name, (int? Width, int? Height, string? Format) variant)
     {
         if (_context.Aliases.TryGetValue(name, out var alias))
         {
             return await InnerProcess(bundle, parent, alias, variant);
+        }
+
+        // The `browser` field object-map (web only): a package can swap a Node
+        // implementation for a browser one, or stub a module out with `false`. It is
+        // scoped to the importing package, so consult the package that owns `parent`.
+        // Only bare specifiers are remapped here; relative-file remaps
+        // (`"./node.js": "./browser.js"`) need the resolved path and are not yet
+        // handled.
+        if (bundle is not null && _context.Platform.UseBrowserField
+            && !name.StartsWith('.') && !Path.IsPathRooted(name))
+        {
+            var over = await ResolveBrowserOverride(parent, name);
+            if (over.Kind == Dependency.BrowserOverrideKind.Stub)
+            {
+                return await AddEmptyModule(bundle, parent);
+            }
+            if (over.Kind == Dependency.BrowserOverrideKind.Remap
+                && over.Target is { } target && target != name)
+            {
+                return await InnerProcess(bundle, parent, target, variant);
+            }
         }
 
         if (_context.Externals.Contains(name))

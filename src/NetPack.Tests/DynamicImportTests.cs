@@ -93,4 +93,61 @@ public class DynamicImportTests
             AssertValid(output);
         }
     }
+
+    // -- constant-folded specifiers ----------------------------------------
+
+    [Fact]
+    public async Task Require_of_concatenated_string_literals_is_bundled()
+    {
+        var (rendered, primary) = await BundleAll(dir =>
+        {
+            File.WriteAllText(Path.Combine(dir, "main.js"),
+                "const dep = require('./de' + 'p.js');\nexport const x = dep;");
+            File.WriteAllText(Path.Combine(dir, "dep.js"), "module.exports = 'FOLDED_CONCAT';");
+        });
+
+        Assert.Contains("FOLDED_CONCAT", rendered[primary]);
+        AssertValid(rendered[primary]);
+    }
+
+    [Fact]
+    public async Task Require_of_no_substitution_template_is_bundled()
+    {
+        var (rendered, primary) = await BundleAll(dir =>
+        {
+            File.WriteAllText(Path.Combine(dir, "main.js"),
+                "const dep = require(`./dep.js`);\nexport const x = dep;");
+            File.WriteAllText(Path.Combine(dir, "dep.js"), "module.exports = 'FOLDED_TEMPLATE';");
+        });
+
+        Assert.Contains("FOLDED_TEMPLATE", rendered[primary]);
+        AssertValid(rendered[primary]);
+    }
+
+    [Fact]
+    public async Task Dynamic_import_of_concatenated_literals_is_chunked()
+    {
+        var (rendered, _) = await BundleAll(dir =>
+        {
+            File.WriteAllText(Path.Combine(dir, "main.js"),
+                "export function load() { return import('./la' + 'zy.js'); }");
+            File.WriteAllText(Path.Combine(dir, "lazy.js"), "export const v = 'FOLDED_IMPORT';");
+        });
+
+        Assert.True(rendered.Count >= 2, $"expected a separate chunk, saw {rendered.Count} bundle(s)");
+        Assert.Contains("FOLDED_IMPORT", string.Join("\n", rendered.Values));
+    }
+
+    [Fact]
+    public async Task Genuinely_dynamic_require_is_left_untouched()
+    {
+        // A non-constant argument must NOT be folded — it stays a real runtime
+        // require(<expr>), so Node projects with dynamic requires keep working.
+        var (rendered, primary) = await BundleAll(dir =>
+            File.WriteAllText(Path.Combine(dir, "main.js"),
+                "const dynName = globalThis.x;\nexport const d = require(dynName);"));
+
+        Assert.Contains("require(dynName)", rendered[primary]);
+        AssertValid(rendered[primary]);
+    }
 }

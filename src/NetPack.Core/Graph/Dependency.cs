@@ -242,6 +242,68 @@ public sealed class Dependency(string location, JsonElement meta, bool useBrowse
         return true;
     }
 
+    /// <summary>The outcome of consulting a package's <c>browser</c> object-map for
+    /// one specifier.</summary>
+    public enum BrowserOverrideKind
+    {
+        /// <summary>The map has no entry for this specifier.</summary>
+        None,
+
+        /// <summary>Mapped to <c>false</c> — resolve to an empty module.</summary>
+        Stub,
+
+        /// <summary>Mapped to another module (<see cref="BrowserOverride.Target"/>).</summary>
+        Remap,
+    }
+
+    /// <summary>A <c>browser</c>-map result: <see cref="Kind"/> plus, for a remap,
+    /// the resolved <see cref="Target"/> (an absolute path when the replacement was
+    /// package-relative, otherwise the bare specifier verbatim).</summary>
+    public readonly record struct BrowserOverride(BrowserOverrideKind Kind, string? Target)
+    {
+        public static readonly BrowserOverride None = new(BrowserOverrideKind.None, null);
+    }
+
+    /// <summary>
+    /// Applies this package's <c>browser</c> object-map (the web-only field that
+    /// swaps Node implementations for browser ones, or stubs a module with
+    /// <c>false</c>) to a bare specifier imported from within the package. Only a
+    /// bare key (e.g. <c>"fs"</c>, <c>"module-name"</c>) is matched here; a
+    /// package-relative replacement value (<c>"./shim.js"</c>) is returned as an
+    /// absolute path. Relative <em>keys</em> (remapping one file to another) are not
+    /// matched by this method — they require the resolved file path.
+    /// </summary>
+    public BrowserOverride ResolveBrowser(string bareSpecifier)
+    {
+        if (!useBrowserField
+            || !meta.TryGetProperty("browser", out var browser)
+            || browser.ValueKind != JsonValueKind.Object)
+        {
+            return BrowserOverride.None;
+        }
+
+        if (!browser.TryGetProperty(bareSpecifier, out var value))
+        {
+            return BrowserOverride.None;
+        }
+
+        if (value.ValueKind == JsonValueKind.False)
+        {
+            return new BrowserOverride(BrowserOverrideKind.Stub, null);
+        }
+
+        if (value.ValueKind == JsonValueKind.String)
+        {
+            var target = value.GetString()!;
+            var resolved = target.StartsWith('.')
+                ? CombinePath(Path.GetDirectoryName(location)!, target)
+                : target;
+            return new BrowserOverride(BrowserOverrideKind.Remap, resolved);
+        }
+
+        return BrowserOverride.None;
+    }
+
     private static string GetEntry(JsonElement jsonObj, bool useBrowserField)
     {
         if (useBrowserField && jsonObj.TryGetProperty("browser", out var browserProperty) && browserProperty.ValueKind == JsonValueKind.String)

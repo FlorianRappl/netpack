@@ -82,6 +82,45 @@ which the platform also governs:
 - **`node` / `deno`** ignore `browser` and prefer `module`, then `main` — so the
   same package resolves to its Node/universal build instead.
 
+## The `browser` object-map (web)
+
+Besides the string form above (a whole-package browser entry), the `browser` field
+can be an **object** that swaps individual modules out for browser-friendly ones,
+or disables them entirely. On `--platform web` netpack applies it to the bare
+specifiers imported from within the declaring package:
+
+```json
+{
+  "browser": {
+    "node-only-dep": "./browser-shim.js",
+    "fs": false
+  }
+}
+```
+
+A string value **remaps** the specifier (a `./…` value resolves against the
+package that declares the map); `false` **stubs** it with an empty module — a
+default import then resolves to an empty object and named imports are `undefined`.
+On `node` / `deno` the map is ignored, so the same package keeps its Node
+implementation.
+
+> Relative-file remaps (`"./node.js": "./browser.js"`, keyed by a file rather than
+> a bare specifier) are not applied yet — only bare-specifier keys are.
+
+## Node built-ins in the browser (polyfills)
+
+netpack does **not** auto-polyfill Node built-ins for the browser: on `web`,
+importing `fs`, `crypto`, `stream`, and friends is a resolution error by design,
+so you don't ship a surprise shim. When you do want a browser implementation,
+point the specifier at one yourself with [`--alias`](./importmaps-and-externals.md):
+
+```sh
+npx netpack bundle src/main.js --alias buffer=buffer/ --alias process=process/browser
+```
+
+A dependency can do the same automatically for its own imports through the
+`browser` object-map above (e.g. `"crypto": "crypto-browserify"`).
+
 ## Not covered yet
 
 - **`development` / `production` conditions.** The active condition set is
