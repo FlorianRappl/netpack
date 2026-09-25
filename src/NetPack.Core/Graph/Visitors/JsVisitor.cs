@@ -23,13 +23,17 @@ class JsVisitor(Bundle bundle, GraphNode current, Func<Bundle?, GraphNode, strin
     private readonly List<string> _exportNames = [];
     private readonly List<AstNode> _elements = [];
     private readonly List<Task<GraphNode?>> _tasks = [];
+    private bool _hasDynamicRequire;
 
     public async Task<JsFragment> FindChildren(SourceFile ast)
     {
         Visit(ast);
         var nodes = await Task.WhenAll(_tasks);
         var replacements = GetReplacements(nodes, _elements);
-        return new JsFragment(_current, ast, replacements, [.. _exportNames]);
+        return new JsFragment(_current, ast, replacements, [.. _exportNames])
+        {
+            HasDynamicRequire = _hasDynamicRequire,
+        };
     }
 
     protected override AstNode VisitIfStatement(IfStatement node)
@@ -182,11 +186,20 @@ class JsVisitor(Bundle bundle, GraphNode current, Func<Bundle?, GraphNode, strin
 
     protected override AstNode VisitCallExpression(CallExpression node)
     {
-        if (node.Callee is Identifier ident && ident.Name == "require" && node.Arguments.Count == 1 &&
-            StaticString(node.Arguments[0]) is { } specifier)
+        if (node.Callee is Identifier ident && ident.Name == "require" && node.Arguments.Count == 1)
         {
-            _elements.Add(node);
-            _tasks.Add(_report(_bundle, _current, specifier, default));
+            if (StaticString(node.Arguments[0]) is { } specifier)
+            {
+                _elements.Add(node);
+                _tasks.Add(_report(_bundle, _current, specifier, default));
+            }
+            else
+            {
+                // A require() whose argument isn't a constant specifier — left as a
+                // real runtime require. The entry bundle's runtime adds a native
+                // fallback so it still works on Node/Deno.
+                _hasDynamicRequire = true;
+            }
         }
 
         return base.VisitCallExpression(node);

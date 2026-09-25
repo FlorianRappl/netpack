@@ -13,6 +13,21 @@ public static class JsRuntime
     public const string Require = "__r";
 
     /// <summary>
+    /// How the require runtime should fall back for a dynamic <c>require(id)</c>
+    /// whose <paramref name="id"/> is not a bundled module — i.e. a genuinely
+    /// dynamic require left in place. <see cref="Ambient"/> uses the CommonJS
+    /// ambient <c>require</c>; <see cref="CreateRequire"/> synthesizes one from
+    /// <c>node:module</c> for ESM output; <see cref="None"/> adds no fallback (the
+    /// web, where there is no runtime require).
+    /// </summary>
+    public enum NativeRequire
+    {
+        None,
+        Ambient,
+        CreateRequire,
+    }
+
+    /// <summary>
     /// Emits the JavaScript runtime prelude for a JS bundle as plain source text.
     /// It is deliberately written as ordinary JavaScript (rather than assembled from
     /// AST nodes) and then parsed back by the bundler, so the printer formats it and
@@ -33,9 +48,18 @@ public static class JsRuntime
     /// re-executes that boundary (falling back to a full reload when no boundary
     /// accepts the change).
     /// </summary>
-    public static string Build(bool isShared, IReadOnlyList<string> sharedNames, bool reloading)
+    public static string Build(bool isShared, IReadOnlyList<string> sharedNames, bool reloading, NativeRequire nativeRequire = NativeRequire.None)
     {
         var sb = new StringBuilder();
+
+        // ESM output has no ambient `require`; synthesize one so a dynamic require
+        // that fell through the bundle can reach the real module system. The
+        // `createRequire` binding itself is imported by the bundle (hoisted with the
+        // other imports); here we only bind it.
+        if (nativeRequire == NativeRequire.CreateRequire)
+        {
+            sb.Append("var __nr = createRequire(import.meta.url);\n");
+        }
 
         if (sharedNames.Count > 0)
         {
@@ -49,13 +73,31 @@ public static class JsRuntime
             return sb.ToString();
         }
 
-        return reloading ? BuildHot(sb) : BuildPlain(sb);
+        return reloading ? BuildHot(sb, nativeRequire) : BuildPlain(sb, nativeRequire);
     }
 
-    private static string BuildPlain(StringBuilder sb)
+    /// <summary>The fallback line at the top of <c>__r</c>: a dynamic require whose
+    /// id is not a bundled module is delegated to the runtime's real require.</summary>
+    private static void AppendNativeFallback(StringBuilder sb, NativeRequire nativeRequire)
+    {
+        var target = nativeRequire switch
+        {
+            NativeRequire.Ambient => "require",
+            NativeRequire.CreateRequire => "__nr",
+            _ => null,
+        };
+
+        if (target is not null)
+        {
+            sb.Append("  if (!(id in ").Append(Registry).Append(")) return ").Append(target).Append("(id);\n");
+        }
+    }
+
+    private static string BuildPlain(StringBuilder sb, NativeRequire nativeRequire)
     {
         sb.Append("var __c = {};\n");
         sb.Append("function ").Append(Require).Append("(id) {\n");
+        AppendNativeFallback(sb, nativeRequire);
         sb.Append("  var mod = __c[id];\n");
         sb.Append("  if (mod) return mod.exports;\n");
         sb.Append("  mod = __c[id] = { exports: {} };\n");
@@ -67,7 +109,7 @@ public static class JsRuntime
         return sb.ToString();
     }
 
-    private static string BuildHot(StringBuilder sb)
+    private static string BuildHot(StringBuilder sb, NativeRequire nativeRequire)
     {
         sb.Append("var __c = {};\n");
         sb.Append("var __h = {};\n");
@@ -88,6 +130,7 @@ public static class JsRuntime
         sb.Append("}\n");
 
         sb.Append("function ").Append(Require).Append("(id) {\n");
+        AppendNativeFallback(sb, nativeRequire);
         sb.Append("  var mod = __c[id];\n");
         sb.Append("  if (mod) return mod.exports;\n");
         sb.Append("  mod = __c[id] = { exports: {} };\n");

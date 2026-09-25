@@ -50,4 +50,12 @@ public class JsFragment(GraphNode root, SourceFile ast, IDictionary<Node, GraphN
     /// Content hash of the module source (after define/env substitution).
     /// </summary>
     public string? ContentHash { get; set; }
+
+    /// <summary>
+    /// True when the module contains a <c>require(&lt;expr&gt;)</c> whose argument
+    /// is not a constant specifier — a genuinely dynamic require left in place. The
+    /// entry bundle uses this to decide whether its runtime needs a native-require
+    /// fallback (Node/Deno only).
+    /// </summary>
+    public bool HasDynamicRequire { get; set; }
 }

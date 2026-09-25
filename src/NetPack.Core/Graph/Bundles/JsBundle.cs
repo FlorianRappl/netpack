@@ -350,6 +350,12 @@ public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags
                     }
                 }
 
+                // On the web there is no `__dirname`/`__filename`; define them per
+                // module (a local `var` naturally shadows the missing global without
+                // touching `obj.__dirname` property accesses) so CommonJS packages
+                // that reference them don't throw a ReferenceError on load.
+                MaybeDefineDirname(node, body);
+
                 var id = GetId(node);
 
                 // React Fast Refresh: instrument user component modules so their
@@ -393,7 +399,22 @@ public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags
                 trailer.AddRange(_format.ExportRoot(rootRequire, rootFragment.ExportNames));
             }
 
-            var runtime = BuildRuntime(sharedNames);
+            var nativeRequire = ResolveNativeRequire();
+
+            // For ESM output the createRequire binding is hoisted with the other
+            // imports (an ESM import can't sit after the registry statement); the
+            // runtime then just calls it.
+            if (nativeRequire == JsRuntime.NativeRequire.CreateRequire)
+            {
+                imports.Add(new Ast.ImportDeclaration(
+                    new List<Ast.ImportSpecifierBase>
+                    {
+                        new Ast.ImportSpecifier(new Ast.Identifier("createRequire"), new Ast.Identifier("createRequire"), false),
+                    },
+                    MakeString("node:module"), false));
+            }
+
+            var runtime = BuildRuntime(sharedNames, nativeRequire);
 
             // Install the Fast Refresh runtime once, right after the require
             // runtime and before the entry module executes.
@@ -453,9 +474,9 @@ public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags
         /// <summary>Builds the runtime prelude by writing it as ordinary JS and
         /// parsing it, so the printer and mangler treat it like any other code
         /// (its locals get shortened; the module-scope <c>__r</c>/<c>__m</c> stay).</summary>
-        private List<Ast.Statement> BuildRuntime(IReadOnlyList<string> sharedNames)
+        private List<Ast.Statement> BuildRuntime(IReadOnlyList<string> sharedNames, JsRuntime.NativeRequire nativeRequire)
         {
-            var source = JsRuntime.Build(_bundle.IsShared, sharedNames, _reloading);
+            var source = JsRuntime.Build(_bundle.IsShared, sharedNames, _reloading, nativeRequire);
             if (source.Length == 0)
             {
                 return new List<Ast.Statement>();
@@ -463,6 +484,76 @@ public sealed class JsBundle(BundlerContext context, GraphNode root, BundleFlags
             var options = new ParserOptions { Tolerant = true, Jsx = false, TypeScript = false };
             var module = Parser.ParseModule(source, "netpack:runtime", options);
             return new List<Ast.Statement>(module.Body);
+        }
+
+        /// <summary>
+        /// Picks the runtime's dynamic-<c>require</c> fallback for this bundle: only
+        /// when the bundle actually left a dynamic <c>require</c> in place and the
+        /// target platform provides a real require — ambient for CommonJS output, a
+        /// synthesized <c>createRequire</c> for ESM. The web (and UMD/SystemJS
+        /// output) get none.
+        /// </summary>
+        private JsRuntime.NativeRequire ResolveNativeRequire()
+        {
+            if (_bundle.IsShared || !_bundle._context.Platform.SupportsNativeRequire)
+            {
+                return JsRuntime.NativeRequire.None;
+            }
+
+            var fragments = _bundle._context.JsFragments;
+            var hasDynamicRequire = _bundle.Items.Any(
+                node => fragments.TryGetValue(node, out var fragment) && fragment.HasDynamicRequire);
+
+            if (!hasDynamicRequire)
+            {
+                return JsRuntime.NativeRequire.None;
+            }
+
+            return _options.Format switch
+            {
+                ModuleFormat.CommonJs => JsRuntime.NativeRequire.Ambient,
+                ModuleFormat.Esm => JsRuntime.NativeRequire.CreateRequire,
+                _ => JsRuntime.NativeRequire.None,
+            };
+        }
+
+        /// <summary>
+        /// Defines <c>__dirname</c>/<c>__filename</c> at the top of a module's factory
+        /// body on the web (where the runtime provides neither), using the module's
+        /// path under a root-relative virtual scheme. Only injected when the module's
+        /// source actually mentions the identifier, and as a <c>var</c> so a module
+        /// that happens to declare its own doesn't hit a redeclaration error.
+        /// </summary>
+        private void MaybeDefineDirname(GraphNode node, List<Ast.Statement> body)
+        {
+            if (!_bundle._context.Platform.ShimDirname || _current?.Ast.Source is not { Length: > 0 } source)
+            {
+                return;
+            }
+
+            var wantsDirname = source.Contains("__dirname", System.StringComparison.Ordinal);
+            var wantsFilename = source.Contains("__filename", System.StringComparison.Ordinal);
+            if (!wantsDirname && !wantsFilename)
+            {
+                return;
+            }
+
+            var relative = System.IO.Path.GetRelativePath(_bundle._context.Root, node.FileName).Replace('\\', '/');
+            var filename = "/" + relative;
+            var slash = filename.LastIndexOf('/');
+            var dirname = slash <= 0 ? "/" : filename[..slash];
+
+            var declarators = new List<Ast.VariableDeclarator>();
+            if (wantsDirname)
+            {
+                declarators.Add(new Ast.VariableDeclarator(new Ast.Identifier("__dirname"), MakeString(dirname)));
+            }
+            if (wantsFilename)
+            {
+                declarators.Add(new Ast.VariableDeclarator(new Ast.Identifier("__filename"), MakeString(filename)));
+            }
+
+            body.Insert(0, new Ast.VariableStatement(Ast.VariableKind.Var, declarators));
         }
 
         private static Ast.Parameter Param(Ast.Identifier id) => new(id, null, false);

@@ -31,7 +31,17 @@ import("./chunks/" + name)     // NOT folded — `name` is dynamic
 The first three resolve to a single module and are bundled (a dynamic `import()`
 still becomes its own chunk). A genuinely dynamic argument — a variable, a call, a
 template with substitutions — is **left untouched** as a real runtime
-`require`/`import`, so Node projects that rely on dynamic requires keep working.
+`require`/`import`.
+
+On `--platform node` / `deno` a left-in dynamic `require(expr)` still works: the
+bundle runtime falls back to the real module system for a specifier it didn't
+bundle — the ambient `require` for CommonJS output, or a `createRequire(import.meta.url)`
+synthesized from `node:module` for ESM output. That shim is only emitted when a
+bundle actually contains a dynamic require. On the web there is no runtime
+`require`, so a dynamic one is left as-is (it will throw if reached) — point it at a
+real module with [`--alias`](./importmaps-and-externals.md) or make the specifier
+constant instead.
+
 (Interpolated "context" imports like `` import(`./locales/${lang}.js`) `` are not
 yet expanded into a chunk-per-match; that's a separate feature.)
 

@@ -53,6 +53,24 @@ abstract class PlatformTarget
     public virtual bool UseBrowserField => false;
 
     /// <summary>
+    /// Whether the runtime provides a real <c>require</c> that the bundle can fall
+    /// back to for a dynamic <c>require(&lt;expr&gt;)</c> whose target isn't bundled
+    /// (ambient in CommonJS, <c>createRequire</c> in ESM). True on Node/Deno, false
+    /// on the web (a browser has no <c>require</c>, so a dynamic one is left to fail
+    /// as before). Defaults to false.
+    /// </summary>
+    public virtual bool SupportsNativeRequire => false;
+
+    /// <summary>
+    /// Whether netpack should define the CommonJS path globals
+    /// (<c>__dirname</c>/<c>__filename</c>) per module, because the runtime does not
+    /// provide them. True on the web (a browser has neither); false on Node/Deno,
+    /// where they are the runtime's own (CommonJS) or intentionally left to the
+    /// runtime. Defaults to false.
+    /// </summary>
+    public virtual bool ShimDirname => false;
+
+    /// <summary>
     /// The condition names honoured when resolving a package's <c>exports</c> map,
     /// in addition to the always-matched <c>default</c>. netpack is ESM-first, so
     /// <c>import</c>/<c>module</c> lead and <c>require</c> is intentionally omitted:
@@ -69,6 +87,8 @@ sealed class WebPlatform : PlatformTarget
     public override bool IsBuiltin(string specifier) => false;
 
     public override bool UseBrowserField => true;
+
+    public override bool ShimDirname => true;
 
     public override IReadOnlyList<string> Conditions { get; } = ["import", "module", "browser", "default"];
 }
@@ -93,6 +113,8 @@ sealed class NodePlatform : PlatformTarget
             ? "node:" + specifier
             : null;
 
+    public override bool SupportsNativeRequire => true;
+
     public override IReadOnlyList<string> Conditions { get; } = ["import", "module", "node", "default"];
 }
 
@@ -108,6 +130,8 @@ sealed class DenoPlatform : PlatformTarget
     // Deno's runtime specifiers are always explicitly scheme-prefixed, so they are
     // unconditionally external; there is no bare-name form to canonicalize.
     public override bool IsExplicitBuiltin(string specifier) => IsBuiltin(specifier);
+
+    public override bool SupportsNativeRequire => true;
 
     public override IReadOnlyList<string> Conditions { get; } = ["import", "module", "deno", "node", "default"];
 }

@@ -120,6 +120,12 @@ npx netpack bundle src/main.js --alias buffer=buffer/ --alias process=process/br
 A dependency can do the same automatically for its own imports through the
 `browser` object-map above (e.g. `"crypto": "crypto-browserify"`).
 
+`__dirname` and `__filename` — the CommonJS path globals a browser doesn't have —
+are defined per module on `web` when a module references them, using the module's
+path under a root-relative virtual scheme (`/src/util.js`, dir `/src`). This keeps
+a package that reads them from throwing a `ReferenceError`; the paths are virtual,
+not real filesystem locations. On `node` / `deno` they're left to the runtime.
+
 ## Not covered yet
 
 - **`development` / `production` conditions.** The active condition set is

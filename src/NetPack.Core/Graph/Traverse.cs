@@ -903,22 +903,30 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
         return (package, subpath);
     }
 
-    private async Task<Dependency> LoadDependency(string packageJsonPath)
-    {
-        var dependency = _context.Dependencies.FirstOrDefault(m => m.Location == packageJsonPath);
+    private readonly ConcurrentDictionary<string, Dependency> _dependencyCache = new();
 
-        if (dependency is null)
+    /// <summary>
+    /// Loads (and caches) the <see cref="Dependency"/> for a package.json. When
+    /// <paramref name="register"/> is true it is also added to
+    /// <see cref="BundlerContext.Dependencies"/> — the set of third-party packages
+    /// used for licenses/audit/savings. The <c>browser</c>-field lookups pass
+    /// <c>false</c>: they consult a package's map but must not enrol the importing
+    /// app's own (often name-less) package as a dependency.
+    /// </summary>
+    private async Task<Dependency> LoadDependency(string packageJsonPath, bool register = true)
+    {
+        if (!_dependencyCache.TryGetValue(packageJsonPath, out var dependency))
         {
             using var packageJson = File.OpenRead(packageJsonPath);
+            // Not disposed: the parsed element is retained by the Dependency.
             var jsonDoc = await JsonDocument.ParseAsync(packageJson);
-            var jsonObj = jsonDoc.RootElement;
+            dependency = new Dependency(packageJsonPath, jsonDoc.RootElement, _context.Platform.UseBrowserField);
+            _dependencyCache[packageJsonPath] = dependency;
+        }
 
-            dependency = new Dependency(packageJsonPath, jsonObj, _context.Platform.UseBrowserField);
-
-            if (!_context.Dependencies.Any(m => m.Location == packageJsonPath))
-            {
-                _context.Dependencies.Add(dependency);
-            }
+        if (register && !_context.Dependencies.Any(m => m.Location == packageJsonPath))
+        {
+            _context.Dependencies.Add(dependency);
         }
 
         return dependency;
@@ -944,7 +952,7 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
             return Dependency.BrowserOverride.None;
         }
 
-        var dependency = await LoadDependency(packageJsonPath);
+        var dependency = await LoadDependency(packageJsonPath, register: false);
         return dependency.ResolveBrowser(specifier);
     }
 
@@ -968,7 +976,7 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
             return Dependency.BrowserOverride.None;
         }
 
-        var dependency = await LoadDependency(packageJsonPath);
+        var dependency = await LoadDependency(packageJsonPath, register: false);
         return dependency.ResolveBrowserFile(file);
     }
 
