@@ -65,6 +65,51 @@ public class BrowserFieldTests
         Assert.Contains("node:fs", output);
     }
 
+    [Fact]
+    public async Task Browser_map_remaps_a_relative_file_within_a_package()
+    {
+        var output = await BundlePackage(Platform.Web);
+        Assert.Contains("BROWSER_IMPL", output);
+        Assert.DoesNotContain("NODE_IMPL", output);
+    }
+
+    [Fact]
+    public async Task Node_target_keeps_the_node_file()
+    {
+        var output = await BundlePackage(Platform.Node);
+        Assert.Contains("NODE_IMPL", output);
+        Assert.DoesNotContain("BROWSER_IMPL", output);
+    }
+
+    // A dependency `pkg` whose package.json swaps ./node.js for ./browser.js via the
+    // `browser` object-map on the web.
+    private static async Task<string> BundlePackage(Platform platform)
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "netpack-browser-pkg-" + Path.GetRandomFileName());
+        var pkg = Path.Combine(dir, "node_modules", "pkg");
+        Directory.CreateDirectory(pkg);
+
+        try
+        {
+            await File.WriteAllTextAsync(Path.Combine(dir, "package.json"), "{}");
+            await File.WriteAllTextAsync(Path.Combine(dir, "index.js"), "import v from 'pkg';\nexport const x = v;");
+            await File.WriteAllTextAsync(Path.Combine(pkg, "package.json"),
+                "{ \"name\": \"pkg\", \"main\": \"index.js\", \"browser\": { \"./node.js\": \"./browser.js\" } }");
+            await File.WriteAllTextAsync(Path.Combine(pkg, "index.js"), "import v from './node.js';\nexport default v;");
+            await File.WriteAllTextAsync(Path.Combine(pkg, "node.js"), "export default 'NODE_IMPL';");
+            await File.WriteAllTextAsync(Path.Combine(pkg, "browser.js"), "export default 'BROWSER_IMPL';");
+
+            using var graph = await Traverse.From(
+                Path.Combine(dir, "index.js"), Array.Empty<string>(), Array.Empty<string>(), platform: platform);
+            var bundle = graph.Context.Bundles.Values.OfType<JsBundle>().First(b => b.IsPrimary);
+            return bundle.Stringify(new OutputOptions { IsOptimizing = false, IsReloading = false });
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
     private static async Task<string> Bundle(string packageJson, (string Name, string Content)[] files, Platform platform = Platform.Web)
     {
         var dir = Path.Combine(Path.GetTempPath(), "netpack-browser-" + Path.GetRandomFileName());

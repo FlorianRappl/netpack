@@ -292,6 +292,51 @@ public sealed class Dependency(string location, JsonElement meta, bool useBrowse
             return new BrowserOverride(BrowserOverrideKind.Stub, null);
         }
 
+        return ToOverride(value);
+    }
+
+    /// <summary>
+    /// Applies the <c>browser</c> object-map's <em>relative</em> keys
+    /// (<c>"./node.js": "./browser.js"</c>, or <c>: false</c> to stub) to an
+    /// already-resolved absolute file inside this package. Matching ignores a
+    /// JS/JSON extension, so a <c>"./node.js"</c> key also matches an
+    /// <c>import './node'</c>. Bare keys are handled by <see cref="ResolveBrowser"/>
+    /// before resolution; this covers the file-to-file swaps.
+    /// </summary>
+    public BrowserOverride ResolveBrowserFile(string absoluteFile)
+    {
+        if (!useBrowserField
+            || !meta.TryGetProperty("browser", out var browser)
+            || browser.ValueKind != JsonValueKind.Object)
+        {
+            return BrowserOverride.None;
+        }
+
+        var packageDir = Path.GetDirectoryName(location)!;
+
+        foreach (var prop in browser.EnumerateObject())
+        {
+            if (!prop.Name.StartsWith('.'))
+            {
+                continue; // bare keys are matched pre-resolution
+            }
+
+            if (SamePathIgnoringExtension(CombinePath(packageDir, prop.Name), absoluteFile))
+            {
+                return ToOverride(prop.Value);
+            }
+        }
+
+        return BrowserOverride.None;
+    }
+
+    private BrowserOverride ToOverride(JsonElement value)
+    {
+        if (value.ValueKind == JsonValueKind.False)
+        {
+            return new BrowserOverride(BrowserOverrideKind.Stub, null);
+        }
+
         if (value.ValueKind == JsonValueKind.String)
         {
             var target = value.GetString()!;
@@ -302,6 +347,25 @@ public sealed class Dependency(string location, JsonElement meta, bool useBrowse
         }
 
         return BrowserOverride.None;
+    }
+
+    private static readonly string[] JsExtensions = [".js", ".mjs", ".cjs", ".jsx", ".ts", ".tsx", ".json"];
+
+    private static bool SamePathIgnoringExtension(string a, string b)
+        => string.Equals(a, b, StringComparison.Ordinal)
+            || string.Equals(StripJsExtension(a), StripJsExtension(b), StringComparison.Ordinal);
+
+    private static string StripJsExtension(string path)
+    {
+        foreach (var extension in JsExtensions)
+        {
+            if (path.EndsWith(extension, StringComparison.Ordinal))
+            {
+                return path[..^extension.Length];
+            }
+        }
+
+        return path;
     }
 
     private static string GetEntry(JsonElement jsonObj, bool useBrowserField)

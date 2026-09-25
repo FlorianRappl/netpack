@@ -949,6 +949,30 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
     }
 
     /// <summary>
+    /// Consults the <c>browser</c> object-map of the package that owns a resolved
+    /// <paramref name="file"/> for a relative-file remap/stub (e.g.
+    /// <c>"./node.js": "./browser.js"</c>). Returns the outcome, or
+    /// <see cref="Dependency.BrowserOverride.None"/> when there is no match.
+    /// </summary>
+    private async Task<Dependency.BrowserOverride> ResolveBrowserFileOverride(string file)
+    {
+        var owner = FindRoot(Path.GetDirectoryName(file)!);
+        if (owner is null)
+        {
+            return Dependency.BrowserOverride.None;
+        }
+
+        var packageJsonPath = Path.Combine(owner, "package.json");
+        if (!File.Exists(packageJsonPath))
+        {
+            return Dependency.BrowserOverride.None;
+        }
+
+        var dependency = await LoadDependency(packageJsonPath);
+        return dependency.ResolveBrowserFile(file);
+    }
+
+    /// <summary>
     /// A single shared empty JS module, used to satisfy a <c>browser: { "x": false }</c>
     /// stub: it exports nothing, so a default import resolves to an empty object and
     /// named imports are <c>undefined</c> — matching Node's browser-field semantics.
@@ -1040,6 +1064,24 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
         try
         {
             var file = await Resolve(parent.ParentDir, path);
+
+            // Relative-file browser remap (web): once a specifier resolves, the
+            // owning package's `browser` map may swap that file for a browser one,
+            // or stub it. Reuses the remap/stub handling above.
+            if (bundle is not null && _context.Platform.UseBrowserField)
+            {
+                var fileOverride = await ResolveBrowserFileOverride(file);
+                if (fileOverride.Kind == Dependency.BrowserOverrideKind.Stub)
+                {
+                    return await AddEmptyModule(bundle, parent);
+                }
+                if (fileOverride.Kind == Dependency.BrowserOverrideKind.Remap
+                    && fileOverride.Target is { } remapped && remapped != file)
+                {
+                    return await InnerProcess(bundle, parent, remapped, variant);
+                }
+            }
+
             var module = await AddToBundle(bundle, file, width, height, format, inlineOverride);
 
             if (bundle is null)

@@ -101,11 +101,10 @@ specifiers imported from within the declaring package:
 A string value **remaps** the specifier (a `./…` value resolves against the
 package that declares the map); `false` **stubs** it with an empty module — a
 default import then resolves to an empty object and named imports are `undefined`.
-On `node` / `deno` the map is ignored, so the same package keeps its Node
+Both **bare-specifier** keys (`"fs"`, `"some-dep"`) and **relative-file** keys
+(`"./node.js": "./browser.js"`, matched extension-insensitively) are supported. On
+`node` / `deno` the map is ignored, so the same package keeps its Node
 implementation.
-
-> Relative-file remaps (`"./node.js": "./browser.js"`, keyed by a file rather than
-> a bare specifier) are not applied yet — only bare-specifier keys are.
 
 ## Node built-ins in the browser (polyfills)
 
