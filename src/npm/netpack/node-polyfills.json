@@ -1,0 +1,12 @@
+{
+  "alias": {
+    "path": "netpack/browser/path.mjs",
+    "node:path": "netpack/browser/path.mjs",
+    "process": "netpack/browser/process.mjs",
+    "node:process": "netpack/browser/process.mjs",
+    "events": "netpack/browser/events.mjs",
+    "node:events": "netpack/browser/events.mjs",
+    "querystring": "netpack/browser/querystring.mjs",
+    "node:querystring": "netpack/browser/querystring.mjs"
+  }
+}
