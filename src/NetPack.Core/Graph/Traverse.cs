@@ -789,6 +789,67 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
         return fn;
     }
 
+    /// <summary>
+    /// Lists the files a context import/require (<c>import(`./dir/${x}.ext`)</c>) can
+    /// resolve to: every file under the prefix's directory (recursively) whose path
+    /// relative to that directory matches the static prefix and suffix around the
+    /// dynamic part. Returns each match's interpolation key (which may contain a
+    /// subdirectory, e.g. <c>"en/base"</c>) and the relative specifier
+    /// (<c>prefix + key + suffix</c>) for the importer to resolve. The directory not
+    /// existing yields no matches; <c>node_modules</c> subtrees are skipped.
+    /// </summary>
+    private IReadOnlyList<(string Key, string Specifier)> GlobContext(Node importer, string prefix, string suffix)
+    {
+        // Split the static prefix into a directory part and an optional path prefix:
+        // "./icons/icon-" -> dir "./icons/", pathPrefix "icon-" (matched against the
+        // file's path relative to the directory).
+        var slash = prefix.LastIndexOf('/');
+        var dirPart = slash >= 0 ? prefix[..(slash + 1)] : "";
+        var pathPrefix = slash >= 0 ? prefix[(slash + 1)..] : prefix;
+
+        var dir = CombinePath(importer.ParentDir, dirPart);
+        if (!Directory.Exists(dir))
+        {
+            return [];
+        }
+
+        var matches = new List<(string Key, string Specifier)>();
+
+        foreach (var file in Directory.EnumerateFiles(dir, "*", SearchOption.AllDirectories))
+        {
+            if (string.Equals(file, importer.FileName, StringComparison.Ordinal)
+                || file.Contains($"{Path.DirectorySeparatorChar}node_modules{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            // The path relative to the globbed directory, with forward slashes, is
+            // what the prefix/suffix (and therefore the runtime key) match against.
+            var relative = Path.GetRelativePath(dir, file).Replace('\\', '/');
+
+            if (pathPrefix.Length > 0 && !relative.StartsWith(pathPrefix, StringComparison.Ordinal))
+            {
+                continue;
+            }
+            if (!relative.EndsWith(suffix, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            var keyLength = relative.Length - pathPrefix.Length - suffix.Length;
+            if (keyLength <= 0)
+            {
+                continue;
+            }
+
+            var key = relative.Substring(pathPrefix.Length, keyLength);
+            matches.Add((key, prefix + key + suffix));
+        }
+
+        matches.Sort((a, b) => string.CompareOrdinal(a.Key, b.Key));
+        return matches;
+    }
+
     private async Task<string?> ResolveFromNodeModules(string? currentDir, string packageName)
     {
         var (package, subpath) = SplitPackageSpecifier(packageName);
@@ -1257,7 +1318,7 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
             var content = await reader.ReadToEndAsync();
             var newContent = $"export default ({content})";
             var ast = Parser.ParseModule(newContent, current.FileName, ParserOptions.ForFile(current.FileName));
-            var visitor = new JsVisitor(bundle, current, InnerProcess);
+            var visitor = new JsVisitor(bundle, current, InnerProcess, GlobContext);
             var fragment = await visitor.FindChildren(ast);
             _context.JsFragments.TryAdd(current, fragment);
         }
@@ -1574,7 +1635,7 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
 
     private async Task<JsFragment> ParseJsModuleFromAst(Bundle bundle, Node current, Syntax.Ast.SourceFile ast)
     {
-        var visitor = new JsVisitor(bundle, current, InnerProcess);
+        var visitor = new JsVisitor(bundle, current, InnerProcess, GlobContext);
         var fragment = await visitor.FindChildren(ast);
         RegisterCssImports(bundle, fragment);
         return fragment;
@@ -1942,7 +2003,7 @@ public class Traverse(string root, FeatureFlags features, ModuleIdMap? moduleIds
 
         var newContent = $"export default ({expression})";
         var ast = Parser.ParseModule(newContent, current.FileName, ParserOptions.ForFile(current.FileName));
-        var visitor = new JsVisitor(bundle, current, InnerProcess);
+        var visitor = new JsVisitor(bundle, current, InnerProcess, GlobContext);
         var fragment = await visitor.FindChildren(ast);
         _context.JsFragments.TryAdd(current, fragment);
     }

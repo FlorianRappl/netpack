@@ -150,4 +150,86 @@ public class DynamicImportTests
         Assert.Contains("require(dynName)", rendered[primary]);
         AssertValid(rendered[primary]);
     }
+
+    // -- context imports ---------------------------------------------------
+
+    [Fact]
+    public async Task Context_import_expands_to_a_chunk_per_match()
+    {
+        var (rendered, primary) = await BundleAll(dir =>
+        {
+            Directory.CreateDirectory(Path.Combine(dir, "locales"));
+            File.WriteAllText(Path.Combine(dir, "main.js"),
+                "export function load(lang) { return import(`./locales/${lang}.js`); }");
+            File.WriteAllText(Path.Combine(dir, "locales", "en.js"), "export const msg = 'EN_LOCALE';");
+            File.WriteAllText(Path.Combine(dir, "locales", "fr.js"), "export const msg = 'FR_LOCALE';");
+            File.WriteAllText(Path.Combine(dir, "locales", "notes.txt"), "ignored");
+        });
+
+        // One lazy chunk per matching file (plus the primary).
+        Assert.True(rendered.Count >= 3, $"expected the primary + 2 locale chunks, saw {rendered.Count}");
+
+        var all = string.Join("\n", rendered.Values);
+        Assert.Contains("EN_LOCALE", all);
+        Assert.Contains("FR_LOCALE", all);
+
+        // The primary selects the chunk by the runtime key.
+        Assert.Contains("[lang]", rendered[primary]);
+
+        foreach (var output in rendered.Values)
+        {
+            AssertValid(output);
+        }
+    }
+
+    [Fact]
+    public async Task Context_import_with_no_matches_is_left_as_a_runtime_import()
+    {
+        var (rendered, primary) = await BundleAll(dir =>
+            File.WriteAllText(Path.Combine(dir, "main.js"),
+                "export function load(x) { return import(`./missing/${x}.js`); }"));
+
+        // Nothing to expand → no extra chunk, and the template import stays.
+        Assert.Equal(1, rendered.Count);
+        Assert.Contains("./missing/", rendered[primary]);
+        AssertValid(rendered[primary]);
+    }
+
+    [Fact]
+    public async Task Context_import_globs_recursively()
+    {
+        var (rendered, _) = await BundleAll(dir =>
+        {
+            Directory.CreateDirectory(Path.Combine(dir, "locales", "sub"));
+            File.WriteAllText(Path.Combine(dir, "main.js"),
+                "export function load(k) { return import(`./locales/${k}.js`); }");
+            File.WriteAllText(Path.Combine(dir, "locales", "en.js"), "export const m = 'EN_TOP';");
+            File.WriteAllText(Path.Combine(dir, "locales", "sub", "fr.js"), "export const m = 'FR_NESTED';");
+        });
+
+        var all = string.Join("\n", rendered.Values);
+        Assert.Contains("EN_TOP", all);
+        Assert.Contains("FR_NESTED", all);   // nested file matched with key "sub/fr"
+        foreach (var output in rendered.Values) AssertValid(output);
+    }
+
+    [Fact]
+    public async Task Context_require_inlines_matches_synchronously()
+    {
+        var (rendered, primary) = await BundleAll(dir =>
+        {
+            Directory.CreateDirectory(Path.Combine(dir, "cmd"));
+            File.WriteAllText(Path.Combine(dir, "main.js"),
+                "export function get(name) { return require(`./cmd/${name}.js`); }");
+            File.WriteAllText(Path.Combine(dir, "cmd", "a.js"), "module.exports = 'CMD_A';");
+            File.WriteAllText(Path.Combine(dir, "cmd", "b.js"), "module.exports = 'CMD_B';");
+        });
+
+        // require is synchronous → the matches are inlined into the one bundle.
+        Assert.Equal(1, rendered.Count);
+        Assert.Contains("CMD_A", rendered[primary]);
+        Assert.Contains("CMD_B", rendered[primary]);
+        Assert.Contains("[name]", rendered[primary]);
+        AssertValid(rendered[primary]);
+    }
 }

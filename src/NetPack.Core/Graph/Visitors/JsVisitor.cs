@@ -15,9 +15,14 @@ using static NetPack.Helpers;
 /// comparisons (e.g. <c>process.env.NODE_ENV</c> after substitution) are not
 /// traversed, so their dependencies are not pulled into the graph.
 /// </summary>
-class JsVisitor(Bundle bundle, GraphNode current, Func<Bundle?, GraphNode, string, (int? Width, int? Height, string? Format), Task<GraphNode?>> report) : AstRewriter
+class JsVisitor(
+    Bundle bundle,
+    GraphNode current,
+    Func<Bundle?, GraphNode, string, (int? Width, int? Height, string? Format), Task<GraphNode?>> report,
+    Func<GraphNode, string, string, IReadOnlyList<(string Key, string Specifier)>>? glob = null) : AstRewriter
 {
     private readonly Func<Bundle?, GraphNode, string, (int? Width, int? Height, string? Format), Task<GraphNode?>> _report = report;
+    private readonly Func<GraphNode, string, string, IReadOnlyList<(string Key, string Specifier)>>? _glob = glob;
     private readonly Bundle _bundle = bundle;
     private readonly GraphNode _current = current;
     private readonly List<string> _exportNames = [];
@@ -179,9 +184,86 @@ class JsVisitor(Bundle bundle, GraphNode current, Func<Bundle?, GraphNode, strin
         {
             _elements.Add(node);
             _tasks.Add(_report(null, _current, specifier, default));
+            return base.VisitImportExpression(node);
+        }
+
+        // A "context" import — `import(`./dir/${x}.ext`)` — a relative template with
+        // a static prefix and a non-empty static suffix around one dynamic part.
+        // Expand it into a selector over the matching files, each a static dynamic
+        // import (and therefore its own lazy chunk), so the dynamic choice resolves
+        // at build time to a known set.
+        if (TryExpandContext(node.Source, dynamic: true) is { } expanded)
+        {
+            return expanded;
         }
 
         return base.VisitImportExpression(node);
+    }
+
+    /// <summary>
+    /// If <paramref name="source"/> is a context template (a relative static prefix
+    /// and a non-empty static suffix around one dynamic part) that matches files on
+    /// disk, returns the expanded selector; otherwise null. <paramref name="dynamic"/>
+    /// chooses lazy <c>import()</c> chunks vs. inlined synchronous <c>require()</c>.
+    /// </summary>
+    private AstNode? TryExpandContext(Expression source, bool dynamic)
+    {
+        if (_glob is null || source is not TemplateLiteral { Expressions.Count: 1, Quasis.Count: 2 } template)
+        {
+            return null;
+        }
+
+        var prefix = template.Quasis[0].Cooked;
+        var suffix = template.Quasis[1].Cooked;
+        if (!prefix.StartsWith('.') || suffix.Length == 0)
+        {
+            return null;
+        }
+
+        var matches = _glob(_current, prefix, suffix);
+        return matches.Count > 0 ? BuildContextSelector(template.Expressions[0], matches, dynamic) : null;
+    }
+
+    /// <summary>
+    /// Builds <c>({ "key": () =&gt; import("./dir/key.ext"), … })[keyExpr]()</c> (or
+    /// <c>require(…)</c> when <paramref name="dynamic"/> is false) for a context
+    /// import/require, registering each inner static import/require so it is resolved
+    /// and — for <c>import()</c> — code-split like any other dynamic import. The
+    /// dynamic key selects the entry at runtime.
+    /// </summary>
+    private AstNode BuildContextSelector(Expression keyExpr, IReadOnlyList<(string Key, string Specifier)> matches, bool dynamic)
+    {
+        var properties = new List<AstNode>();
+
+        foreach (var (key, specifier) in matches)
+        {
+            Expression inner;
+
+            if (dynamic)
+            {
+                // Lazy chunk: reported with no host bundle so it is code-split.
+                inner = new ImportExpression(new StringLiteral(specifier, specifier));
+                _elements.Add(inner);
+                _tasks.Add(_report(null, _current, specifier, default));
+            }
+            else
+            {
+                // Synchronous require: inlined into this bundle like any other require.
+                inner = new CallExpression(
+                    new Identifier("require"),
+                    new List<Expression> { new StringLiteral(specifier, specifier) },
+                    optional: false);
+                _elements.Add(inner);
+                _tasks.Add(_report(_bundle, _current, specifier, default));
+            }
+
+            var loader = new ArrowFunctionExpression(new List<Parameter>(), inner, false);
+            properties.Add(new Property(new StringLiteral(key, key), loader, PropertyKind.Init, false, false, false));
+        }
+
+        var map = new ParenthesizedExpression(new ObjectExpression(properties));
+        var selected = new MemberExpression(map, keyExpr, computed: true, optional: false);
+        return new CallExpression(selected, new List<Expression>(), optional: false);
     }
 
     protected override AstNode VisitCallExpression(CallExpression node)
@@ -192,6 +274,12 @@ class JsVisitor(Bundle bundle, GraphNode current, Func<Bundle?, GraphNode, strin
             {
                 _elements.Add(node);
                 _tasks.Add(_report(_bundle, _current, specifier, default));
+            }
+            else if (TryExpandContext(node.Arguments[0], dynamic: false) is { } expanded)
+            {
+                // A context require — `require(`./dir/${x}.ext`)` — expanded into a
+                // selector over synchronous requires of the matching files.
+                return expanded;
             }
             else
             {
