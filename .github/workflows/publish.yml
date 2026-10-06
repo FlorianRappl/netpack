@@ -1,6 +1,6 @@
 name: Publish
 
-# Release pipeline, four jobs:
+# Release pipeline, five jobs:
 #   1. build   — compile the native AOT binary once per platform (Linux x64,
 #                Linux arm64, macOS arm64, Windows x64, Windows arm64) and
 #                upload each as an artifact.
@@ -14,6 +14,10 @@ name: Publish
 #                them together to the `gh-pages` branch: the landing page at
 #                the root, the docs site under /docs/. Independent of 1/2,
 #                so it runs in parallel with the npm release.
+#   5. changelog — roll CHANGELOG.md: turn its `[Unreleased]` section into a
+#                `[version] — date` entry built from this GitHub release's notes,
+#                and commit it back to the default branch. Release-event only
+#                (a manual dispatch has no release body). Independent of 1-4.
 #
 # Publishing uses Trusted Publishing (OIDC) everywhere: no npm or NuGet API
 # token / secret is needed.
@@ -231,3 +235,40 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: deploy
           publish_branch: gh-pages
+
+  changelog:
+    name: Update changelog
+    # Only on a real published release (a manual dispatch carries no release body).
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # commit the rolled CHANGELOG back to the default branch
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Commit onto the default branch, not the release tag's detached commit.
+          ref: ${{ github.event.repository.default_branch }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Roll CHANGELOG for ${{ github.event.release.tag_name }}
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_DATE: ${{ github.event.release.published_at }}
+          RELEASE_NOTES: ${{ github.event.release.body }}
+        run: node scripts/update-changelog.mjs
+
+      - name: Commit and push
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- CHANGELOG.md; then
+            echo "CHANGELOG already up to date; nothing to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.md
+          git commit -m "docs: changelog for ${{ github.event.release.tag_name }}"
+          git push origin HEAD:${{ github.event.repository.default_branch }}
