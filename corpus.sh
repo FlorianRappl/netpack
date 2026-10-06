@@ -46,6 +46,9 @@ cat > "$ROOT/package.json" <<'JSON'
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "jsdom": "^24.1.0"
   }
 }
 JSON
