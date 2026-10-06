@@ -43,8 +43,24 @@ with `NETPACK_CORPUS=/path`.
 
 **Scope / what it does not do.** It validates *static* output correctness — the
 emitted JavaScript is valid and re-parseable. It does **not** execute the bundles,
-so it doesn't catch missing browser polyfills or runtime interop bugs. Executing a
-few bundles under jsdom/Node is the natural next layer.
+so it doesn't catch missing browser polyfills.
+
+## Execution tests
+
+`ExecutionTests` closes part of that gap without any corpus: it bundles small
+fixtures in-process via `Bundler.WriteToDirectoryAsync` (targeting Node) and runs
+the emitted entry under `node`, asserting on stdout. This proves the output
+*executes*, not just parses — ESM-import linking, CommonJS `require`/default
+interop, circular dependencies (the pre-cached-exports runtime), and ESM-format
+output are all checked at runtime. The tests skip when `node` isn't on PATH, so the
+suite still runs without it.
+
+`BrowserExecutionTests` is the browser counterpart: it bundles a web target as UMD,
+loads it as a classic `<script>` inside jsdom, and asserts the entry manipulated the
+document (and that an imported helper linked and ran). jsdom is heavy, so it rides
+along with the opt-in corpus — `./corpus.sh` installs it as a devDependency — and
+the test skips (locating `test-corpus/node_modules` via `NETPACK_CORPUS` or an
+upward search, and setting `NODE_PATH`) when the corpus isn't assembled.
 
 Next candidates to add once green: a heavy CJS app (e.g. a build using
 `readable-stream`/`buffer`), a Vue SFC app, and a couple of TypeScript-heavy

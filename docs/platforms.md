@@ -120,6 +120,20 @@ npx netpack bundle src/main.js --alias buffer=buffer/ --alias process=process/br
 A dependency can do the same automatically for its own imports through the
 `browser` object-map above (e.g. `"crypto": "crypto-browserify"`).
 
+### Bundled shims
+
+netpack ships small, dependency-free shims for the most common pure built-ins —
+`path`, `process`, `events`, and `querystring` — and a preset that wires them up:
+
+```sh
+npx netpack bundle src/main.js --preset netpack/node-polyfills
+```
+
+That aliases each of those builtins (and their `node:` forms) to the shim. You can
+also alias one directly, e.g. `--alias path=netpack/browser/path.mjs`. For built-ins
+netpack doesn't shim (`fs`, `crypto`, `stream`, `buffer`, …), alias to an npm
+polyfill as above.
+
 `__dirname` and `__filename` — the CommonJS path globals a browser doesn't have —
 are defined per module on `web` when a module references them, using the module's
 path under a root-relative virtual scheme (`/src/util.js`, dir `/src`). This keeps

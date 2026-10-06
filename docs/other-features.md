@@ -42,8 +42,29 @@ bundle actually contains a dynamic require. On the web there is no runtime
 real module with [`--alias`](./importmaps-and-externals.md) or make the specifier
 constant instead.
 
-(Interpolated "context" imports like `` import(`./locales/${lang}.js`) `` are not
-yet expanded into a chunk-per-match; that's a separate feature.)
+### Context imports
+
+An interpolated dynamic import with a static prefix and suffix around the dynamic
+part is a **context import** — it's expanded into a lazy chunk for every file that
+matches:
+
+```js
+// loads one of ./locales/en.js, ./locales/fr.js, … on demand
+const messages = await import(`./locales/${lang}.js`);
+```
+
+netpack globs the prefix's directory (recursively) for files matching the static
+prefix and suffix, makes each its own lazy chunk, and rewrites the call to pick the
+right one by the runtime value. A nested match keeps its subpath in the key (e.g.
+`en/base`). The prefix must be relative (`./` or `../`) and the suffix non-empty; a
+template with no matches is left as an ordinary runtime import.
+
+Context `require(`…`)` works the same way but, being synchronous, inlines each
+match into the current bundle instead of code-splitting it:
+
+```js
+const handler = require(`./commands/${name}.js`);   // all ./commands/*.js inlined, one chosen
+```
 
 ## Source maps
 
